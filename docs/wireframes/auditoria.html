@@ -1,0 +1,21 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Impresos Trujillo — Auditoría</title>
+<link rel="stylesheet" href="style.css"></head>
+<body>
+<div class="topbar"><span class="title">Impresos Trujillo</span>
+<button onclick="document.documentElement.toggleAttribute('data-theme')">Modo claro/oscuro</button></div>
+<div class="layout"><nav class="sidebar">
+<a href="login.html">Inicio de sesión</a><a href="index.html">Órdenes</a>
+<a href="orden-form.html">Formulario de orden</a>
+<a href="inventario.html">Inventario</a><a href="finanzas.html">Finanzas</a>
+<a href="clientes.html">Clientes</a><a href="productos.html">Productos</a>
+<a href="unidades.html">Unidades de medida</a><a href="auditoria.html" class="active">Auditoría</a>
+</nav>
+<main class="content">
+<div class="panel"><b>Auditoría (solo admin)</b>
+<table><tr><th>Fecha</th><th>Usuario</th><th>Acción</th><th>Documento</th><th>Detalle</th></tr>
+<tr><td>[dd/mm/aa hh:mm]</td><td>[usuario]</td><td>[creó/editó/canceló]</td><td>[orden #]</td><td>[detalle]</td></tr>
+</table>
+<span class="note">Registro de todas las operaciones del sistema.</span>
+</div></main></div></body></html>

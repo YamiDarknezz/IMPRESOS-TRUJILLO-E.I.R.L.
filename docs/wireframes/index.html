@@ -1,0 +1,49 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Impresos Trujillo — Órdenes</title>
+<link rel="stylesheet" href="style.css"></head>
+<body>
+<div class="topbar"><span class="title">Impresos Trujillo</span>
+<button onclick="document.documentElement.toggleAttribute('data-theme')">Modo claro/oscuro</button></div>
+<div class="layout">
+<nav class="sidebar">
+<a href="login.html">Inicio de sesión</a>
+<a href="index.html" class="active">Órdenes</a>
+<a href="orden-form.html">Formulario de orden</a>
+<a href="inventario.html">Inventario</a>
+<a href="finanzas.html">Finanzas</a>
+<a href="clientes.html">Clientes</a>
+<a href="productos.html">Productos</a>
+<a href="unidades.html">Unidades de medida</a>
+<a href="auditoria.html">Auditoría</a>
+</nav>
+<main class="content">
+<div class="panel"><b>Métricas (admin)</b>
+<div class="row">
+<div class="card"><div class="label">Total órdenes</div><div class="value">[##]</div></div>
+<div class="card"><div class="label">En proceso</div><div class="value">[##]</div></div>
+<div class="card"><div class="label">Finalizadas</div><div class="value">[##]</div></div>
+<div class="card"><div class="label">Por cobrar</div><div class="value">S/ [##]</div></div>
+</div></div>
+<div class="panel"><b>Filtros</b>
+<div class="row">
+<div class="card" style="flex:2"><label>Etapa</label><div class="placeholder">[selector de etapa]</div></div>
+<div class="card" style="flex:2"><label>Búsqueda</label><div class="placeholder">[caja de búsqueda]</div></div>
+<div class="card" style="flex:2"><label>Rango de fechas</label><div class="placeholder">[desde] – [hasta]</div></div>
+</div>
+<button class="btn">Filtrar</button></div>
+<div class="panel"><b>Lista de órdenes</b>
+<table><tr><th>ID</th><th>Cliente</th><th>Asignado</th><th>Fechas</th><th>Finanzas</th><th>Estado</th><th>Etapa</th><th>Acciones</th></tr>
+<tr><td>[001]</td><td>[Cliente]</td><td>[Trabajador]</td><td>[..]</td><td>S/ [..]</td><td>[..]</td><td>[Pendiente]</td><td><button class="btn sec">Avanzar</button> <button class="btn sec">Editar</button> <button class="btn sec">Cancelar</button></td></tr>
+<tr><td>[002]</td><td>[Cliente]</td><td>[Trabajador]</td><td>[..]</td><td>S/ [..]</td><td>[..]</td><td>[En diseño]</td><td><button class="btn sec">Avanzar</button> <button class="btn sec">Editar</button> <button class="btn sec">Cancelar</button></td></tr>
+</table>
+<span class="note">Placeholder: filas de ejemplo, no datos reales.</span></div>
+<div class="modal" id="mUso"><b>Modal: Reportar uso de materiales</b>
+<div class="placeholder">[lista materiales estimados vs reales — ajuste de merma/devolución]</div>
+<button class="btn">Guardar ajuste</button></div>
+<div class="modal" id="mPago"><b>Modal: Confirmar pago</b>
+<div class="placeholder">[monto] [método: efectivo / Yape / transferencia]</div>
+<button class="btn">Registrar pago</button></div>
+<button class="btn sec" onclick="document.getElementById('mUso').style.display='block'">Ver modal: Reportar uso</button>
+<button class="btn sec" onclick="document.getElementById('mPago').style.display='block'">Ver modal: Confirmar pago</button>
+</main></div></body></html>

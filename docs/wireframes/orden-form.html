@@ -1,0 +1,34 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Impresos Trujillo — Formulario de orden</title>
+<link rel="stylesheet" href="style.css"></head>
+<body>
+<div class="topbar"><span class="title">Impresos Trujillo</span>
+<button onclick="document.documentElement.toggleAttribute('data-theme')">Modo claro/oscuro</button></div>
+<div class="layout"><nav class="sidebar">
+<a href="login.html">Inicio de sesión</a><a href="index.html">Órdenes</a>
+<a href="orden-form.html" class="active">Formulario de orden</a>
+<a href="inventario.html">Inventario</a><a href="finanzas.html">Finanzas</a>
+<a href="clientes.html">Clientes</a><a href="productos.html">Productos</a>
+<a href="unidades.html">Unidades de medida</a><a href="auditoria.html">Auditoría</a>
+</nav>
+<main class="content">
+<div class="panel"><b>Formulario de orden (solo admin)</b>
+<label>Cliente</label><div class="placeholder">[selector de cliente] + [alta rápida]</div>
+<label>Producto</label><div class="placeholder">[autocompleta producto → receta de materiales]</div>
+<label>Descripción</label><div class="placeholder">[texto del trabajo]</div>
+<label>Fecha de entrega</label><div class="placeholder">[selector de fecha]</div>
+<label>Asignación</label><div class="placeholder">[selector de trabajador]</div>
+<label>Materiales estimados</label><table><tr><th>Material</th><th>Cant.</th><th>Unidad</th></tr>
+<tr><td>[Material A]</td><td>[#]</td><td>[u]</td></tr></table>
+<button class="btn sec">+ agregar material</button>
+<div class="row" style="margin-top:10px;">
+<div class="card"><div class="label">Total</div><div class="value">S/ [##]</div></div>
+<div class="card"><div class="label">Adelanto (obligatorio)</div><div class="value">S/ [##]</div></div>
+<div class="card"><div class="label">Descuento</div><div class="value">S/ [##]</div></div>
+<div class="card"><div class="label">Saldo</div><div class="value">S/ [##]</div></div>
+<div class="card"><div class="label">Método de pago</div><div class="value">[Ef/Yape/Trans]</div></div>
+</div>
+<span class="note">Regla: adelanto obligatorio habilita producción; pago completo habilita entrega.</span>
+<button class="btn" style="margin-top:10px;">Crear orden</button>
+</div></main></div></body></html>

@@ -1,0 +1,24 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Impresos Trujillo — Inicio de sesión</title>
+<link rel="stylesheet" href="style.css"></head>
+<body>
+<div class="topbar"><span class="title">Impresos Trujillo</span>
+<button onclick="document.documentElement.toggleAttribute('data-theme')">Modo claro/oscuro</button></div>
+<div class="layout"><nav class="sidebar">
+<a href="login.html" class="active">Inicio de sesión</a>
+<a href="index.html">Órdenes</a><a href="orden-form.html">Formulario de orden</a>
+<a href="inventario.html">Inventario</a><a href="finanzas.html">Finanzas</a>
+<a href="clientes.html">Clientes</a><a href="productos.html">Productos</a>
+<a href="unidades.html">Unidades de medida</a><a href="auditoria.html">Auditoría</a>
+</nav>
+<main class="content">
+<div class="panel" style="max-width:380px;margin:40px auto;">
+<b>Inicio de sesión</b>
+<label>Correo</label><input placeholder="[correo@upn.pe]">
+<label>Contraseña</label><input type="password" placeholder="********">
+<div class="placeholder" style="margin-top:10px;">[mensaje de error si aplica]</div>
+<div class="placeholder" style="margin-top:6px;height:14px;">[indicador de carga]</div>
+<button class="btn" style="margin-top:10px;width:100%">Ingresar</button>
+<span class="note">Placeholder: sin validación real.</span>
+</div></main></div></body></html>

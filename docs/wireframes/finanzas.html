@@ -1,0 +1,34 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Impresos Trujillo — Finanzas</title>
+<link rel="stylesheet" href="style.css"></head>
+<body>
+<div class="topbar"><span class="title">Impresos Trujillo</span>
+<button onclick="document.documentElement.toggleAttribute('data-theme')">Modo claro/oscuro</button></div>
+<div class="layout"><nav class="sidebar">
+<a href="login.html">Inicio de sesión</a><a href="index.html">Órdenes</a>
+<a href="orden-form.html">Formulario de orden</a>
+<a href="inventario.html">Inventario</a><a href="finanzas.html" class="active">Finanzas</a>
+<a href="clientes.html">Clientes</a><a href="productos.html">Productos</a>
+<a href="unidades.html">Unidades de medida</a><a href="auditoria.html">Auditoría</a>
+</nav>
+<main class="content">
+<div class="panel"><b>Filtros</b>
+<div class="row">
+<div class="card" style="flex:2"><label>Rango de fechas</label><div class="placeholder">[desde] – [hasta]</div></div>
+<div class="card" style="flex:2"><label>Trabajador</label><div class="placeholder">[selector]</div></div>
+</div></div>
+<div class="panel"><b>Tarjetas (admin)</b>
+<div class="row">
+<div class="card"><div class="label">Ingresos</div><div class="value">S/ [##]</div></div>
+<div class="card"><div class="label">Contratos</div><div class="value">[##]</div></div>
+<div class="card"><div class="label">Adelantos</div><div class="value">S/ [##]</div></div>
+<div class="card"><div class="label">Por cobrar</div><div class="value">S/ [##]</div></div>
+</div></div>
+<div class="panel"><b>Desglose por método de pago</b>
+<div class="placeholder">[Efectivo] [Yape] [Transferencia]</div>
+<button class="btn sec">Exportar CSV</button></div>
+<div class="panel"><b>Por trabajador (admin)</b>
+<table><tr><th>Trabajador</th><th>Generado</th><th>Por cobrar</th></tr>
+<tr><td>[Trabajador 1]</td><td>S/ [##]</td><td>S/ [##]</td></tr></table>
+</div></main></div></body></html>

@@ -1,0 +1,26 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Impresos Trujillo — Clientes</title>
+<link rel="stylesheet" href="style.css"></head>
+<body>
+<div class="topbar"><span class="title">Impresos Trujillo</span>
+<button onclick="document.documentElement.toggleAttribute('data-theme')">Modo claro/oscuro</button></div>
+<div class="layout"><nav class="sidebar">
+<a href="login.html">Inicio de sesión</a><a href="index.html">Órdenes</a>
+<a href="orden-form.html">Formulario de orden</a>
+<a href="inventario.html">Inventario</a><a href="finanzas.html">Finanzas</a>
+<a href="clientes.html" class="active">Clientes</a><a href="productos.html">Productos</a>
+<a href="unidades.html">Unidades de medida</a><a href="auditoria.html">Auditoría</a>
+</nav>
+<main class="content">
+<div class="panel"><b>Clientes (solo admin)</b>
+<div class="placeholder" style="display:inline-block;width:200px;">[búsqueda de cliente]</div>
+<button class="btn sec">+ Nuevo cliente</button>
+<table><tr><th>Nombre</th><th>Documento</th><th>Teléfono</th><th>Historial</th><th>Acción</th></tr>
+<tr><td>[Cliente A]</td><td>[RUC/DNI]</td><td>[###]</td><td>[# órdenes]</td><td><button class="btn sec">Ver ficha</button> <button class="btn sec">Editar</button></td></tr>
+</table></div>
+<div class="modal" id="mCli"><b>Modal: Ficha de cliente</b>
+<div class="placeholder">[historial de órdenes] [facturado] [por cobrar]</div>
+<button class="btn">Cerrar</button></div>
+<button class="btn sec" onclick="document.getElementById('mCli').style.display='block'">Ver modal: Ficha de cliente</button>
+</main></div></body></html>

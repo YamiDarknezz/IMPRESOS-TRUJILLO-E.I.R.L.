@@ -1,0 +1,26 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Impresos Trujillo — Inventario</title>
+<link rel="stylesheet" href="style.css"></head>
+<body>
+<div class="topbar"><span class="title">Impresos Trujillo</span>
+<button onclick="document.documentElement.toggleAttribute('data-theme')">Modo claro/oscuro</button></div>
+<div class="layout"><nav class="sidebar">
+<a href="login.html">Inicio de sesión</a><a href="index.html">Órdenes</a>
+<a href="orden-form.html">Formulario de orden</a>
+<a href="inventario.html" class="active">Inventario</a><a href="finanzas.html">Finanzas</a>
+<a href="clientes.html">Clientes</a><a href="productos.html">Productos</a>
+<a href="unidades.html">Unidades de medida</a><a href="auditoria.html">Auditoría</a>
+</nav>
+<main class="content">
+<div class="panel"><b>Inventario (admin edita / trabajador lee)</b>
+<table><tr><th>Material</th><th>Stock</th><th>Unidad</th><th>Alerta mínima</th><th>Días reabast.</th><th>Estado</th><th>Acción</th></tr>
+<tr><td>[Lona]</td><td>[##]</td><td>[m]</td><td>[#]</td><td>[#]</td><td>OK</td><td><button class="btn sec">Editar</button></td></tr>
+<tr><td>[Vinilo]</td><td>[#]</td><td>[m²]</td><td>[#]</td><td>[#]</td><td>Stock bajo</td><td><button class="btn sec">Editar</button></td></tr>
+</table>
+<span class="note">Trabajador: solo lectura. Admin: crear/editar/ajustar.</span></div>
+<div class="modal" id="mMat"><b>Modal: Editar material</b>
+<div class="placeholder">[stock] [alerta mínima] [días reabastecimiento]</div>
+<button class="btn">Guardar</button></div>
+<button class="btn sec" onclick="document.getElementById('mMat').style.display='block'">Ver modal: Editar material</button>
+</main></div></body></html>
