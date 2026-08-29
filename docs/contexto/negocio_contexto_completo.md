@@ -9,8 +9,8 @@
 |-------|------|
 | Razón social | Impresos Trujillo |
 | RUC | 20602572952 |
-| Ubicación | Trujillo, Perú |
-| Dirección | JR. Bolivar 945 |
+| Ubicación | Trujillo, La Libertad, Perú |
+| Dirección | JR. SIMON BOLIVAR NRO. 945 INT. 1, TRUJILLO |
 | Teléfono | 924 943 790 |
 | Horario de atención | 10 AM – 8 PM |
 | Moneda | Soles peruanos (S/) |
