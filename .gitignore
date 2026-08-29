@@ -1,0 +1,33 @@
+# Dependencias / entornos
+node_modules/
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+
+# Build / distribución
+dist/
+build/
+*.egg-info/
+.angular/
+out-tsc/
+
+# Entornos y secretos
+.env
+.env.*
+*.local
+secrets.json
+credentials.json
+
+# IDE / SO
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Temporales de edición de docx
+*_unpacked/
+unpacked/
