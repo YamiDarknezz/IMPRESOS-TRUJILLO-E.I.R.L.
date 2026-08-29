@@ -31,3 +31,12 @@ Thumbs.db
 # Temporales de edición de docx
 *_unpacked/
 unpacked/
+
+# Carpeta de archivos temporales del agente (scripts, unpacked, etc.)
+.temp/
+
+# Configuración local de opencode
+opencode.json
+
+# Órdenes del agente (instrucciones locales, no versionar)
+AGENTS.md
