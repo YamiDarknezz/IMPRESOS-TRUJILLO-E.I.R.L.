@@ -1,0 +1,62 @@
+PC 1:
+i5 12400F
+16GB RAM 
+
+WIN 10 PRO 22H2 
+compilacion so 19045.5371
+500GB
+--
+PC 2:
+i5 10400T
+12GB RAM
+WIN 11 PRO 25H2
+compilacion so 26200.9168
+1TB
+--
+PC 3:
+i7 6700
+16GB
+2TB
+WIN 10 PRO 22H2
+compilacion so 19045.5371
+--
+PC 4:
+RYZEN 5 3400G
+32gb ram
+win11pro 25h2 26200.9168
+3TB
+--
+PC 5:
+i5 12400f 
+16gb ram 
+win 10 pro 22h2 
+compilacion so 19045.5737
+500GB
+--
+PC 6:
+i5 10400f 
+8GB RAM
+win 10 pro 22h2 
+compilacion so 19045.3324
+500GB
+--
+contrato columnas:
+Nr
+Tipo= Contrato/Proforma
+Cliente
+Dirección
+Teléfono
+ACTA S/.
+SALDO S/.
+TOTAL S/.
+FECHA ENTREGA
+INCLUYE IGV (bool)
+Firma de imprentra Trujillo
+--
+organigrama>
+GERENCIA
+TU MAMA JEFA DE OFIFNA - PAPA JEFE DE TALLER
+AMBOS TIENEN SUBJERENTE A Manuel (maneja ambas areas)
+Taller secretaria marilu
+3 hombres aldair, alexis, gabriel son mano de obra trabajan en ambas areas
+OFICINA Diseñadora - Ashlee

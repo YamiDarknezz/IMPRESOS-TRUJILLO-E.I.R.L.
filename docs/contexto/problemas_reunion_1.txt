@@ -1,0 +1,79 @@
+Informe de Relevamiento de Requerimientos y Hoja de Ruta: Proyecto de Digitalización Operativa
+
+1. Contexto Estratégico de la Sesión
+
+La presente sesión de trabajo constituye el hito fundamental para iniciar la transformación digital del negocio, marcando la transición necesaria de una gestión basada en procesos manuales (papel y archivos de Excel/Word aislados) hacia un ecosistema de software integrado. Esta migración no es solo una mejora tecnológica, sino un imperativo estratégico para garantizar la escalabilidad operativa y la capacidad de toma de decisiones basada en datos reales. La meta es clara: eliminar la opacidad de los registros actuales y construir un motor de crecimiento que permita proyectar ingresos y controlar mermas con precisión quirúrgica.
+
+A continuación, se resumen los metadatos estratégicos de la sesión:
+
+Categoría	Detalle
+Participantes	Admin/Propietarios, Equipo de Desarrollo de Software
+Objetivo	Definición del alcance funcional, técnico y arquitectura de datos
+Duración del Proyecto	9 semanas (con entrega de Fase Beta en la semana 4)
+
+Este diagnóstico sienta las bases para mitigar los riesgos operativos identificados y profesionalizar el flujo de trabajo de cada unidad de negocio.
+
+2. Diagnóstico de la Situación Actual y "Pain Points"
+
+La auditoría de los procesos actuales revela una vulnerabilidad crítica en la trazabilidad financiera y el control de inventarios. La dependencia de herramientas no relacionales (Word y Excel) ha fragmentado la información, imposibilitando una visión consolidada de la rentabilidad real.
+
+Se han identificado los siguientes problemas críticos que demandan intervención inmediata:
+
+* Volatilidad de Datos ("Registros Chancados"): El uso de archivos que se sobrescriben constantemente elimina cualquier posibilidad de auditoría histórica. La información de saldos y adelantos se pierde en el ciclo semanal, impidiendo un análisis de deuda a largo plazo.
+* Invisibilidad del Cliente: El sistema actual omite nombres de clientes y datos de contacto básicos en los registros diarios. Esto anula cualquier capacidad de CRM o seguimiento de postventa, limitando el negocio a transacciones anónimas.
+* Inconsistencia Financiera: El registro de métodos de pago (Yape, transferencias, efectivo) es laxo y manual, lo que dificulta la conciliación bancaria y la diferenciación de ingresos por local o unidad de servicio.
+* Dependencia del Factor Humano: El flujo de información actual reside en la memoria de los propietarios o en los registros manuales de "la chica de al lado". Esta centralización del conocimiento en individuos aumenta el riesgo operativo ante rotación de personal o errores de digitación.
+
+La urgencia de la automatización radica en que estos cuellos de botella no solo ralentizan la operación, sino que generan fugas de capital no cuantificadas debido a la falta de seguimiento de saldos pendientes.
+
+3. Arquitectura Funcional del Sistema Propuesto
+
+Para abordar estas deficiencias, se propone una estructura modular interconectada que garantice la integridad de los datos desde la recepción del pedido hasta la entrega final.
+
+Gestión de Ventas y Facturación
+
+El sistema permitirá la emisión de tickets digitales y la generación de contratos virtuales, eliminando el soporte físico. Se integrará la facturación electrónica vía SUNAT y se establecerán campos obligatorios para el registro de clientes, asegurando que cada orden esté vinculada a una identidad comercial.
+
+Control de Roles y Permisos
+
+Se diferenciarán estrictamente los niveles de acceso:
+
+* Admin (Propietarios): Capacidad para autorizar órdenes especiales, como el caso de la Cámara de Comercio, donde se permite procesar servicios sin adelanto previo bajo una orden de servicio corporativa.
+* Trabajadores: Registro operativo estándar con bloqueos de seguridad para evitar la modificación de precios o saldos sin autorización superior.
+
+Módulo Financiero y "Cierre de Caja"
+
+Una funcionalidad crítica es el Cierre de Caja por Usuario y Unidad de Negocio. El sistema segregará automáticamente las cuentas de "Imprenta" y "Gigantografías". Cada usuario deberá liquidar sus ingresos por separado, detallando los montos en efectivo, Yape y transferencias para una auditoría diaria exacta.
+
+Gestión de Inventarios y Control de Mermas
+
+Se implementará un seguimiento riguroso de materiales (vinilos, banners, adhesivos). Basado en el requerimiento técnico, se monitoreará el consumo de "Goma" (pegamento) por cada 5 metros de material procesado. Esto permitirá generar "Aproximaciones Automáticas" de stock y alertas de reposición antes de que ocurra un quiebre de inventario.
+
+4. Componentes de Inteligencia de Negocios y Machine Learning
+
+El valor diferencial de este software radica en su capacidad predictiva. No se trata solo de un sistema de registro, sino de una herramienta analítica que utilizará la data histórica para optimizar la compra de insumos y la proyección de flujo de caja.
+
+Funcionalidad	Impacto en el Negocio
+Business Intelligence (BI)	Dashboards con gráficos de ingresos diarios, rentabilidad por unidad (Imprenta vs. Gigantografía) y control de saldos vencidos.
+Machine Learning (ML)	Predicción de ingresos mensuales, detección de patrones de compra y alertas de stock predictivas basadas en el historial de uso de pegamento y materiales.
+
+[!CAUTION] Factor Crítico de Éxito - Riesgo de Entrenamiento: La precisión del modelo de Machine Learning es directamente proporcional a la calidad de la data suministrada. Existe un riesgo de imprecisión en las predicciones si no se entrega suficiente volumen de datos históricos. Por ello, la entrega de los Excels actuales, fotos de contratos antiguos y el "Talón de aire" físico para su digitalización es obligatoria.
+
+5. Especificaciones Técnicas y Requerimientos de Infraestructura
+
+Para garantizar la interconexión de todas las computadoras del negocio y la disponibilidad de datos en tiempo real, es vital la implementación de un Servidor Local. Este centralizará la base de datos y permitirá que tanto el área administrativa como la operativa trabajen sobre la misma fuente de verdad.
+
+En cuanto a la entrada de datos:
+
+* Omnicanalidad: Se incluirán campos para correo electrónico y vinculación con WhatsApp.
+* Gestión de Evidencia Digital: Para mitigar costos operativos iniciales de integración profunda con APIs de WhatsApp, el sistema priorizará el adjunto manual de capturas de pantalla de transferencias y Yape dentro de cada orden de servicio, facilitando la conciliación rápida.
+
+6. Cronograma de Desarrollo (Roadmap)
+
+El despliegue se realizará en un periodo de 9 semanas, siguiendo un proceso de ETL (Extracción, Transformación y Carga) para la migración de datos antiguos:
+
+1. Fase 1: Núcleo Operativo (Semanas 1-4): Desarrollo del motor de ventas, inventarios y flujos financieros. Entrega de Versión Beta al finalizar la Semana 4.
+2. Fase 2: Business Intelligence (Semanas 5-7): Implementación de reportes avanzados y visualización de datos de rentabilidad.
+3. Fase 3: Machine Learning y Optimización (Semanas 8-9): Entrenamiento de modelos con data histórica y ajustes finales del sistema predictivo.
+
+Llamado a la Acción para el Cliente: Para dar cumplimiento a la Fase 1 y garantizar el éxito de la Fase 3, se requiere la recolección exhaustiva de todos los archivos Excel, Word y el "Talón de aire" físico en las próximas 4 semanas. La precisión del sistema que controlará sus finanzas depende de esta extracción de datos histórica; sin estos insumos, la capacidad predictiva del software se verá seriamente comprometida.

@@ -1,0 +1,165 @@
+EDT a realizar en el proyecto fuera del word Toda fase tiene código por ejemplo fase uno llamas A1, sub fases sera A1.1 y asi.
+Después de las fases son las subfases ahi iran actividades y sub actividades, y cada subactividad termina en un entregable
+Regla para el EDT 3-5 de 3 a 5 niveles sin contar la raíz que es el titulo
+--
+Estructura de análisis
+Ahi iran las varibles la variable dependiente e independiente, luego población y muestra OJO importante ahi deben ir números, aca no estamos en letras (incapie del profesor) "Personas de la empresa" NO ACEPTADO, ej: si se trabaj en gestion de inventario hay entrada y salida y hay 1 solo operario, ahi se colocara "Aca la población son los productos, pero no se coloca productos, se dira *Registros esa sera mi unidad de análisis* el profesor afirma que se puede tener mas de una población y por lo tanto muestras"
+Antecedentes: Estas vendrán de investigaciones "Mis antecedentes se deben relacionar con la variable Variable Dependiente " RECORDAR "SEA QUE TU SOFTWARE EXISTA O NO, EL PROCESO EXISTE" tu software solo es una mejora, incapie del profe NO IMPORTA QUE MIS ANTECEDENTES ESTEN EN OTRO LENGUAJE, AUNQUE SEA EN NUBE Y MIO LOCAL PERO DEBE GUARDAR RELACION CON AL VARIABLE DEPENDIENTE Y SI EL ANTECEDENTE NO TIENE RELACION NO SIRVE PA NADA.
+Todos los ANTECEDENTES deben tener valores, no pueden ser cualitativos ni descriptivos
+--
+CRONOGRAMA
+Todas las actividades con códigos y provienen de la EDT habrá un apartado predecesora ahi ira el código de la actividad anterior, columna de costo
+Después se realiza el diagrama de Gantt al lado derecho , se puede usar cualquier herramienta que lo realice, puede haber actividades en paralelo, nada de cascada.
+--
+Matriz de Consistencia
+Aqui el profesor empatiza de que se trate de que el trabajo es EXPERIMENTAL, nada de descriptivo ni nada parecido la carrera es Ing. y es una ciencia aplicada. Descriptivo es NO HACER NADA enfatiza el profesor. Para el titulo universitario se pide minimamente la Pre Experimental. No hay problema si se pasa a Quasi experimental pero ahi va un grupo de control.
+El profesor en su plantilla puso ya palabras que se deberian utilizar, hacer caso a ello. Se usan esos verbos porque el profesor dice que "Cuando uno utiliza un software y lo instala, uno no sabe cuanto es el grado de impacto que sucede en la empresa porque el proceso es experimental, se usa influencia y establecer o definir pero recordar se trata de buscar un impacto en un tiempo post" Es mejor si no hay nada de software porque ya se anticipa una mejora. El profesor suplica que si pone cantidad, pongamos la cantidad. 
+
+
+---
+GRUPO 7
+---
+ACTA DE CONSTITUCION:
+
+TITULO ES VI+VD+LUGAR
+
+EN RECIONALIDAD MENCIONAR EL PROBLEMA A RESOLVER.
+
+OBJETIVO ESPECIGICOS MIDEN A LA VARIABLE DEPENDIENTE
+
+AGREGAR DOCUMENTOS A LOS ENTREGABLES
+
+COLOCAR NOMBRES DE LAS FASES
+
+LOS RIESGOS NO PODEMOS SER NOSOTROS, "NO PUEDES DECIR EL RIESGO ES MI FALTA DE COMICIMIENTO"
+
+-
+Busines case
+
+Se puso mas Suposiciones que en la constitucion INCOHERENCIA
+
+Gobierno no pusieron quien trabaja, poner cargos, el profesor no es parte del gobierno.
+
+SECCION 4 SE PONE PREGUNTA PROBLEMA en 4.2 se pone fecha, no semana
+
+en 4.4.1 colocar versiones del software
+4.4.2 colocar capacidades del software
+
+5.7 se coloca acciones
+
+7 scrum y kanban colocar eso 
+--
+requerimientos de software
+el profe hizo incapie en que la empresa pide procesos no logins.
+
+---
+GRUPO 3
+---
+ACTA CONSTITUCION
+
+MEJORAR TITULO igual que grpo 7
+
+NO COLOCAR HISTORIA DE LA EMPRESA DEBEN SER CONCRETOS A LO QUE SE HARA
+
+Solo colocar IMPLEMENTAR o DISEÑAR nunca los dos. 
+
+Entregables colocar modulos, el software y tambien documentos.
+
+en Fases deben ir los hitos 
+
+BSUINES CASE:
+
+reporte de pedidos no es gerencial, es operativo
+
+El software no es el PAPEL, no es CUADERNO
+
+faltaron KPIS
+muy poco texto en su mayoria se descarto 
+no colocar generalidades
+
+---
+GRUPO 11
+---
+
+Acta de Constitucion
+
+no tenia fase de planificacion
+no tenia presupuesto
+
+busines case
+no hicieron el multi rol 
+
+EN CASO DE NO TENER PLAN ESTRATEGICO IGUAL SE LLEMAN LAS DEMAS COLUMNAS 
+
+Documento de RQ SOFTWARE
+
+si el cliente no manipula el software no debe aparecer en el punto 5
+
+en requerimientos no funcionales la autenticaicon les falto
+
+---
+GRUPO 5
+---
+Acta de constitucion
+Contradccion en los nombres se dice ERP y luego sistema web inteligente
+Consolidar las fases en desarrollo, no se dice implementacion sino implantacion en su apartado de IA
+Los riesgos no podemos ser nosotros no puedes decirle al cliente "Hay riesgo de que hagamos X cosa mal" Eso no sucede
+
+--
+
+ACTA DE CONSTITUCION
+
+no colocar coma en el titulo y falto el lugar
+mucho floro no historia quitar eso 
+
+objetivo quitar el desarrollar solo dejar IMPLEMENTAR cOLOCAR EN UNA SOLA EXPRESION  MUCHAS COMAS E  "Y"
+objetvios especificos que midan a la variable dependiente como los demas
+
+faltan documentos en los enregables
+
+NOMBRES DE FASES NO SEMANAS
+no usar aproximados colocar montos nada es gratis
+
+riesgos  descartar el riesgo de nosotros
+
+el problema de despliegue especifficar si es de nosotros o empresa
+
+falta organigrama de empresa y de nosotros
+organigrama y funciones
+
+el protocolo esta muy resumido falta la comunicacion entre nosotros y la empresa
+
+busines case:
+
+2.1 falto donde aplicarlo y procesos para aplicarlo
+
+2.4 es muy baja mejorar la justificacion
+
+SUPOCISIONES: hacer listas  tanto en acta como en busines case listar limitacioens tambien listar
+
+GOBIERNO DE TI: NOS FALTO UNA COLUMNA DE PROCEDENCIA ARREGLAR
+MEJORAR LA PREGUNTA PROBLEMA CON LA INFORMACION DE LA ESTRUCTURA DE ANALISIS
+
+PONER FECHAS NO MESES CORREGIR
+
+ MEJORAR LA RELACION ENN 4.2 
+ VERSIONES DE LSOFTWARE Y CAPACIDADES DEL HARDWARE
+  VERSIONES Y CAPACIDADES
+ - faltaron los entregables 
+NO SON OBJETIVOS ACOMODARLOS
+LISTA DE RIESGOS MAL NO Hay
+
+CORREGIR LA 6.5
+
+tabla de terceros nombre de propuesta
+
+7.1 COLOCAR VALORES, NUMEROS
+
+11 FOTOS FALTARON EVIDENCIAS DE QUE SE FUE A LA EMPRESA
+
+requerimientos:
+AUTENTICACION NO ES FUNCIONABILIDAD
+mejorar referencias dice el docente. 
+MOVER AUTENTICACION A NO FUNCIONAL
+
+
