@@ -47,7 +47,7 @@ Una funcionalidad crítica es el Cierre de Caja por Usuario y Unidad de Negocio.
 
 Gestión de Inventarios y Control de Mermas
 
-Se implementará un seguimiento riguroso de materiales (vinilos, banners, adhesivos). Basado en el requerimiento técnico, se monitoreará el consumo de "Goma" (pegamento) por cada 5 metros de material procesado. Esto permitirá generar "Aproximaciones Automáticas" de stock y alertas de reposición antes de que ocurra un quiebre de inventario.
+Se implementará un seguimiento riguroso de materiales (vinilos, banners, adhesivos). Basado en el requerimiento técnico, se monitoreará el consumo de "Goma" (pegamento) por cada 5 metros de material procesado. [!NOTE] ACLARACIÓN: el caso de "Goma" por cada 5 metros fue solo un EJEMPLO mencionado en la reunión; no es una regla técnica real ni un dato confirmado por el negocio. La empresa aún no define la regla de consumo ni sus cuotas, por lo que deben levantarse y validarse antes de usarse en el sistema. Esto permitirá generar "Aproximaciones Automáticas" de stock y alertas de reposición antes de que ocurra un quiebre de inventario.
 
 4. Componentes de Inteligencia de Negocios y Machine Learning
 
