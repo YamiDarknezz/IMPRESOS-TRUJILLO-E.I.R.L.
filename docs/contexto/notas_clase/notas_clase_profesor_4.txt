@@ -1,0 +1,60 @@
+DOCUMENTOS SEMANA 4:
+Primera parte es para elegir los archivos SCRUM ambos formatos se resolverán, IGNORAR KANBAN puesto que el proyecto se trabaja en scrum y el documento de informe de estado (este informe de estado se debe entregar todas las semanas y este informa lo que se hizo en cada progreso, aunque haya un examen T1 o T2 debe igual haber un informe de estado, el proyecto NO SE DETIENE y el máximo de entrega para estos archivos es semana 11 porque apartir de la semana 11 el software estará al 100% y la semana 11 es la ultima semana de los informes de estado y ya no se solicitaría este documento para semana 12)
+--
+INFORME DE ESTADO DEL PROYECTO:
+en la primera hoja, hay que colocar el titulo, luego la descripción del proyecto aquí debe ser breve no debe pasar 1 párrafo y debe salir de documentos de los demás proyectos, después sigue el semáforo que guarda relación con el Alcance - Tiempo - Costo el color va enque color debe ir en el anexo EL PROFESOR RESALTA EL NO COLOREAR SIN CRITERIO (el alcance se basa en el estado de la semana, de acuerdo a los entregables de la semana, de acuerdo a los entregables porque sino siempre el color estaría en rojo ej: esta semana tengo que entregar 3 entregables y he cumplido 2, eso significa un 66% del avance y el color sera amarillo. aca se respeta lo programado en el cronograma no es nada aleatorio los documentos van enlazados entre si. el profesor resalta LA INCOHERENCIA, "estoy adelantado en tiempo pero atrasado en alcance" entonces estas avanzando pero sin hacer nada "estoy ahorrando costo y estoy atrasado en alcance" ósea gastas y no haces nada. TODO ESTA ENLAZADO y lo que se coloque en la sección se pone ver anexo al detalle y ahi debemos poner en las tablas de la plantilla el avance "detalle de validación del alcance" del edt ahi se coloca todas las actividades de semana 1 a la 16 con su código edt, EL PROFESOR ASEGURA ALGO SOLO HAY DOS VALORES "O TERMINE O NO TERMINE" SI NO TERMINE NO HAY ENTREGABLE "PORQUE SI TU DICES LA ACTIVIDAD ESTA A UN 75% ES COMO SI DIJERAS QUE MI ACTIVIDAD SE NECESITA DESCOMPONER" el profesor asegura "o llegaste a la universidad o no llegaste" si una actividad esta al 70% eso significa que tu actividad debe dividirse) el cumplimiento promedio si se puede dividir en 70% o lo que sea. en Detalle validación del tiempo se pone los tiempos reales de actividades en costos valor planificado y costo real. después va la sección del sustento del estado ahi dices el porque de los valores que pusiste en alcance por ejemplo pusiste 70% tiempo 30% o lo que sea, ahi justificas FUNDAMENTAS QUE PASO? en la sección 4 describir modificaciones SOLO SI HAY MODIFICACIONES en la primera semana no habrá la siguiente habrá. la sección 5 se coloca en fecha planeada de culminación se coloca la fecha fin del cronograma y esto se entrega al cliente FECHA REAL DE ENTREGA SE PONE LA FECHA QUE SE ENTREGO CON EL CLIENTE Y EL DARA LA RETROALIMENTACION y el cliente debe aceptarlo y recién el estado se pondrá como TERMINADO antes NO, EL CLIENTE DEBE ACEPTARLO el software no es para el docente, es para el cliente!. INDICADORES aca supuestamente se debe saber de adm de proyectos y se debe ver ahi si eso cuadra con el semáforo si ahi se ve un rendimiento bajo y en semáforo se pone todo paraíso INCONSISTENCIA, el docente se dará cuenta los requisitos de los valores es tener costos sincerados y el cronograma debería esar corregido.
+--
+SCRUM 01:
+aca debe haber un PRODUCT BACKLOG y aca se agrega de adicional en la tabla inicial se debe agregar graficas de las interfaces, la modalidad es hibrida EL QUE CONDUCE QUE TODO ESTA ACORDE A LO QUE NECESITA LA EMPRESA ES EL PRODUCT OWNER
+en el scrum diario se debe hacer diario por dia avanzado, periodo se pone la fecha y el sprint que supuestamente se trabaja, en el interior de la tabla se colocar los trabajos realizados que son las actividades aquí se coloca y se llena 
+--
+AJUSTES DE SEMANA 3:
+--
+PLAN DE SOFTWARE 
+NO COLOCAR EN REVISADO NADA EN EL PLAN DE SOFTWARE NO INVENTARSE EN DATOS HICIMOS LO CORRECTO EN DEJARLO VACIO
+ANTECEDENTES VAN DE ESTRUCTURA DE ANALISIS NO INVENTAR NADA, ACA TAMBIEN UN GOLAZO PORQUE PUSIMOS ANTECEDENTES REALES
+DEBE IR EN ESTE DOCUMENTO LA PREGUNTA PROBLEMA
+OBJETIVOS Y TODO ESO VIENEN DE MATRIZ DE CONSISTENCIA
+SEPARAR CARACTERISTICAS DE BENEFICIOS ESTA TODO CONVINADO ESO TMBIEN NO SEPARAMOS CORREGIRLO
+en el 4.2 el profesor no VA quitarlo si se incluyo
+en herramientas de desarrollo se deben poner eso no inventarse
+el control de cambios viene de el acta de constitución y el protocolo de comunicación esto debe ir congruente en los 3 archivos
+EL PROFE DETECTO INCONGRUENCIAS EN LA TABLA DEL EDT y faltas de especificación "diseño interfaz" de que interfaz sera señor, no mesclar niveles si el segundo nivel es actividades todo es actividades sino entregables
+EN RIESGOS NUNCA VAMOS NOSOTROS COMO DESARROLLADORES NO PUEDES DECIRLE A UN CLIENTE "HAY RIESGO QUE ME ATRASE" "HAY RIESGO QUE FALLE PORQUE SOY ESTUDIANTE" NADA DE ESO
+el profesor identifico que un grupo empezó directo con R11 y el profe se loqueo diciendo porque hay R11 y el R1 al R10 ??
+el profesor identifico en el cuadro de beneficios y características un "Y" separar indico 
+el profe indica entre el plan y la martiz de riesgos hay muchas inconsistencias y nuevamente en matriz NUNCA SOMOS NOTROS
+el profesor vio en el EDT en la descripción paréntesis y los condeno, también ser mas específicos y evitar usar las "Y" el profesor las ODIA
+separar las tablas están muy juntas cambio estético
+manejo de riesgos
+revisar 4.2.1, también encontró conectores como la "O" resalto con signo de pregunta 2 mas con la pregunta "quien es el culpable nosotros?" dijo el profesor
+
+-
+COLOCAR JEFE DE PROYECTO EN REVISADO
+cambiar el color de las tablas a negro
+reestructurar los antecedentes la forma no va asi 
+separar características de beneficios
+cronograma recuperando terreno asevero el docente  PASA ES DECENTE
+el 3.2 reestructurar en el cronograma ahi no va UML porque es scrum
+
+3.3 corregir esta mal
+en los entregables poner nombres reales no incremento ni sprint especificar esas tablas, ELIMINAR LAS YYYYY BORRAR DESAPARECER LAS YYYYYY
+
+--
+matriz de riesgo:
+en la matriz del riesgo el profesor descarta todo riesgo en donde los culpables sean los estudiantes los toma como erróneos EVITAR USAR CONECTORES LOGICOS también asevera 
+ACA NUNCA DEBEMOS ESTAR NOSOTROS "EXCEDER LAS 14 SEMANAS" el curso es de 16 semanas indica el profe
+la dependencia de internet puede impedir temporalmente el acceso al sistema web "ósea no van a usar el internet? " mala redacción
+-
+corregir lo mismo 
+
+--
+matriz de responsabilidades:
+eliminar al profesor de la matriz de responsabilidades
+aca se coloca los entregables, los modulos y el profesor señalo a srpint 1-3, satisfacción del cliente no es tampoco entregable 
+--
+matriz de comunicaciones:
+debe estar supuestamente de todos los entregables indica el profesor 
+aquí también indica el profesor NADA DE "Y" 
+aquí también van entregables y no acciones también indico que faltan entregables es muy poco contenido 
+--
