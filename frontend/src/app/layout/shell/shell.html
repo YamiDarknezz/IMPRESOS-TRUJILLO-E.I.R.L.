@@ -1,0 +1,75 @@
+<div class="layout">
+
+  <!-- ═══ Barra superior ══════════════════════════════════════════════════ -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="btn-hamburger" (click)="cajonAbierto.set(!cajonAbierto())"
+              title="Menú" aria-label="Abrir menú">☰</button>
+      <div class="brand">
+        <span class="brand-name">Impresos Trujillo</span>
+        <span class="brand-sub">Sistema de gestión</span>
+      </div>
+    </div>
+
+    <div class="user-actions">
+      <span class="user-badge">👤 {{ sesion.usuario()?.nombre || 'Usuario' }}</span>
+      <button class="btn-theme" (click)="theme.toggle()"
+              [title]="theme.theme() === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'">
+        {{ theme.theme() === 'dark' ? '☀️' : '🌙' }}
+      </button>
+      <button class="btn-logout" (click)="cerrarSesion()">Cerrar sesión</button>
+    </div>
+  </header>
+
+  <div class="layout-body">
+
+    <!-- ═══ Menú lateral ══════════════════════════════════════════════════ -->
+    <aside class="sidebar" [class.collapsed]="colapsado()" [class.mobile-open]="cajonAbierto()">
+      <nav class="sidebar-nav">
+
+        <div class="sidebar-group">
+          <span class="sidebar-group-label">Operación</span>
+          @for (opcion of menuOperacion; track opcion.ruta) {
+            <a class="sidebar-item" [routerLink]="opcion.ruta"
+               routerLinkActive="active" [title]="opcion.etiqueta"
+               (click)="cerrarCajon()">
+              <span class="sidebar-icon">{{ opcion.icono }}</span>
+              <span class="sidebar-label">{{ opcion.etiqueta }}</span>
+            </a>
+          }
+        </div>
+
+        <!-- La administración solo se muestra según el rol; el backend además
+             la bloquea en cada petición. -->
+        @if (menuAdministracion.length > 0) {
+          <div class="sidebar-group">
+            <span class="sidebar-group-label">Administración</span>
+            @for (opcion of menuAdministracion; track opcion.ruta) {
+              <a class="sidebar-item" [routerLink]="opcion.ruta"
+                 routerLinkActive="active" [title]="opcion.etiqueta"
+                 (click)="cerrarCajon()">
+                <span class="sidebar-icon">{{ opcion.icono }}</span>
+                <span class="sidebar-label">{{ opcion.etiqueta }}</span>
+              </a>
+            }
+          </div>
+        }
+      </nav>
+
+      <button class="sidebar-collapse-btn" (click)="alternarColapsado()"
+              [title]="colapsado() ? 'Expandir menú' : 'Colapsar menú'">
+        {{ colapsado() ? '»' : '«' }}
+      </button>
+    </aside>
+
+    @if (cajonAbierto()) {
+      <div class="sidebar-backdrop" (click)="cerrarCajon()"></div>
+    }
+
+    <!-- ═══ Pantalla activa ═══════════════════════════════════════════════ -->
+    <main class="main-content">
+      <router-outlet />
+    </main>
+
+  </div>
+</div>
