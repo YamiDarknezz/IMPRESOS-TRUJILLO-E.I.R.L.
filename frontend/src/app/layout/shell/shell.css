@@ -1,0 +1,312 @@
+/* ============================================================================
+   Armazón de la aplicación: barra superior, menú lateral y área de contenido.
+   Estilos globales (sin encapsular) porque el armazón envuelve a todas las
+   pantallas mediante <router-outlet>.
+   ============================================================================ */
+.layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+/* ─── Topbar ─────────────────────────────────────────────────────────────── */
+
+.topbar {
+  background: var(--topbar-bg);
+  color: var(--topbar-text);
+  padding: 0.9rem 2.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.btn-hamburger {
+  display: none;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #e2e8f0;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-hamburger:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.brand-name {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--topbar-text);
+}
+
+.brand-sub {
+  font-size: 0.72rem;
+  color: var(--topbar-sub);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.user-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.user-badge {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 0.35rem 0.85rem;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #e2e8f0;
+}
+
+.btn-logout {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #cbd5e1;
+  padding: 0.4rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-logout:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Toggle de tema */
+.btn-theme {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #e2e8f0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, transform 0.2s, border-color 0.15s;
+}
+
+.btn-theme:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.35);
+  transform: rotate(-15deg);
+}
+
+/* ─── Layout body (sidebar + contenido) ──────────────────────────────────── */
+
+.layout-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+/* ─── Sidebar ────────────────────────────────────────────────────────────── */
+
+.sidebar {
+  width: 230px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: width 0.2s ease, transform 0.2s ease, background-color 0.2s;
+  overflow-y: auto;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.25rem 0.85rem;
+}
+
+.sidebar-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.sidebar-group-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-faint);
+  padding: 0 0.6rem 0.5rem;
+  white-space: nowrap;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: none;
+  border: none;
+  /* Las opciones son enlaces de ruta, no botones: quitamos el subrayado. */
+  text-decoration: none;
+  border-radius: 8px;
+  padding: 0.6rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+
+.sidebar-item:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.sidebar-item.active {
+  background: var(--primary);
+  color: var(--primary-contrast);
+}
+
+.sidebar-icon {
+  font-size: 1.05rem;
+  flex-shrink: 0;
+  width: 1.4rem;
+  text-align: center;
+}
+
+.sidebar-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-collapse-btn {
+  align-self: flex-end;
+  margin: 0.5rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sidebar-collapse-btn:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+/* Sidebar colapsado (desktop): solo iconos */
+.sidebar.collapsed {
+  width: 68px;
+}
+
+.sidebar.collapsed .sidebar-group-label,
+.sidebar.collapsed .sidebar-label {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-item {
+  justify-content: center;
+}
+
+.sidebar-backdrop {
+  display: none;
+}
+
+/* ─── Main ───────────────────────────────────────────────────────────────── */
+
+.main-content {
+  flex: 1;
+  min-width: 0;
+  padding: 1.5rem 1.5rem;
+  max-width: 1700px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ─── Responsivo ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 960px) {
+  .main-content { padding: 1rem 0.85rem; }
+  .topbar { padding: 0.8rem 1rem; }
+
+  /* El menú lateral pasa a ser un cajón que se abre con el botón ☰ */
+  .btn-hamburger { display: flex; }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: min(78vw, 280px);
+    transform: translateX(-100%);
+    z-index: 260;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25);
+  }
+
+  .sidebar.mobile-open { transform: translateX(0); }
+
+  /* Aunque esté colapsado para escritorio, el cajón se abre completo */
+  .sidebar.collapsed.mobile-open { width: min(78vw, 280px); }
+  .sidebar.collapsed.mobile-open .sidebar-group-label,
+  .sidebar.collapsed.mobile-open .sidebar-label { display: block; }
+  .sidebar.collapsed.mobile-open .sidebar-item { justify-content: flex-start; }
+
+  .sidebar-collapse-btn { display: none; }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: var(--modal-overlay);
+    z-index: 250;
+    backdrop-filter: blur(2px);
+  }
+}
+
+@media (max-width: 560px) {
+  .brand-name { font-size: 1.05rem; }
+  .brand-sub { display: none; }
+  .user-actions { gap: 0.5rem; }
+  .user-badge { max-width: 6.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .btn-logout { padding: 0.4rem 0.7rem; }
+}

@@ -1,0 +1,180 @@
+.login-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(30, 62, 98, 0.6) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 20%, rgba(14, 165, 233, 0.15) 0%, transparent 50%),
+    linear-gradient(135deg, #0b192c 0%, #0f2744 100%);
+  padding: 2rem;
+}
+
+.login-card {
+  background: var(--surface);
+  padding: 2.75rem 2.5rem 2rem;
+  border-radius: 20px;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 24px 48px rgba(0, 0, 0, 0.35),
+    0 8px 16px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 400px;
+}
+
+/* ─── Brand header ───────────────────────────────────────────────────────── */
+
+.brand-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.brand-logo {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #1e3e62 0%, #0ea5e9 100%);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: white;
+  letter-spacing: 1px;
+  margin: 0 auto 1.1rem;
+  box-shadow: 0 6px 16px rgba(14, 165, 233, 0.35);
+}
+
+.brand-header h1 {
+  color: var(--text);
+  margin: 0 0 0.4rem;
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+
+.brand-header p {
+  color: var(--text-faint);
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+/* ─── Form ───────────────────────────────────────────────────────────────── */
+
+.input-group {
+  margin-bottom: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.input-group label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.input-group input {
+  padding: 0.8rem 1rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-md);
+  font-size: 0.95rem;
+  color: var(--text);
+  transition: border-color 0.15s, box-shadow 0.15s, background-color 0.2s;
+  background: var(--surface-2);
+}
+
+.input-group input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+/* ─── Error ──────────────────────────────────────────────────────────────── */
+
+.error-msg {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--danger-fg);
+  font-size: 0.83rem;
+  font-weight: 500;
+  background: var(--error-bg);
+  padding: 0.7rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid var(--error-border);
+  margin-bottom: 0.75rem;
+}
+
+/* ─── Button ─────────────────────────────────────────────────────────────── */
+
+.btn-login {
+  width: 100%;
+  padding: 0.875rem;
+  margin-top: 0.5rem;
+  background: linear-gradient(135deg, #1e3e62 0%, #1d4ed8 100%);
+  color: white;
+  border: none;
+  border-radius: var(--r-md);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  letter-spacing: 0.2px;
+  transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s;
+  box-shadow: 0 4px 14px rgba(30, 62, 98, 0.35);
+}
+
+.btn-login:hover:not(:disabled) {
+  opacity: 0.92;
+  box-shadow: 0 6px 18px rgba(30, 62, 98, 0.45);
+  transform: translateY(-1px);
+}
+
+.btn-login:active:not(:disabled) { transform: scale(0.99); }
+
+.btn-login:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.arrow {
+  font-size: 1.1rem;
+  transition: transform 0.15s;
+}
+
+.btn-login:hover:not(:disabled) .arrow { transform: translateX(3px); }
+
+/* ─── Spinner ────────────────────────────────────────────────────────────── */
+
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Footer ─────────────────────────────────────────────────────────────── */
+
+.login-footer {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  margin: 1.5rem 0 0;
+}
