@@ -1,0 +1,50 @@
+# Entorno de desarrollo: PostgreSQL propio + API.
+# En producción la API se despliega en Cloud Run y la base en un PostgreSQL
+# gestionado; el código es el mismo, solo cambia DATABASE_URL.
+# El nombre del proyecto se fija aquí para que no dependa de la carpeta donde
+# viva este archivo (mientras el código está en .temp).
+name: impresos
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: impresos-db
+    environment:
+      POSTGRES_DB: impresos
+      POSTGRES_USER: impresos
+      POSTGRES_PASSWORD: impresos
+    ports:
+      - "5432:5432"
+    volumes:
+      - datos_postgres:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U impresos -d impresos"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./backend
+    container_name: impresos-api
+    environment:
+      DATABASE_URL: postgresql+asyncpg://impresos:impresos@db:5432/impresos
+      ALLOWED_ORIGINS: http://localhost:4200
+      JWT_SECRET: ${JWT_SECRET:-cambia-esta-clave-en-produccion}
+      ADELANTO_MINIMO_PORCENTAJE: ${ADELANTO_MINIMO_PORCENTAJE:-50}
+      IGV_PORCENTAJE: ${IGV_PORCENTAJE:-18}
+    ports:
+      - "8000:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build: ./frontend
+    container_name: impresos-web
+    ports:
+      - "4200:80"
+    depends_on:
+      - api
+
+volumes:
+  datos_postgres:

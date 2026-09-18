@@ -1,0 +1,7 @@
+-r requirements.txt
+
+# Pruebas: pytest asíncrono + SQLite en memoria (aiosqlite) para integración.
+pytest==8.4.1
+pytest-asyncio==1.2.0
+httpx==0.28.1
+aiosqlite==0.21.0
