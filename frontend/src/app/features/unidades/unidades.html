@@ -1,0 +1,63 @@
+<div class="toolbar">
+  <span class="toolbar-title">Unidades de medida</span>
+</div>
+
+<div class="card" style="padding:1.25rem 1.5rem; margin-bottom:1.5rem">
+  <p class="field-hint" style="margin-top:0">
+    Las unidades que se elijan aquí son las únicas disponibles al registrar un material.
+  </p>
+
+  <form (ngSubmit)="guardar()">
+    <div class="form-grid align-end">
+      <div class="input-group">
+        <label>Nombre *</label>
+        <input type="text" [ngModel]="nombre()" name="nombre"
+               (ngModelChange)="nombre.set($event); error.set('')"
+               placeholder="Ej: metros" [class.input-error]="error()">
+        @if (error()) { <span class="field-error">{{ error() }}</span> }
+      </div>
+
+      <div class="input-group">
+        <label>Abreviatura</label>
+        <input type="text" [ngModel]="abreviatura()" name="abreviatura"
+               (ngModelChange)="abreviatura.set($event)" placeholder="Ej: m">
+      </div>
+
+      <button type="submit" class="btn-primary add-btn" [disabled]="guardando()">
+        {{ guardando() ? 'Guardando...' : 'Añadir unidad' }}
+      </button>
+    </div>
+  </form>
+</div>
+
+<div class="table-card card">
+  @if (unidades().length === 0) {
+    <div class="empty-state">
+      <span class="empty-icon">📏</span>
+      <p>Aún no hay unidades registradas.</p>
+    </div>
+  } @else {
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Unidad</th>
+            <th>Abreviatura</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (u of unidades(); track u.id) {
+            <tr>
+              <td><strong>{{ u.nombre }}</strong></td>
+              <td>{{ u.abreviatura || '—' }}</td>
+              <td>
+                <button class="btn-secondary btn-sm btn-cancel" (click)="eliminar(u)">Eliminar</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

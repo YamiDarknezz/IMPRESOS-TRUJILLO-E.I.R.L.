@@ -1,0 +1,126 @@
+@if (!mostrarFormulario()) {
+
+  <div class="toolbar toolbar-wrap">
+    <span class="toolbar-title">{{ usuarios().length }} cuentas registradas</span>
+    <button class="btn-primary" (click)="alternarFormulario()">+ Nueva Cuenta</button>
+  </div>
+
+  <div class="table-card card">
+    @if (cargando()) {
+      <div class="empty-state">
+        <span class="loader-spinner"></span>
+        <p>Cargando cuentas...</p>
+      </div>
+    } @else if (usuarios().length === 0) {
+      <div class="empty-state">
+        <span class="empty-icon">🔑</span>
+        <p>Aún no hay cuentas registradas.</p>
+      </div>
+    } @else {
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Correo</th>
+              <th>Rol</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (u of usuarios(); track u.id) {
+              <tr>
+                <td><strong>{{ u.nombre }}</strong></td>
+                <td>{{ u.email }}</td>
+                <td>
+                  <select class="assign-select" [ngModel]="u.rol" [name]="'rol-' + u.id"
+                          (ngModelChange)="cambiarRol(u, $event)" [disabled]="guardando()">
+                    @for (rol of roles; track rol) {
+                      <option [value]="rol">{{ etiquetaRol[rol] }}</option>
+                    }
+                  </select>
+                </td>
+                <td>
+                  <span class="badge" [ngClass]="u.activo ? 'badge-success' : 'badge-cancelado'">
+                    {{ u.activo ? 'Activa' : 'Desactivada' }}
+                  </span>
+                </td>
+                <td class="actions-cell">
+                  <button class="btn-secondary btn-sm" (click)="alternarActivo(u)" [disabled]="guardando()">
+                    {{ u.activo ? 'Desactivar' : 'Reactivar' }}
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <p class="field-hint" style="padding:0 1.25rem 1rem">
+        Al desactivar una cuenta, sus sesiones se revocan de inmediato.
+        Cada persona debe cambiar su contraseña desde su propio perfil.
+      </p>
+    }
+  </div>
+}
+
+<!-- ═══ Alta de cuenta ════════════════════════════════════════════════════ -->
+@if (mostrarFormulario()) {
+  <div class="form-card card">
+    <div class="form-header">
+      <h3>Nueva Cuenta</h3>
+      <button class="btn-secondary btn-sm" (click)="alternarFormulario()">← Volver</button>
+    </div>
+
+    <form (ngSubmit)="guardar()">
+      <div class="form-grid">
+        <div class="input-group">
+          <label>Nombre *</label>
+          <input type="text" [ngModel]="form().nombre" name="uNombre"
+                 (ngModelChange)="actualizar('nombre', $event)"
+                 placeholder="Ej: Secretaría de Taller"
+                 [class.input-error]="errores()['nombre']">
+          @if (errores()['nombre']) { <span class="field-error">{{ errores()['nombre'] }}</span> }
+        </div>
+
+        <div class="input-group">
+          <label>Correo *</label>
+          <input type="email" [ngModel]="form().email" name="uEmail"
+                 (ngModelChange)="actualizar('email', $event)"
+                 placeholder="usuario@impresostrujillo.pe"
+                 [class.input-error]="errores()['email']">
+          @if (errores()['email']) { <span class="field-error">{{ errores()['email'] }}</span> }
+        </div>
+
+        <div class="input-group">
+          <label>Contraseña *</label>
+          <input type="password" [ngModel]="form().password" name="uPassword"
+                 (ngModelChange)="actualizar('password', $event)"
+                 placeholder="Mínimo 8 caracteres"
+                 [class.input-error]="errores()['password']">
+          @if (errores()['password']) { <span class="field-error">{{ errores()['password'] }}</span> }
+        </div>
+
+        <div class="input-group">
+          <label>Rol</label>
+          <select [ngModel]="form().rol" name="uRol" (ngModelChange)="actualizar('rol', $event)">
+            @for (rol of roles; track rol) {
+              <option [value]="rol">{{ etiquetaRol[rol] }}</option>
+            }
+          </select>
+          <span class="field-hint">
+            Administrador: todo · Subgerente: supervisión · Secretaría: mostrador y cobros ·
+            Diseñadora y Operario: solo sus órdenes asignadas.
+          </span>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" (click)="alternarFormulario()">Cancelar</button>
+        <button type="submit" class="btn-primary" [disabled]="guardando()">
+          {{ guardando() ? 'Guardando...' : 'Crear Cuenta' }}
+        </button>
+      </div>
+    </form>
+  </div>
+}

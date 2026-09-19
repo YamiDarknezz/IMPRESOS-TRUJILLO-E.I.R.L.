@@ -1,0 +1,192 @@
+@if (!mostrarFormulario()) {
+
+  <div class="toolbar toolbar-wrap">
+    <span class="toolbar-title">{{ clientes().length }} clientes registrados</span>
+
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)"
+             name="busquedaClientes" class="search-input"
+             placeholder="Buscar por nombre, documento o teléfono...">
+      @if (busqueda()) {
+        <button class="search-clear" (click)="busqueda.set('')">✕</button>
+      }
+    </div>
+
+    @if (sesion.puedeGestionarOrdenes()) {
+      <button class="btn-primary" (click)="alternarFormulario()">+ Nuevo Cliente</button>
+    }
+  </div>
+
+  <div class="table-card card">
+    @if (clientesFiltrados().length === 0) {
+      <div class="empty-state">
+        <span class="empty-icon">👥</span>
+        <p>{{ busqueda() ? 'No se encontraron clientes.' : 'Aún no hay clientes registrados.' }}</p>
+      </div>
+    } @else {
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Tipo</th>
+              <th>Documento</th>
+              <th>Teléfono</th>
+              <th>Email</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (c of clientesFiltrados(); track c.id) {
+              <tr>
+                <td>
+                  <strong>{{ c.nombre }}</strong>
+                  @if (c.es_corporativo) {
+                    <span class="badge badge-neutral" title="Se exceptúa del adelanto mínimo (RN-01)">corporativo</span>
+                  }
+                </td>
+                <td><span class="badge badge-neutral">{{ c.tipo }}</span></td>
+                <td>{{ c.documento || '—' }}</td>
+                <td>{{ c.telefono || '—' }}</td>
+                <td>{{ c.email || '—' }}</td>
+                <td class="actions-cell">
+                  <button class="btn-secondary btn-sm" (click)="verDetalle(c)">Ver ficha</button>
+                  @if (sesion.puedeGestionarOrdenes()) {
+                    <button class="btn-secondary btn-sm" (click)="abrirEdicion(c)">Editar</button>
+                    <button class="btn-secondary btn-sm btn-cancel" (click)="desactivar(c)">Eliminar</button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+}
+
+<!-- ═══ Alta / edición ════════════════════════════════════════════════════ -->
+@if (mostrarFormulario()) {
+  <div class="form-card card">
+    <div class="form-header">
+      <h3>{{ editando() ? 'Editar Cliente' : 'Nuevo Cliente' }}</h3>
+      <button class="btn-secondary btn-sm" (click)="alternarFormulario()">← Volver</button>
+    </div>
+
+    <form (ngSubmit)="guardar()">
+      <div class="form-grid">
+        <div class="input-group">
+          <label>Nombre o razón social *</label>
+          <input type="text" [ngModel]="form().nombre" name="nombre"
+                 (ngModelChange)="actualizar('nombre', $event)"
+                 [class.input-error]="errores()['nombre']">
+          @if (errores()['nombre']) { <span class="field-error">{{ errores()['nombre'] }}</span> }
+        </div>
+
+        <div class="input-group">
+          <label>Tipo</label>
+          <select [ngModel]="form().tipo" name="tipo" (ngModelChange)="actualizar('tipo', $event)">
+            @for (t of tiposCliente; track t) {
+              <option [value]="t">{{ t === 'persona' ? 'Persona' : 'Empresa' }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="input-group">
+          <label>RUC / DNI</label>
+          <input type="text" [ngModel]="form().documento" name="documento"
+                 (ngModelChange)="actualizar('documento', $event)" placeholder="Opcional">
+        </div>
+
+        <div class="input-group">
+          <label>Teléfono</label>
+          <input type="text" [ngModel]="form().telefono" name="telefono"
+                 (ngModelChange)="actualizar('telefono', $event)" placeholder="Opcional">
+        </div>
+
+        <div class="input-group">
+          <label>Email</label>
+          <input type="email" [ngModel]="form().email" name="email"
+                 (ngModelChange)="actualizar('email', $event)" placeholder="Opcional">
+        </div>
+
+        <div class="input-group">
+          <label>Dirección</label>
+          <input type="text" [ngModel]="form().direccion" name="direccion"
+                 (ngModelChange)="actualizar('direccion', $event)" placeholder="Opcional">
+        </div>
+
+        <div class="input-group">
+          <label>Notas</label>
+          <input type="text" [ngModel]="form().notas" name="notas"
+                 (ngModelChange)="actualizar('notas', $event)" placeholder="Opcional">
+        </div>
+
+        <div class="input-group">
+          <label class="checkbox-label">
+            <input type="checkbox" [ngModel]="form().es_corporativo" name="esCorporativo"
+                   (ngModelChange)="actualizar('es_corporativo', $event)">
+            Cliente corporativo (órdenes con orden de compra)
+          </label>
+          <span class="field-hint">
+            Se exceptúa del adelanto mínimo del 50% (RN-01, ej: Cámara de Comercio).
+          </span>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" (click)="alternarFormulario()">Cancelar</button>
+        <button type="submit" class="btn-primary" [disabled]="guardando()">
+          {{ guardando() ? 'Guardando...' : (editando() ? 'Guardar cambios' : 'Guardar Cliente') }}
+        </button>
+      </div>
+    </form>
+  </div>
+}
+
+<!-- ═══ Modal: ficha del cliente ══════════════════════════════════════════ -->
+@if (detalle(); as cliente) {
+  <div class="modal-overlay" (click)="cerrarDetalle()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ cliente.nombre }}</h3>
+        <span class="badge badge-neutral">{{ cliente.tipo }}</span>
+      </div>
+
+      <div class="cliente-datos">
+        @if (cliente.documento) { <div><span>Documento</span>{{ cliente.documento }}</div> }
+        @if (cliente.telefono)  { <div><span>Teléfono</span>{{ cliente.telefono }}</div> }
+        @if (cliente.email)     { <div><span>Email</span>{{ cliente.email }}</div> }
+        @if (cliente.direccion) { <div><span>Dirección</span>{{ cliente.direccion }}</div> }
+      </div>
+
+      @if (resumen(); as datos) {
+        <div class="cliente-stats">
+          <div class="cliente-stat">
+            <span class="cliente-stat-value">{{ datos.total_ordenes }}</span>
+            <span class="cliente-stat-label">Órdenes</span>
+          </div>
+          <div class="cliente-stat">
+            <span class="cliente-stat-value">S/ {{ datos.facturado | number:'1.2-2' }}</span>
+            <span class="cliente-stat-label">Facturado</span>
+          </div>
+          <div class="cliente-stat">
+            <span class="cliente-stat-value" [class.saldo-pendiente]="datos.por_cobrar > 0">
+              S/ {{ datos.por_cobrar | number:'1.2-2' }}
+            </span>
+            <span class="cliente-stat-label">Por cobrar</span>
+          </div>
+        </div>
+      }
+
+      @if (cliente.notas) {
+        <p class="modal-subtitle" style="margin-top:1rem">📝 {{ cliente.notas }}</p>
+      }
+
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" (click)="cerrarDetalle()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+}
