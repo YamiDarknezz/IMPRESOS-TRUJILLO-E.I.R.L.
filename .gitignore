@@ -28,9 +28,10 @@ credentials.json
 .DS_Store
 Thumbs.db
 
-# Temporales de edición de docx
+# Temporales de edición de docx / xlsx
 *_unpacked/
 unpacked/
+~$*
 
 # Carpeta de archivos temporales del agente (scripts, unpacked, etc.)
 .temp/
