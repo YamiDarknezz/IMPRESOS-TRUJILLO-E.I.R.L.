@@ -121,7 +121,7 @@
 /* ─── Sidebar ────────────────────────────────────────────────────────────── */
 
 .sidebar {
-  width: 230px;
+  width: 172px;
   flex-shrink: 0;
   background: var(--surface);
   border-right: 1px solid var(--border);
@@ -139,8 +139,8 @@
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-  padding: 1.25rem 0.85rem;
+  gap: 0.9rem;
+  padding: 0.9rem 0.5rem;
 }
 
 .sidebar-group {
@@ -150,26 +150,26 @@
 }
 
 .sidebar-group-label {
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.5px;
   color: var(--text-faint);
-  padding: 0 0.6rem 0.5rem;
+  padding: 0 0.5rem 0.35rem;
   white-space: nowrap;
 }
 
 .sidebar-item {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.55rem;
   background: none;
   border: none;
   /* Las opciones son enlaces de ruta, no botones: quitamos el subrayado. */
   text-decoration: none;
-  border-radius: 8px;
-  padding: 0.6rem;
-  font-size: 0.875rem;
+  border-radius: 7px;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--text-muted);
   cursor: pointer;
@@ -189,9 +189,9 @@
 }
 
 .sidebar-icon {
-  font-size: 1.05rem;
+  font-size: 1rem;
   flex-shrink: 0;
-  width: 1.4rem;
+  width: 1.25rem;
   text-align: center;
 }
 
@@ -204,7 +204,7 @@
 
 .sidebar-footer {
   margin-top: auto;
-  padding: 0.65rem 0.85rem;
+  padding: 0.5rem 0.5rem 0.6rem;
   border-top: 1px solid var(--border-soft);
   display: flex;
   flex-direction: column;
@@ -233,11 +233,11 @@
   background: var(--surface-2);
   border: 1px solid var(--border);
   color: var(--text-muted);
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -252,7 +252,7 @@
 
 /* Sidebar colapsado (desktop): solo iconos */
 .sidebar.collapsed {
-  width: 68px;
+  width: 56px;
 }
 
 .sidebar.collapsed .sidebar-group-label,
@@ -265,7 +265,7 @@
 }
 
 .sidebar.collapsed .sidebar-footer {
-  padding: 0.65rem 0.5rem;
+  padding: 0.5rem 0.35rem;
   align-items: center;
 }
 
@@ -313,7 +313,8 @@
     top: 0;
     left: 0;
     bottom: 0;
-    width: min(78vw, 280px);
+    height: 100%;
+    width: min(85vw, 320px);
     transform: translateX(-100%);
     z-index: 260;
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25);
@@ -322,10 +323,50 @@
   .sidebar.mobile-open { transform: translateX(0); }
 
   /* Aunque esté colapsado para escritorio, el cajón se abre completo */
-  .sidebar.collapsed.mobile-open { width: min(78vw, 280px); }
+  .sidebar.collapsed.mobile-open { width: min(85vw, 320px); }
   .sidebar.collapsed.mobile-open .sidebar-group-label,
   .sidebar.collapsed.mobile-open .sidebar-label { display: block; }
   .sidebar.collapsed.mobile-open .sidebar-item { justify-content: flex-start; }
+
+  /* Versión móvil: mayor tamaño de texto y área táctil más cómoda */
+  .sidebar .sidebar-nav {
+    padding: 1.5rem 1.15rem;
+    gap: 1.5rem;
+  }
+
+  .sidebar .sidebar-group {
+    gap: 0.4rem;
+  }
+
+  .sidebar .sidebar-group-label {
+    font-size: 0.8rem;
+    letter-spacing: 0.8px;
+    padding: 0 0.85rem 0.6rem;
+  }
+
+  .sidebar .sidebar-item {
+    padding: 0.85rem 1.1rem;
+    font-size: 1.05rem;
+    gap: 1rem;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+
+  .sidebar .sidebar-icon {
+    font-size: 1.35rem;
+    width: 1.75rem;
+  }
+
+  .sidebar .sidebar-footer {
+    padding: 1rem 1.15rem;
+  }
+
+  .sidebar .btn-sidebar-logout {
+    padding: 0.85rem 1.1rem;
+    font-size: 1.05rem;
+    gap: 1rem;
+    border-radius: 10px;
+  }
 
   .sidebar-collapse-btn { display: none; }
 
