@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="it-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E3A5F"/>
+      <stop offset="100%" stop-color="#0B192C"/>
+    </linearGradient>
+    <linearGradient id="it-chassis" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+    <linearGradient id="it-paper-top" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E2E8F0"/>
+    </linearGradient>
+    <filter id="it-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="1.5" flood-color="#000000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Fondo squircle corporativo -->
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#it-bg)"/>
+  <rect x="2" y="2" width="60" height="60" rx="14" stroke="#38BDF8" stroke-opacity="0.25" stroke-width="1.5"/>
+
+  <!-- Hoja de entrada superior (bandeja de papel) -->
+  <rect x="18" y="8" width="28" height="14" rx="3" fill="url(#it-paper-top)"/>
+  <line x1="22" y1="13" x2="42" y2="13" stroke="#94A3B8" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="22" y1="16.5" x2="35" y2="16.5" stroke="#CBD5E1" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Cuerpo / Chasis de la impresora -->
+  <g filter="url(#it-shadow)">
+    <rect x="9" y="19" width="46" height="21" rx="5" fill="url(#it-chassis)"/>
+    <rect x="9" y="19" width="46" height="21" rx="5" stroke="#60A5FA" stroke-opacity="0.4" stroke-width="1"/>
+  </g>
+
+  <!-- Luces LED de estado -->
+  <circle cx="47" cy="24.5" r="2" fill="#10B981"/>
+  <circle cx="41.5" cy="24.5" r="1.5" fill="#38BDF8"/>
+
+  <!-- Ranura de eyección -->
+  <rect x="15" y="30.5" width="34" height="2.5" rx="1.25" fill="#0B192C" opacity="0.75"/>
+
+  <!-- Hoja impresa saliendo por la bandeja inferior -->
+  <g filter="url(#it-shadow)">
+    <path d="M16 32h32v20a4 4 0 0 1-4 4H20a4 4 0 0 1-4-4V32z" fill="#FFFFFF"/>
+    <path d="M16 32h32v20a4 4 0 0 1-4 4H20a4 4 0 0 1-4-4V32z" stroke="#CBD5E1" stroke-width="0.75"/>
+  </g>
+
+  <!-- Franjas CMYK (Cian, Magenta, Amarillo, Negro/Key) -->
+  <!-- Cyan -->
+  <rect x="20" y="37" width="5" height="11" rx="1.5" fill="#06B6D4"/>
+  <!-- Magenta -->
+  <rect x="26" y="37" width="5" height="11" rx="1.5" fill="#EC4899"/>
+  <!-- Yellow -->
+  <rect x="32" y="37" width="5" height="11" rx="1.5" fill="#FACC15"/>
+  <!-- Key / Dark Navy -->
+  <rect x="38" y="37" width="5" height="11" rx="1.5" fill="#0F172A"/>
+
+  <!-- Micro línea de pie de impresión -->
+  <line x1="20" y1="51" x2="43" y2="51" stroke="#E2E8F0" stroke-width="1.5" stroke-linecap="round"/>
+</svg>
