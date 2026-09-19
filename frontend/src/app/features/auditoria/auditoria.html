@@ -1,0 +1,53 @@
+<div class="toolbar">
+  <span class="toolbar-title">Historial de acciones</span>
+  <button class="btn-secondary btn-sm" (click)="cargar()">↻ Actualizar</button>
+</div>
+
+<div class="table-card card">
+  @if (cargando()) {
+    <div class="empty-state">
+      <span class="loader-spinner"></span>
+      <p>Cargando historial...</p>
+    </div>
+  } @else if (sinPermiso()) {
+    <div class="empty-state">
+      <span class="empty-icon">🔒</span>
+      <p>Solo un administrador puede ver el registro de auditoría.</p>
+    </div>
+  } @else if (entradas().length === 0) {
+    <div class="empty-state">
+      <span class="empty-icon">🧾</span>
+      <p>Aún no hay acciones registradas.</p>
+    </div>
+  } @else {
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Usuario</th>
+            <th>Acción</th>
+            <th>Registro</th>
+            <th>IP</th>
+            <th>Detalle</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (entrada of entradas(); track entrada.id) {
+            <tr>
+              <td class="fecha-cell">{{ formatearFecha(entrada.fecha, true) }}</td>
+              <td>{{ entrada.usuario }}</td>
+              <td>
+                <span class="badge badge-neutral">{{ etiquetaDeAccion(entrada.accion) }}</span>
+                <span class="metodo-label">{{ entrada.tabla_afectada }}</span>
+              </td>
+              <td><code class="id-chip">{{ entrada.registro_id || '—' }}</code></td>
+              <td class="fecha-cell">{{ entrada.ip || '—' }}</td>
+              <td class="desc-cell">{{ entrada.detalle || '—' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

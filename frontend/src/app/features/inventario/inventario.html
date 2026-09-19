@@ -1,0 +1,253 @@
+@if (!mostrarFormulario()) {
+
+  <div class="toolbar toolbar-wrap">
+    <span class="toolbar-title">{{ materiales().length }} materiales registrados</span>
+
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)"
+             name="busquedaInventario" class="search-input"
+             placeholder="Buscar material por nombre...">
+      @if (busqueda()) {
+        <button class="search-clear" (click)="busqueda.set('')">✕</button>
+      }
+    </div>
+
+    @if (sesion.esSupervisor()) {
+      <button class="btn-primary" (click)="alternarFormulario()">+ Nuevo Material</button>
+    }
+  </div>
+
+  <div class="table-card card">
+    @if (materiales().length === 0) {
+      <div class="empty-state">No hay materiales en el inventario.</div>
+    } @else if (materialesFiltrados().length === 0) {
+      <div class="empty-state">
+        <p>No se encontró "{{ busqueda() }}" en el inventario.</p>
+        <button class="btn-secondary btn-sm" (click)="busqueda.set('')">Limpiar búsqueda</button>
+      </div>
+    } @else {
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Material</th>
+              <th>Stock actual</th>
+              <th>Unidad</th>
+              <th>Alerta mínima</th>
+              <th>Reabastecimiento</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (mat of materialesFiltrados(); track mat.id) {
+              <tr>
+                <td><strong>{{ mat.nombre }}</strong></td>
+                <td [class.stock-bajo]="tieneStockBajo(mat)">{{ mat.stock_actual }}</td>
+                <td>{{ mat.unidad }}</td>
+                <td>{{ mat.alerta_minima }}</td>
+                <td>{{ mat.dias_reabastecimiento ? (mat.dias_reabastecimiento + ' días') : '—' }}</td>
+                <td>
+                  <span class="badge" [ngClass]="tieneStockBajo(mat) ? 'badge-danger' : 'badge-success'">
+                    {{ tieneStockBajo(mat) ? 'Stock bajo' : 'OK' }}
+                  </span>
+                  @if (tieneStockBajo(mat) && mat.dias_reabastecimiento) {
+                    <span class="metodo-label">reponer · ~{{ mat.dias_reabastecimiento }} días</span>
+                  }
+                </td>
+                <td>
+                  <button class="btn-secondary btn-sm" (click)="verMovimientos(mat)"
+                          title="Ver reservas, mermas y ajustes del material">Movimientos</button>
+                  @if (sesion.esSupervisor()) {
+                    <button class="btn-secondary btn-sm" (click)="abrirEdicion(mat)">Editar</button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+}
+
+<!-- ═══ Alta de material ══════════════════════════════════════════════════ -->
+@if (mostrarFormulario()) {
+  <div class="form-card card">
+    <div class="form-header">
+      <h3>Nuevo Material</h3>
+      <button class="btn-secondary btn-sm" (click)="alternarFormulario()">← Volver</button>
+    </div>
+
+    <form (ngSubmit)="guardar()">
+      <div class="form-grid">
+        <div class="input-group">
+          <label>Nombre *</label>
+          <input type="text" [ngModel]="form().nombre" name="nombre"
+                 (ngModelChange)="actualizar('nombre', $event)"
+                 placeholder="Ej: Lona para Gigantografía"
+                 [class.input-error]="errores()['nombre']">
+          @if (errores()['nombre']) { <span class="field-error">{{ errores()['nombre'] }}</span> }
+        </div>
+
+        <div class="input-group">
+          <label>Unidad *</label>
+          <select [ngModel]="form().unidadId" name="unidad"
+                  (ngModelChange)="actualizar('unidadId', $event)"
+                  [class.input-error]="errores()['unidadId']">
+            <option [ngValue]="null">Selecciona una unidad...</option>
+            @for (u of unidades(); track u.id) {
+              <option [ngValue]="u.id">{{ u.nombre }}{{ u.abreviatura ? ' (' + u.abreviatura + ')' : '' }}</option>
+            }
+          </select>
+          @if (errores()['unidadId']) { <span class="field-error">{{ errores()['unidadId'] }}</span> }
+          @if (unidades().length === 0) {
+            <span class="field-hint">No hay unidades. Creálas en Unidades de medida.</span>
+          }
+        </div>
+
+        <div class="input-group">
+          <label>Stock inicial</label>
+          <input type="number" [ngModel]="form().stockInicial" name="stock"
+                 (ngModelChange)="actualizar('stockInicial', $event)" min="0" step="0.01">
+        </div>
+
+        <div class="input-group">
+          <label>Alerta mínima</label>
+          <input type="number" [ngModel]="form().alertaMinima" name="alerta"
+                 (ngModelChange)="actualizar('alertaMinima', $event)" min="0" step="0.01">
+        </div>
+
+        <div class="input-group">
+          <label>Días de reabastecimiento</label>
+          <input type="number" [ngModel]="form().diasReabastecimiento" name="dias"
+                 (ngModelChange)="actualizar('diasReabastecimiento', $event)" min="0" step="1">
+          <span class="field-hint">Cuánto demora reponer este material.</span>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" (click)="alternarFormulario()">Cancelar</button>
+        <button type="submit" class="btn-primary" [disabled]="guardando()">
+          {{ guardando() ? 'Guardando...' : 'Guardar Material' }}
+        </button>
+      </div>
+    </form>
+  </div>
+}
+
+<!-- ═══ Modal: editar material ════════════════════════════════════════════ -->
+@if (editando(); as material) {
+  <div class="modal-overlay" (click)="cerrarEdicion()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Editar material</h3>
+        <span class="modal-orden-id">{{ material.id }}</span>
+      </div>
+
+      <form (ngSubmit)="guardarEdicion()">
+        <div class="form-grid">
+          <div class="input-group">
+            <label>Nombre *</label>
+            <input type="text" [ngModel]="formEdicion().nombre" name="editNombre"
+                   (ngModelChange)="actualizarEdicion('nombre', $event)"
+                   [class.input-error]="errores()['nombre']">
+            @if (errores()['nombre']) { <span class="field-error">{{ errores()['nombre'] }}</span> }
+          </div>
+
+          <div class="input-group">
+            <label>Unidad *</label>
+            <select [ngModel]="formEdicion().unidadId" name="editUnidad"
+                    (ngModelChange)="actualizarEdicion('unidadId', $event)"
+                    [class.input-error]="errores()['unidadId']">
+              <option [ngValue]="null">Selecciona una unidad...</option>
+              @for (u of unidades(); track u.id) {
+                <option [ngValue]="u.id">{{ u.nombre }}{{ u.abreviatura ? ' (' + u.abreviatura + ')' : '' }}</option>
+              }
+            </select>
+            @if (errores()['unidadId']) { <span class="field-error">{{ errores()['unidadId'] }}</span> }
+          </div>
+
+          <div class="input-group">
+            <label>Stock actual</label>
+            <input type="number" [ngModel]="formEdicion().stockActual" name="editStock"
+                   (ngModelChange)="actualizarEdicion('stockActual', $event)" min="0" step="0.01">
+            <span class="field-hint">Corrección manual tras un conteo físico.</span>
+          </div>
+
+          <div class="input-group">
+            <label>Alerta mínima</label>
+            <input type="number" [ngModel]="formEdicion().alertaMinima" name="editAlerta"
+                   (ngModelChange)="actualizarEdicion('alertaMinima', $event)" min="0" step="0.01">
+          </div>
+
+          <div class="input-group">
+            <label>Días de reabastecimiento</label>
+            <input type="number" [ngModel]="formEdicion().diasReabastecimiento" name="editDias"
+                   (ngModelChange)="actualizarEdicion('diasReabastecimiento', $event)" min="0" step="1">
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" (click)="cerrarEdicion()">Cancelar</button>
+          <button type="submit" class="btn-primary" [disabled]="guardando()">
+            {{ guardando() ? 'Guardando...' : 'Guardar cambios' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- ═══ Modal: movimientos del material (trazabilidad) ════════════════════ -->
+@if (materialMovimientos(); as material) {
+  <div class="modal-overlay" (click)="cerrarMovimientos()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ material.nombre }}</h3>
+        <span class="modal-orden-id">Stock: {{ material.stock_actual }} {{ material.unidad }}</span>
+      </div>
+      <p class="modal-subtitle">
+        Reservas por orden, mermas, devoluciones y ajustes manuales.
+      </p>
+
+      @if (movimientos().length === 0) {
+        <p class="text-muted">Aún no hay movimientos registrados para este material.</p>
+      } @else {
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Motivo</th>
+                <th>Cambio</th>
+                <th>Stock final</th>
+                <th>Usuario</th>
+                <th>Nota</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (mov of movimientos(); track mov.id) {
+                <tr>
+                  <td class="fecha-cell">{{ formatearFecha(mov.fecha, true) }}</td>
+                  <td><span class="badge badge-neutral">{{ mov.motivo }}</span></td>
+                  <td [class.saldo-pendiente]="mov.delta < 0" [class.saldo-ok]="mov.delta > 0">
+                    {{ mov.delta > 0 ? '+' : '' }}{{ mov.delta }}
+                  </td>
+                  <td>{{ mov.stock_resultante }}</td>
+                  <td>{{ mov.usuario || '—' }}</td>
+                  <td class="desc-cell">{{ mov.nota || '—' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" (click)="cerrarMovimientos()">Cerrar</button>
+      </div>
+    </div>
+  </div>
+}

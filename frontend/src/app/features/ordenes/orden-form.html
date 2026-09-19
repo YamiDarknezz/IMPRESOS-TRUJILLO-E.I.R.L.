@@ -1,0 +1,311 @@
+<div class="form-card card">
+
+  <div class="form-header">
+    <div>
+      <h3>{{ editando() ? 'Editar Orden' : 'Nueva Orden' }}</h3>
+      @if (editando(); as orden) {
+        <span class="edit-orden-id">{{ orden.id_documento }}</span>
+      }
+    </div>
+    <button class="btn-secondary btn-sm" (click)="volver()">← Volver</button>
+  </div>
+
+  <form (ngSubmit)="guardar()">
+
+    <!-- ═══ Información general ═══════════════════════════════════════════ -->
+    <h4 class="section-title">Información general</h4>
+    <div class="form-grid">
+
+      <div class="input-group">
+        <label>Cliente *</label>
+        <select [ngModel]="form().clienteId" (ngModelChange)="actualizar('clienteId', $event)"
+                name="clienteSel" [class.input-error]="errores()['cliente']">
+          <option [ngValue]="null">Selecciona un cliente...</option>
+          @for (c of clientes(); track c.id) {
+            <option [ngValue]="c.id">{{ c.nombre }}{{ c.documento ? ' — ' + c.documento : '' }}{{ c.es_corporativo ? ' (corporativo)' : '' }}</option>
+          }
+        </select>
+        @if (errores()['cliente']) {
+          <span class="field-error">{{ errores()['cliente'] }}</span>
+        }
+
+        <button type="button" class="link-btn"
+                (click)="mostrarNuevoCliente.set(!mostrarNuevoCliente())">
+          {{ mostrarNuevoCliente() ? '− Cancelar' : '+ Cliente nuevo' }}
+        </button>
+
+        @if (mostrarNuevoCliente()) {
+          <div class="quick-add">
+            <input type="text" [ngModel]="nuevoCliente().nombre" name="nuevoCliNombre"
+                   (ngModelChange)="nuevoCliente.set({ nombre: $event, telefono: nuevoCliente().telefono })"
+                   placeholder="Nombre del cliente">
+            <input type="text" [ngModel]="nuevoCliente().telefono" name="nuevoCliTel"
+                   (ngModelChange)="nuevoCliente.set({ nombre: nuevoCliente().nombre, telefono: $event })"
+                   placeholder="Teléfono (opcional)">
+            <button type="button" class="btn-secondary btn-sm" (click)="crearClienteRapido()"
+                    [disabled]="!nuevoCliente().nombre.trim() || guardando()">
+              Crear y seleccionar
+            </button>
+          </div>
+        }
+      </div>
+
+      <div class="input-group">
+        <label>Tipo de documento</label>
+        <select [ngModel]="form().tipoDocumento" name="tipoDoc"
+                (ngModelChange)="actualizar('tipoDocumento', $event)">
+          @for (t of tiposDocumento; track t) {
+            <option [value]="t">{{ etiquetaTipoDocumento[t] }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="input-group">
+        <label>Unidad de negocio</label>
+        <select [ngModel]="form().unidadNegocio" name="unidadNegocio"
+                (ngModelChange)="actualizar('unidadNegocio', $event)">
+          @for (u of unidadesNegocio; track u) {
+            <option [value]="u">{{ etiquetaUnidad[u] }}</option>
+          }
+        </select>
+        <span class="field-hint">Define a qué caja entra el cobro (RN-05).</span>
+      </div>
+
+      @if (productos().length > 0) {
+        <div class="input-group">
+          <label>Producto del catálogo (opcional)</label>
+          <select [ngModel]="form().productoId" (ngModelChange)="aplicarProducto($event)" name="prodSel">
+            <option [ngValue]="null">— Personalizado —</option>
+            @for (p of productos(); track p.id) {
+              <option [ngValue]="p.id">{{ p.nombre }} — S/ {{ p.precio_base | number:'1.2-2' }}</option>
+            }
+          </select>
+          <span class="field-hint">Autocompleta descripción, precio y materiales; podés editarlos luego.</span>
+        </div>
+      }
+
+      <div class="input-group">
+        <label>Descripción del servicio *</label>
+        <input type="text" [ngModel]="form().descripcion" name="descripcion"
+               (ngModelChange)="actualizar('descripcion', $event)"
+               placeholder="Ej: Gigantografía 3x2m"
+               [class.input-error]="errores()['descripcion']">
+        @if (errores()['descripcion']) {
+          <span class="field-error">{{ errores()['descripcion'] }}</span>
+        }
+      </div>
+
+      <div class="input-group">
+        <label>Fecha de entrega *</label>
+        <input type="date" [ngModel]="form().fechaEntrega" name="fechaEntrega"
+               (ngModelChange)="actualizar('fechaEntrega', $event)"
+               [class.input-error]="errores()['fechaEntrega']">
+        @if (errores()['fechaEntrega']) {
+          <span class="field-error">{{ errores()['fechaEntrega'] }}</span>
+        }
+      </div>
+
+      @if (sesion.esSupervisor()) {
+        <div class="input-group">
+          <label>Asignar a (opcional)</label>
+          <select [ngModel]="form().asignadoA" (ngModelChange)="actualizar('asignadoA', $event)" name="asignadoA">
+            <option [ngValue]="null">— Sin asignar —</option>
+            @for (u of sesion.usuarios(); track u.id) {
+              <option [ngValue]="u.id">{{ nombreVisible(u) }}</option>
+            }
+          </select>
+        </div>
+      }
+    </div>
+
+    <!-- ═══ Líneas del contrato (medidas) ═════════════════════════════════ -->
+    <h4 class="section-title">Líneas del contrato (opcional)</h4>
+    <p class="field-hint" style="margin-top:-0.5rem">
+      Para gigantografías y gran formato: medidas en metros (alto × ancho) y precio pactado.
+      Si no detallás líneas, usá el total directo en Finanzas.
+    </p>
+
+    @if (form().lineas.length > 0) {
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Descripción</th>
+              <th>Ancho (m)</th>
+              <th>Alto (m)</th>
+              <th>Cant.</th>
+              <th>P. unit. (S/)</th>
+              <th>Importe</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (linea of form().lineas; track $index) {
+              <tr>
+                <td>
+                  <input type="text" [ngModel]="linea.descripcion" [name]="'linea-desc-' + $index"
+                         (ngModelChange)="actualizarLinea($index, 'descripcion', $event)"
+                         placeholder="Ej: Lona impresa 3x2">
+                </td>
+                <td>
+                  <input type="number" [ngModel]="linea.anchoM" [name]="'linea-ancho-' + $index"
+                         (ngModelChange)="actualizarLinea($index, 'anchoM', $event ? +$event : null)"
+                         min="0" step="0.01" class="input-mini">
+                </td>
+                <td>
+                  <input type="number" [ngModel]="linea.altoM" [name]="'linea-alto-' + $index"
+                         (ngModelChange)="actualizarLinea($index, 'altoM', $event ? +$event : null)"
+                         min="0" step="0.01" class="input-mini">
+                </td>
+                <td>
+                  <input type="number" [ngModel]="linea.cantidad" [name]="'linea-cant-' + $index"
+                         (ngModelChange)="actualizarLinea($index, 'cantidad', +$event)"
+                         min="0.01" step="1" class="input-mini">
+                </td>
+                <td>
+                  <input type="number" [ngModel]="linea.precioUnitario" [name]="'linea-precio-' + $index"
+                         (ngModelChange)="actualizarLinea($index, 'precioUnitario', +$event)"
+                         min="0" step="0.01" class="input-mini">
+                </td>
+                <td>S/ {{ importeLinea(linea) | number:'1.2-2' }}</td>
+                <td>
+                  <button type="button" class="delete-btn" (click)="quitarLinea($index)">✕</button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (errores()['lineas']) {
+        <span class="field-error">{{ errores()['lineas'] }}</span>
+      }
+    }
+
+    <button type="button" class="btn-secondary btn-sm" (click)="agregarLinea()">+ Agregar línea</button>
+
+    <!-- ═══ Materiales ════════════════════════════════════════════════════ -->
+    <h4 class="section-title">Materiales</h4>
+    <div class="form-grid align-end">
+      <div class="input-group">
+        <label>Material</label>
+        <select [ngModel]="materialSelId()" (ngModelChange)="materialSelId.set($event)" name="materialSel">
+          <option value="">Selecciona un material...</option>
+          @for (mat of materiales(); track mat.id) {
+            <option [value]="mat.id">
+              {{ mat.nombre }} — Stock: {{ mat.stock_actual }} {{ mat.unidad }}
+            </option>
+          }
+        </select>
+      </div>
+      <div class="input-group">
+        <label>Cantidad</label>
+        <input type="number" [ngModel]="materialSelCantidad()" name="matCantidad"
+               (ngModelChange)="materialSelCantidad.set($event)" min="0.01" step="0.01">
+      </div>
+      <button type="button" class="btn-secondary add-btn" (click)="agregarMaterial()"
+              [disabled]="!materialSelId()">Añadir</button>
+    </div>
+
+    @if (form().materiales.length > 0) {
+      <ul class="material-list">
+        @for (mat of form().materiales; track $index) {
+          <li>
+            <span>{{ mat.cantidad }} {{ mat.unidad || '' }} × {{ mat.nombre }}</span>
+            <button type="button" class="delete-btn" (click)="quitarMaterial($index)">✕</button>
+          </li>
+        }
+      </ul>
+    }
+
+    <!-- ═══ Finanzas ══════════════════════════════════════════════════════ -->
+    <h4 class="section-title">Finanzas</h4>
+    <div class="form-grid">
+      @if (form().lineas.length === 0) {
+        <div class="input-group">
+          <label>Total directo (S/) *</label>
+          <input type="number" [ngModel]="form().precioTotal" name="total"
+                 (ngModelChange)="actualizar('precioTotal', $event)" min="0" step="0.01"
+                 [class.input-error]="errores()['precioTotal']">
+          @if (errores()['precioTotal']) {
+            <span class="field-error">{{ errores()['precioTotal'] }}</span>
+          }
+        </div>
+      } @else {
+        <div class="input-group">
+          <label>Subtotal de líneas</label>
+          <input type="number" [value]="subtotal()" disabled class="disabled-input">
+        </div>
+      }
+
+      <div class="input-group">
+        <label class="checkbox-label">
+          <input type="checkbox" [ngModel]="form().incluyeIgv" name="incluyeIgv"
+                 (ngModelChange)="actualizar('incluyeIgv', $event)">
+          Incluye IGV (18%)
+        </label>
+      </div>
+
+      <div class="input-group">
+        <label>IGV (S/)</label>
+        <input type="number" [value]="igv()" disabled class="disabled-input">
+      </div>
+
+      <div class="input-group">
+        <label>Descuento (S/)</label>
+        <input type="number" [ngModel]="form().descuento" name="descuento"
+               (ngModelChange)="actualizar('descuento', $event)" min="0" step="0.01" placeholder="0.00">
+      </div>
+
+      <div class="input-group">
+        <label>Motivo del descuento</label>
+        <input type="text" [ngModel]="form().motivoDescuento" name="motivoDescuento"
+               (ngModelChange)="actualizar('motivoDescuento', $event)"
+               placeholder="Opcional (ej: cliente frecuente)">
+      </div>
+
+      <div class="input-group">
+        <label>Total a pagar (S/)</label>
+        <input type="number" [value]="total()" disabled class="disabled-input">
+      </div>
+
+      <div class="input-group">
+        <label>Adelanto / ACTA (S/) *</label>
+        <input type="number" [ngModel]="form().adelanto" name="adelanto"
+               (ngModelChange)="actualizar('adelanto', $event)" min="0" step="0.01"
+               [class.input-error]="errores()['adelanto']">
+        @if (clienteSeleccionado()?.es_corporativo) {
+          <span class="field-hint">Cliente corporativo: puede autorizarse sin adelanto mínimo.</span>
+        } @else {
+          <span class="field-hint">
+            Sin adelanto no se inicia el trabajo. Mínimo: S/ {{ adelantoMinimo() | number:'1.2-2' }} (50%).
+          </span>
+        }
+        @if (errores()['adelanto']) {
+          <span class="field-error">{{ errores()['adelanto'] }}</span>
+        }
+      </div>
+
+      <div class="input-group">
+        <label>Saldo pendiente</label>
+        <input type="number" [value]="saldoPendiente()" disabled class="disabled-input">
+      </div>
+
+      <div class="input-group">
+        <label>Método del adelanto</label>
+        <select [ngModel]="form().metodoPago" (ngModelChange)="actualizar('metodoPago', $event)" name="metodoPago">
+          @for (m of metodosPago; track m) {
+            <option [value]="m">{{ etiquetaMetodo[m] }}</option>
+          }
+        </select>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn-secondary" (click)="volver()">Cancelar</button>
+      <button type="submit" class="btn-primary" [disabled]="guardando()">
+        {{ guardando() ? 'Guardando...' : (editando() ? 'Guardar cambios' : 'Guardar Orden') }}
+      </button>
+    </div>
+
+  </form>
+</div>

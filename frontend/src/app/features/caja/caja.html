@@ -1,0 +1,216 @@
+<div class="toolbar toolbar-wrap">
+  <div class="date-filter-group">
+    <div class="date-filter-item">
+      <label class="date-filter-label">Fecha</label>
+      <input type="date" [ngModel]="fecha()" name="cajaFecha" class="date-filter-input"
+             (ngModelChange)="cambiarFecha($event)">
+    </div>
+    <div class="date-filter-item">
+      <label class="date-filter-label">Unidad</label>
+      <select [ngModel]="unidad()" name="cajaUnidad" class="date-filter-input"
+              (ngModelChange)="cambiarUnidad($event)">
+        <option [ngValue]="null">Ambas unidades</option>
+        @for (u of unidades; track u) {
+          <option [ngValue]="u">{{ etiquetaUnidad[u] }}</option>
+        }
+      </select>
+    </div>
+  </div>
+
+  <button class="btn-secondary btn-sm" (click)="cargar()">↻ Actualizar</button>
+
+  <div class="actions-cell">
+    @for (u of unidades; track u) {
+      <button class="btn-secondary btn-sm" (click)="cerrarCaja(u)" [disabled]="guardando()">
+        Cerrar mi caja · {{ etiquetaUnidad[u] }}
+      </button>
+    }
+  </div>
+</div>
+
+@if (cargando()) {
+  <div class="table-card card">
+    <div class="empty-state">
+      <span class="loader-spinner"></span>
+      <p>Calculando arqueo...</p>
+    </div>
+  </div>
+} @else if (resumen(); as datos) {
+
+  <!-- ═══ Totales del día ══════════════════════════════════════════════════ -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-icon stat-icon-success">💵</div>
+      <div class="stat-body">
+        <span class="stat-label">Efectivo</span>
+        <span class="stat-value stat-color-success">S/ {{ datos.total.efectivo | number:'1.2-2' }}</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon stat-icon-warning">📱</div>
+      <div class="stat-body">
+        <span class="stat-label">Yape</span>
+        <span class="stat-value stat-color-warning">S/ {{ datos.total.yape | number:'1.2-2' }}</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon stat-icon-neutral">🏦</div>
+      <div class="stat-body">
+        <span class="stat-label">Transferencia</span>
+        <span class="stat-value">S/ {{ datos.total.transferencia | number:'1.2-2' }}</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon stat-icon-danger">🧾</div>
+      <div class="stat-body">
+        <span class="stat-label">Total del día</span>
+        <span class="stat-value stat-color-danger">S/ {{ datos.total.total | number:'1.2-2' }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ Caja dual: Imprenta vs Gigantografías ═══════════════════════════ -->
+  <div class="card" style="padding:1.25rem 1.5rem; margin-bottom:1.5rem">
+    <h4 class="section-title" style="margin-top:0">Caja dual (RN-05)</h4>
+    <div class="metodo-grid">
+      @for (u of unidades; track u) {
+        <div class="metodo-box">
+          <span class="metodo-box-label">{{ etiquetaUnidad[u] }}</span>
+          <span class="metodo-box-value">S/ {{ datos.por_unidad_negocio[u]?.total ?? 0 | number:'1.2-2' }}</span>
+          <span class="metodo-label">
+            Efectivo: S/ {{ datos.por_unidad_negocio[u]?.efectivo ?? 0 | number:'1.2-2' }}
+            · Yape: S/ {{ datos.por_unidad_negocio[u]?.yape ?? 0 | number:'1.2-2' }}
+            · Transf: S/ {{ datos.por_unidad_negocio[u]?.transferencia ?? 0 | number:'1.2-2' }}
+          </span>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- ═══ Arqueo por usuario ══════════════════════════════════════════════ -->
+  <div class="table-card card" style="margin-bottom:1.5rem">
+    <div class="toolbar" style="padding:1rem 1.25rem 0">
+      <span class="toolbar-title">Arqueo por usuario</span>
+    </div>
+    @if (datos.por_usuario.length === 0) {
+      <div class="empty-state"><p>Sin cobros registrados en la fecha.</p></div>
+    } @else {
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Usuario</th>
+              @for (m of metodos; track m) { <th>{{ etiquetaMetodo[m] }}</th> }
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (fila of datos.por_usuario; track fila.usuario_id ?? 0) {
+              <tr>
+                <td><strong>{{ fila.nombre }}</strong></td>
+                @for (m of metodos; track m) {
+                  <td>S/ {{ montoDe(fila, m) | number:'1.2-2' }}</td>
+                }
+                <td><strong>S/ {{ fila.total | number:'1.2-2' }}</strong></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+
+  <!-- ═══ Cierres registrados ═════════════════════════════════════════════ -->
+  <div class="table-card card" style="margin-bottom:1.5rem">
+    <div class="toolbar" style="padding:1rem 1.25rem 0">
+      <span class="toolbar-title">Cierres registrados</span>
+    </div>
+    @if (cierres().length === 0) {
+      <div class="empty-state"><p>Ningún cierre registrado para esta fecha.</p></div>
+    } @else {
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Usuario</th>
+              <th>Unidad</th>
+              <th>Efectivo</th>
+              <th>Yape</th>
+              <th>Transferencia</th>
+              <th>Total</th>
+              <th>Estado</th>
+              <th>Validado por</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (cierre of cierres(); track cierre.id) {
+              <tr>
+                <td><strong>{{ cierre.usuario }}</strong></td>
+                <td><span class="badge badge-neutral">{{ etiquetaUnidad[cierre.unidad_negocio] }}</span></td>
+                <td>S/ {{ cierre.monto_efectivo | number:'1.2-2' }}</td>
+                <td>S/ {{ cierre.monto_yape | number:'1.2-2' }}</td>
+                <td>S/ {{ cierre.monto_transferencia | number:'1.2-2' }}</td>
+                <td><strong>S/ {{ cierre.total | number:'1.2-2' }}</strong></td>
+                <td>
+                  <span class="badge" [ngClass]="cierre.estado === 'congelado' ? 'badge-success' : 'badge-warning'">
+                    {{ cierre.estado === 'congelado' ? 'Congelado' : 'Cerrado' }}
+                  </span>
+                </td>
+                <td>{{ cierre.validador || '—' }}</td>
+                <td>
+                  @if (sesion.esSupervisor() && cierre.estado !== 'congelado') {
+                    <button class="btn-secondary btn-sm" (click)="congelar(cierre)" [disabled]="guardando()">
+                      Congelar
+                    </button>
+                  } @else {
+                    <span class="text-muted">—</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+
+  <!-- ═══ Detalle de cobros ═══════════════════════════════════════════════ -->
+  <div class="table-card card">
+    <div class="toolbar" style="padding:1rem 1.25rem 0">
+      <span class="toolbar-title">Detalle de cobros del día</span>
+    </div>
+    @if (datos.detalle.length === 0) {
+      <div class="empty-state"><p>Sin movimientos.</p></div>
+    } @else {
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Hora</th>
+              <th>Orden</th>
+              <th>Cliente</th>
+              <th>Unidad</th>
+              <th>Tipo</th>
+              <th>Método</th>
+              <th>Monto</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of datos.detalle; track item.orden + item.fecha) {
+              <tr>
+                <td class="fecha-cell">{{ formatearFecha(item.fecha, true) }}</td>
+                <td><code class="id-chip">{{ item.orden }}</code></td>
+                <td>{{ item.cliente || '—' }}</td>
+                <td>{{ etiquetaUnidad[item.unidad_negocio] }}</td>
+                <td>{{ item.tipo }}</td>
+                <td>{{ etiquetaDeMetodo(item.metodo) }}</td>
+                <td><strong>S/ {{ item.monto | number:'1.2-2' }}</strong></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+}

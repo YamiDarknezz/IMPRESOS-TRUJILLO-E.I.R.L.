@@ -1,0 +1,322 @@
+<!-- ═══ Métricas del negocio (supervisión) ════════════════════════════════ -->
+@if (sesion.esSupervisor()) {
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-icon stat-icon-neutral">🗂️</div>
+      <div class="stat-body">
+        <span class="stat-label">Total órdenes</span>
+        <span class="stat-value">{{ ordenes().length }}</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon stat-icon-warning">⏳</div>
+      <div class="stat-body">
+        <span class="stat-label">En proceso</span>
+        <span class="stat-value stat-color-warning">{{ enProceso() }}</span>
+        @if (vencidas() > 0) {
+          <span class="stat-vencidas">⚠️ {{ vencidas() }} vencida{{ vencidas() > 1 ? 's' : '' }}</span>
+        }
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon stat-icon-success">✅</div>
+      <div class="stat-body">
+        <span class="stat-label">Finalizadas</span>
+        <span class="stat-value stat-color-success">{{ finalizadas() }}</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon stat-icon-danger">💰</div>
+      <div class="stat-body">
+        <span class="stat-label">Por cobrar</span>
+        <span class="stat-value stat-color-danger">S/ {{ porCobrar() | number:'1.2-2' }}</span>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ═══ Filtros ═══════════════════════════════════════════════════════════ -->
+<div class="toolbar toolbar-wrap">
+  <div class="filter-group">
+    @for (opcion of opcionesFiltro; track opcion.valor) {
+      <button class="filter-btn" [class.active]="filtroEstado() === opcion.valor"
+              (click)="filtroEstado.set(opcion.valor)">{{ opcion.etiqueta }}</button>
+    }
+  </div>
+
+  <div class="search-box">
+    <span class="search-icon">🔍</span>
+    <input type="text" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)"
+           name="busquedaOrdenes" class="search-input"
+           placeholder="Buscar por código, cliente o descripción...">
+    @if (busqueda()) {
+      <button class="search-clear" (click)="busqueda.set('')">✕</button>
+    }
+  </div>
+
+  <div class="date-filter-group">
+    <div class="date-filter-item">
+      <label class="date-filter-label">Desde</label>
+      <input type="date" [ngModel]="desde()" (ngModelChange)="desde.set($event)"
+             name="desde" class="date-filter-input">
+    </div>
+    <div class="date-filter-item">
+      <label class="date-filter-label">Hasta</label>
+      <input type="date" [ngModel]="hasta()" (ngModelChange)="hasta.set($event)"
+             name="hasta" class="date-filter-input">
+    </div>
+    @if (hayFiltroFecha()) {
+      <button class="search-clear date-filter-clear" (click)="limpiarFiltroFecha()">✕</button>
+    }
+  </div>
+
+  @if (sesion.esAdmin()) {
+    <a class="btn-primary" routerLink="/ordenes/nueva">+ Nueva Orden</a>
+  }
+</div>
+
+<!-- ═══ Tabla ═════════════════════════════════════════════════════════════ -->
+<div class="table-card card">
+  @if (cargando()) {
+    <div class="empty-state">
+      <span class="loader-spinner"></span>
+      <p>Cargando órdenes...</p>
+    </div>
+  } @else if (ordenesFiltradas().length === 0) {
+    <div class="empty-state">
+      <span class="empty-icon">📋</span>
+      @if (busqueda()) {
+        <p>No se encontraron órdenes para "{{ busqueda() }}".</p>
+        <button class="btn-secondary btn-sm" (click)="busqueda.set('')">Limpiar búsqueda</button>
+      } @else {
+        <p>{{ filtroEstado() === 'todos' ? 'Aún no hay órdenes registradas.' : 'No hay órdenes con este estado.' }}</p>
+        @if (filtroEstado() === 'todos' && sesion.esAdmin()) {
+          <a class="btn-primary" routerLink="/ordenes/nueva">+ Crear primera orden</a>
+        }
+      }
+    </div>
+  } @else {
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Cliente</th>
+            @if (sesion.esSupervisor()) { <th>Asignado</th> }
+            <th>Descripción</th>
+            <th>Fechas</th>
+            <th>Finanzas</th>
+            <th>Pago</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (orden of ordenesFiltradas(); track orden.id_documento) {
+            <tr [class.row-vencida]="estaVencida(orden)"
+                [class.row-cancelada]="orden.estado === 'cancelada'">
+
+              <td><code class="id-chip">{{ orden.id_documento }}</code></td>
+              <td>{{ orden.cliente }}</td>
+
+              @if (sesion.esSupervisor()) {
+                <td>
+                  @if (estaEnPipeline(orden)) {
+                    <select class="assign-select" [ngModel]="orden.asignado_a || ''"
+                            (ngModelChange)="asignar(orden, $event)"
+                            [name]="'asignado-' + orden.id_documento">
+                      <option value="">Sin asignar</option>
+                      @for (u of sesion.usuarios(); track u.id) {
+                        <option [value]="u.id">{{ nombreVisible(u) }}</option>
+                      }
+                    </select>
+                  } @else {
+                    {{ sesion.nombreDe(orden.asignado_a) || '—' }}
+                  }
+                </td>
+              }
+
+              <td class="desc-cell">
+                {{ orden.descripcion }}
+                <span class="metodo-label">{{ etiquetaUnidad[orden.unidad_negocio] }} · {{ orden.tipo_documento }}</span>
+              </td>
+
+              <td class="fecha-cell fecha-cell-doble">
+                <div>
+                  <span class="fecha-mini-label">Creado</span>
+                  {{ formatearFecha(orden.fecha_creacion) }}
+                </div>
+                <div [class.fecha-vencida]="estaVencida(orden)">
+                  <span class="fecha-mini-label">Entrega</span>
+                  {{ formatearFecha(orden.fecha_entrega) }}
+                  @if (estaVencida(orden)) { <span class="vencida-tag">vencida</span> }
+                </div>
+              </td>
+
+              <td class="finanzas-cell-doble">
+                <div>
+                  <span class="fecha-mini-label">Total</span>
+                  S/ {{ orden.finanzas?.precio_total | number:'1.2-2' }}
+                </div>
+                <div [class.saldo-pendiente]="(orden.finanzas?.saldo_pendiente ?? 0) > 0"
+                     [class.saldo-ok]="(orden.finanzas?.saldo_pendiente ?? 0) <= 0">
+                  <span class="fecha-mini-label">Saldo</span>
+                  <strong>S/ {{ orden.finanzas?.saldo_pendiente | number:'1.2-2' }}</strong>
+                </div>
+              </td>
+
+              <td class="pago-cell">
+                @if (orden.estado !== 'cancelada') {
+                  <span class="badge" [ngClass]="orden.finanzas?.pagado_totalmente ? 'badge-success' : 'badge-warning'">
+                    {{ orden.finanzas?.pagado_totalmente ? 'Pagado' : 'Pendiente' }}
+                  </span>
+                  @if (orden.finanzas; as finanzas) {
+                    <span class="metodo-label">{{ etiquetaMetodo[finanzas.metodo_pago_adelanto] }}</span>
+                  }
+                } @else {
+                  <span class="badge badge-neutral">—</span>
+                }
+              </td>
+
+              <td>
+                @if (orden.estado === 'cancelada') {
+                  <span class="badge badge-cancelado">Cancelada</span>
+                } @else if (sesion.puedeAvanzarEtapa(orden) && estadosDisponibles(orden).length > 1) {
+                  <select class="estado-select" [ngClass]="claseEstado(orden.estado)"
+                          [ngModel]="orden.estado" [name]="'estado-' + orden.id_documento"
+                          (ngModelChange)="cambiarEstado(orden, $event)"
+                          title="Cambiar etapa de producción">
+                    @for (e of estadosDisponibles(orden); track e) {
+                      <option [value]="e">{{ etiquetaEstado[e] }}</option>
+                    }
+                  </select>
+                } @else {
+                  <span class="badge" [ngClass]="claseEstado(orden.estado)">
+                    {{ etiquetaEstado[orden.estado] }}
+                  </span>
+                }
+              </td>
+
+              <td class="actions-cell">
+                @if (estaEnPipeline(orden)) {
+                  @if (sesion.puedeGestionarOrdenes()) {
+                    <a class="btn-secondary btn-sm" title="Editar orden"
+                       [routerLink]="['/ordenes', orden.id, 'editar']">Editar</a>
+                  }
+                  @if (sesion.puedeGestionar(orden)) {
+                    <button class="btn-secondary btn-sm btn-complete"
+                            title="Reportar uso real de materiales y finalizar la producción"
+                            (click)="abrirCompletar(orden)">Reportar uso</button>
+                  }
+                  @if (sesion.esSupervisor()) {
+                    <button class="btn-secondary btn-sm btn-cancel"
+                            title="Cancelar orden (devuelve stock al inventario)"
+                            (click)="cancelar(orden)">Cancelar</button>
+                  }
+                }
+                @if (orden.estado !== 'cancelada'
+                     && !orden.finanzas?.pagado_totalmente
+                     && sesion.puedeGestionar(orden)) {
+                  <button class="btn-sm btn-pago"
+                          title="Confirmar que el pago fue recibido en su totalidad"
+                          (click)="abrirCobro(orden)">Pago recibido</button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+<!-- ═══ Modal: reportar uso de materiales ═════════════════════════════════ -->
+@if (ordenACompletar(); as orden) {
+  <div class="modal-overlay" (click)="cerrarCompletar()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Reportar uso de materiales</h3>
+        <span class="modal-orden-id">{{ orden.id_documento }}</span>
+      </div>
+      <p class="modal-subtitle">
+        Ingresá la cantidad realmente consumida. Al confirmar, la orden pasa a
+        <strong>Finalizada</strong> y el inventario se ajusta por la diferencia.
+      </p>
+
+      <div class="modal-materials">
+        @for (mat of materialesComplecion(); track mat.id_material) {
+          <div class="modal-mat-row">
+            <div class="modal-mat-info">
+              <strong>{{ mat.nombre }}</strong>
+              <span class="mat-estimado">Estimado: {{ mat.cantidad_estimada }}</span>
+              @if (mat.cantidad_real < mat.cantidad_estimada) {
+                <span class="mat-devuelve">
+                  ↩ devuelve {{ mat.cantidad_estimada - mat.cantidad_real }} al inventario
+                </span>
+              } @else if (mat.cantidad_real > mat.cantidad_estimada) {
+                <span class="mat-exceso">
+                  ↓ descuenta {{ mat.cantidad_real - mat.cantidad_estimada }} extra del stock
+                </span>
+              }
+            </div>
+            <div class="input-group modal-mat-input">
+              <label>Cantidad real</label>
+              <input type="number" [(ngModel)]="mat.cantidad_real"
+                     [name]="'real-' + mat.id_material" min="0" step="0.01">
+            </div>
+          </div>
+        }
+        @if (materialesComplecion().length === 0) {
+          <p class="text-muted">Esta orden no tiene materiales estimados registrados.</p>
+        }
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" (click)="cerrarCompletar()">Cancelar</button>
+        <button type="button" class="btn-primary" (click)="confirmarProduccion()" [disabled]="guardando()">
+          {{ guardando() ? 'Procesando...' : 'Confirmar producción' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ═══ Modal: confirmar pago ═════════════════════════════════════════════ -->
+@if (ordenACobrar(); as orden) {
+  <div class="modal-overlay" (click)="cerrarCobro()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Confirmar pago</h3>
+        <span class="modal-orden-id">{{ orden.id_documento }}</span>
+      </div>
+      <p class="modal-subtitle">
+        Vas a registrar como recibido el saldo pendiente de "{{ orden.cliente }}":
+        <strong>S/ {{ orden.finanzas?.saldo_pendiente | number:'1.2-2' }}</strong>.
+        Esta acción no se puede deshacer.
+      </p>
+
+      <div class="input-group">
+        <label>Método de pago recibido</label>
+        <select [ngModel]="metodoPago()" (ngModelChange)="metodoPago.set($event)" name="metodoPago">
+          @for (m of metodosPago; track m) {
+            <option [value]="m">{{ etiquetaMetodo[m] }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="input-group">
+        <label>Referencia (opcional)</label>
+        <input type="text" [ngModel]="referenciaPago()" name="referenciaPago"
+               (ngModelChange)="referenciaPago.set($event)"
+               placeholder="Nro. de operación o voucher">
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" (click)="cerrarCobro()">Cancelar</button>
+        <button type="button" class="btn-primary" (click)="confirmarPago()" [disabled]="guardando()">
+          {{ guardando() ? 'Confirmando...' : 'Confirmar pago' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

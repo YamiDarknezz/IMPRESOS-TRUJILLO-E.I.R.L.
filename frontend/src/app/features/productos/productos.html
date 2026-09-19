@@ -1,0 +1,140 @@
+@if (!mostrarFormulario()) {
+
+  <div class="toolbar toolbar-wrap">
+    <span class="toolbar-title">{{ productos().length }} productos en el catálogo</span>
+    <button class="btn-primary" (click)="alternarFormulario()">+ Nuevo Producto</button>
+  </div>
+
+  <div class="table-card card">
+    @if (productos().length === 0) {
+      <div class="empty-state">
+        <span class="empty-icon">🏷️</span>
+        <p>Aún no hay productos en el catálogo.</p>
+        <button class="btn-primary" (click)="alternarFormulario()">+ Crear primer producto</button>
+      </div>
+    } @else {
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Tipo</th>
+              <th>Precio base</th>
+              <th>Receta</th>
+              <th>Notas</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (p of productos(); track p.id) {
+              <tr>
+                <td><strong>{{ p.nombre }}</strong></td>
+                <td><span class="badge badge-neutral">{{ etiquetaTipo[p.tipo] }}</span></td>
+                <td>S/ {{ p.precio_base | number:'1.2-2' }}</td>
+                <td>
+                  @if (p.materiales?.length) {
+                    {{ p.materiales?.length }} material{{ (p.materiales?.length ?? 0) > 1 ? 'es' : '' }}
+                  } @else {
+                    <span class="text-muted">—</span>
+                  }
+                </td>
+                <td>{{ p.notas || '—' }}</td>
+                <td class="actions-cell">
+                  <button class="btn-secondary btn-sm" (click)="abrirEdicion(p)">Editar</button>
+                  <button class="btn-secondary btn-sm btn-cancel" (click)="eliminar(p)">Eliminar</button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+}
+
+<!-- ═══ Alta / edición ════════════════════════════════════════════════════ -->
+@if (mostrarFormulario()) {
+  <div class="form-card card">
+    <div class="form-header">
+      <h3>{{ editando() ? 'Editar Producto' : 'Nuevo Producto' }}</h3>
+      <button class="btn-secondary btn-sm" (click)="alternarFormulario()">← Volver</button>
+    </div>
+
+    <form (ngSubmit)="guardar()">
+      <div class="form-grid">
+        <div class="input-group">
+          <label>Nombre *</label>
+          <input type="text" [ngModel]="form().nombre" name="nombre"
+                 (ngModelChange)="actualizar('nombre', $event)"
+                 placeholder="Ej: Gigantografía 3x2m"
+                 [class.input-error]="errores()['nombre']">
+          @if (errores()['nombre']) { <span class="field-error">{{ errores()['nombre'] }}</span> }
+        </div>
+
+        <div class="input-group">
+          <label>Tipo</label>
+          <select [ngModel]="form().tipo" name="tipo" (ngModelChange)="actualizar('tipo', $event)">
+            @for (t of tiposProducto; track t) {
+              <option [value]="t">{{ etiquetaTipo[t] }}</option>
+            }
+          </select>
+          <span class="field-hint">Solo los productos propios llevan receta de materiales.</span>
+        </div>
+
+        <div class="input-group">
+          <label>Precio base (S/)</label>
+          <input type="number" [ngModel]="form().precio_base" name="precio"
+                 (ngModelChange)="actualizar('precio_base', $event)" min="0" step="0.01">
+        </div>
+
+        <div class="input-group">
+          <label>Notas</label>
+          <input type="text" [ngModel]="form().notas" name="notas"
+                 (ngModelChange)="actualizar('notas', $event)" placeholder="Opcional">
+        </div>
+      </div>
+
+      <!-- La receta se autocompleta al elegir este producto en una orden -->
+      @if (usaReceta()) {
+        <h4 class="section-title">Receta de materiales</h4>
+        <div class="form-grid align-end">
+          <div class="input-group">
+            <label>Material</label>
+            <select [ngModel]="materialSelId()" name="materialSel"
+                    (ngModelChange)="materialSelId.set($event)">
+              <option value="">Selecciona un material...</option>
+              @for (mat of materiales(); track mat.id) {
+                <option [value]="mat.id">{{ mat.nombre }} ({{ mat.unidad }})</option>
+              }
+            </select>
+          </div>
+          <div class="input-group">
+            <label>Cantidad</label>
+            <input type="number" [ngModel]="materialSelCantidad()" name="matCantidad"
+                   (ngModelChange)="materialSelCantidad.set($event)" min="0.01" step="0.01">
+          </div>
+          <button type="button" class="btn-secondary add-btn" (click)="agregarMaterial()"
+                  [disabled]="!materialSelId()">Añadir</button>
+        </div>
+
+        @if (form().materiales.length > 0) {
+          <ul class="material-list">
+            @for (mat of form().materiales; track $index) {
+              <li>
+                <span>{{ mat.cantidad }} × {{ mat.nombre }}</span>
+                <button type="button" class="delete-btn" (click)="quitarMaterial($index)">✕</button>
+              </li>
+            }
+          </ul>
+        }
+      }
+
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" (click)="alternarFormulario()">Cancelar</button>
+        <button type="submit" class="btn-primary" [disabled]="guardando()">
+          {{ guardando() ? 'Guardando...' : (editando() ? 'Guardar cambios' : 'Guardar Producto') }}
+        </button>
+      </div>
+    </form>
+  </div>
+}
