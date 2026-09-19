@@ -556,13 +556,23 @@
 }
 
 /* Columnas que apilan dos datos en una sola celda (Fechas, Finanzas)
-   para que la tabla necesite menos ancho total */
+   para que la tabla necesite menos ancho total.
+   IMPORTANTE: los <td> deben conservar display: table-cell nativo para no romper
+   el cálculo de columnas en Chromium. El apilado se logra con los <div> hijos. */
 .fecha-cell-doble,
 .finanzas-cell-doble {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
   white-space: nowrap;
+  vertical-align: middle;
+}
+
+.fecha-cell-doble > div,
+.finanzas-cell-doble > div {
+  margin-bottom: 0.2rem;
+}
+
+.fecha-cell-doble > div:last-child,
+.finanzas-cell-doble > div:last-child {
+  margin-bottom: 0;
 }
 
 .fecha-mini-label {
@@ -631,15 +641,21 @@ td.actions-cell {
 
 .actions-wrapper {
   display: inline-flex;
-  gap: 0.35rem;
+  gap: 0.25rem;
   align-items: center;
   justify-content: flex-end;
   flex-wrap: nowrap;
 }
 
+.actions-wrapper .btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.15;
+}
+
 div.actions-cell {
   display: inline-flex;
-  gap: 0.35rem;
+  gap: 0.25rem;
   align-items: center;
 }
 

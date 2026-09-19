@@ -220,7 +220,7 @@
                        && sesion.puedeGestionar(orden)) {
                     <button class="btn-sm btn-pago"
                             title="Confirmar que el pago fue recibido en su totalidad"
-                            (click)="abrirCobro(orden)">Pago recibido</button>
+                            (click)="abrirCobro(orden)">Cobrar</button>
                   }
                   @if (!estaEnPipeline(orden) && (orden.estado === 'cancelada' || (orden.estado === 'entregada' && orden.finanzas?.pagado_totalmente))) {
                     <span class="text-muted">—</span>

@@ -147,15 +147,15 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 html {
-  font-size: 20px;
+  font-size: 15px;
 }
 
 /* Escala la interfaz en pantallas chicas para que entre más contenido */
 @media (max-width: 900px) {
-  html { font-size: 18px; }
+  html { font-size: 14px; }
 }
 @media (max-width: 560px) {
-  html { font-size: 16px; }
+  html { font-size: 13.5px; }
 }
 
 /* Flecha propia y consistente para todos los <select> del sistema.
