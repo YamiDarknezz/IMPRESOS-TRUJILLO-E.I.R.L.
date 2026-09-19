@@ -1,4 +1,10 @@
 <div class="toolbar toolbar-wrap">
+  <div class="filter-group">
+    <button class="filter-btn" [class.active]="!desde() && !hasta()" (click)="filtrarTodo()">Todo</button>
+    <button class="filter-btn" (click)="filtrarMesActual()">Este mes</button>
+    <button class="filter-btn" (click)="filtrarHoy()">Hoy</button>
+  </div>
+
   <div class="date-filter-group">
     <div class="date-filter-item">
       <label class="date-filter-label">Desde</label>
