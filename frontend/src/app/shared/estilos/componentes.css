@@ -776,6 +776,23 @@ select.search-input {
   padding: 0.1rem 0;
 }
 
+select.date-filter-input {
+  background-color: var(--surface);
+  color: var(--text);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 0.2rem 1.5rem 0.2rem 0.4rem !important;
+  background-position: right 0.35rem center;
+  background-size: 8px 6px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+select.date-filter-input:hover,
+select.date-filter-input:focus {
+  border-color: var(--border);
+}
+
 .date-filter-item + .date-filter-item {
   border-left: 1px solid var(--border);
   padding-left: 0.5rem;
