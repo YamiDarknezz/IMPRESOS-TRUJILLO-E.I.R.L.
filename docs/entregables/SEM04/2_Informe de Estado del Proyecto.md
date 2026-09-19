@@ -30,7 +30,7 @@ Durante la Semana 4 se inició el Sprint 1 del proyecto. El equipo avanzó en la
 | Código EDT | ACTIVIDAD | Entregable | Fecha Planeada | Fecha Real | Estado |
 |:---:|:---|:---|:---:|:---:|:---|
 | **4.1.2** | Priorización del Product Backlog e historias de usuario | Product Backlog formalizado con 10 historias y DoD | 16/09/2026 | 16/09/2026 | **TERMINADO (Aceptado por Marcell Vásquez)** |
-| **3.4.1** | Diseño de interfaces de usuario de alta fidelidad | Mockups UI de Login, Cotizador, Kanban y Caja | 17/09/2026 | 17/09/2026 | **TERMINADO (Validado en equipo)** |
+| **3.4.1** | Diseño de interfaces de usuario de alta fidelidad | Mockups UI de Login, Cotizador, Taller y Caja | 17/09/2026 | 17/09/2026 | **TERMINADO (Validado en equipo)** |
 | **4.1.1** | Construcción de Módulo Transaccional Base (Seguridad y Auth JWT) | API Auth FastAPI y componente Login Angular 21 | 19/09/2026 | 19/09/2026 | **TERMINADO (Aceptado por Marcell Vásquez)** |
 | **4.1.1** | Construcción de Módulo Transaccional Base (Catálogo y Recetas m²) | Fórmulas de consumo de lonas y vinilos en PostgreSQL | 23/09/2026 | Pendiente | **EN PROCESO (Sprint 1)** |
 | **4.2.1** | Construcción de Módulo de Cobros, Caja y Business Intelligence | Cotizador dinámico, talonario digital y cierre de caja | 26/09/2026 | Pendiente | **PLANIFICADO (Sprint 2)** |
@@ -44,7 +44,7 @@ Durante la Semana 4 se inició el Sprint 1 del proyecto. El equipo avanzó en la
 | ACTIVIDAD | ENTREGABLE | % CUMPLIMIENTO |
 |:---|:---|:---:|
 | EDT 4.1.2 Priorización del Product Backlog | Product Backlog formalizado con 10 historias y mockups | **100%** |
-| EDT 3.4.1 Diseño de interfaces de usuario UI | Prototipos de interfaz de Login, Cotizador, Kanban y Caja | **100%** |
+| EDT 3.4.1 Diseño de interfaces de usuario UI | Prototipos de interfaz de Login, Cotizador, Taller y Caja | **100%** |
 | EDT 4.1.1 Construcción de API de Autenticación JWT | Endpoints REST /auth/login y hashing bcrypt en FastAPI | **100%** |
 | EDT 4.1.1 Maquetación de interfaz Login y AuthGuard | Formulario reactivo Angular 21 con guards RBAC activos | **100%** |
 | EDT 4.1.1 Parametrización de recetas de insumos por m² | Fórmulas de consumo de lonas y vinilos en base de datos | **0%** |
