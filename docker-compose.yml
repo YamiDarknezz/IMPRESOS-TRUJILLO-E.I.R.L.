@@ -1,6 +1,6 @@
 # Entorno de desarrollo: PostgreSQL propio + API.
-# En producción la API se despliega en Cloud Run y la base en un PostgreSQL
-# gestionado; el código es el mismo, solo cambia DATABASE_URL.
+# En producción la API y la base de datos se alojan en un VPS particular propio;
+# el código es el mismo, solo cambia DATABASE_URL.
 # El nombre del proyecto se fija aquí para que no dependa de la carpeta donde
 # viva este archivo (mientras el código está en .temp).
 name: impresos

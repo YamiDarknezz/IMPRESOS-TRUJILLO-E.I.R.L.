@@ -19,5 +19,5 @@ USER app
 
 EXPOSE 8080
 
-# Cloud Run inyecta PORT; en local el valor por defecto es 8080.
+# En contenedor el valor por defecto es 8080.
 CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
