@@ -7,11 +7,12 @@ import { SesionService, nombreVisible } from '../../core/services/sesion.service
 import { ETIQUETA_UNIDAD, UNIDADES_NEGOCIO } from '../../core/models';
 import { descargarCSV } from '../../shared/utilidades/csv';
 import { mensajeDeError } from '../../shared/utilidades/errores';
+import { IconComponent } from '../../shared/componentes/icon/icon.component';
 
 @Component({
   selector: 'app-finanzas',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, IconComponent],
   templateUrl: './finanzas.html',
 })
 export class FinanzasComponent {

@@ -6,6 +6,7 @@ import { DatosUsuario, UsuariosService } from '../../core/services/usuarios.serv
 import { SesionService } from '../../core/services/sesion.service';
 import { ETIQUETA_ROL, ROLES, Rol, UsuarioSistema } from '../../core/models';
 import { mensajeDeError } from '../../shared/utilidades/errores';
+import { IconComponent } from '../../shared/componentes/icon/icon.component';
 
 function formularioVacio(): DatosUsuario {
   return { nombre: '', email: '', password: '', rol: 'operario' };
@@ -19,7 +20,7 @@ function formularioVacio(): DatosUsuario {
 @Component({
   selector: 'app-usuarios',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, IconComponent],
   templateUrl: './usuarios.html',
 })
 export class UsuariosComponent {

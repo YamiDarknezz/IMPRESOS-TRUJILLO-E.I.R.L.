@@ -4,12 +4,14 @@
     <span class="toolbar-title">{{ clientes().length }} clientes registrados</span>
 
     <div class="search-box">
-      <span class="search-icon">🔍</span>
+      <span class="search-icon"><app-icon name="search" [size]="15" /></span>
       <input type="text" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)"
              name="busquedaClientes" class="search-input"
              placeholder="Buscar por nombre, documento o teléfono...">
       @if (busqueda()) {
-        <button class="search-clear" (click)="busqueda.set('')">✕</button>
+        <button class="search-clear" (click)="busqueda.set('')" title="Limpiar búsqueda" aria-label="Limpiar búsqueda">
+          <app-icon name="x" [size]="13" />
+        </button>
       }
     </div>
 
@@ -21,7 +23,7 @@
   <div class="table-card card">
     @if (clientesFiltrados().length === 0) {
       <div class="empty-state">
-        <span class="empty-icon">👥</span>
+        <span class="empty-icon"><app-icon name="users" [size]="40" /></span>
         <p>{{ busqueda() ? 'No se encontraron clientes.' : 'Aún no hay clientes registrados.' }}</p>
       </div>
     } @else {
@@ -52,10 +54,16 @@
                 <td>{{ c.email || '—' }}</td>
                 <td class="actions-cell">
                   <div class="actions-wrapper">
-                    <button class="btn-icon" title="Ver ficha del cliente" aria-label="Ver ficha" (click)="verDetalle(c)">👁️</button>
+                    <button class="btn-icon" title="Ver ficha del cliente" aria-label="Ver ficha" (click)="verDetalle(c)">
+                      <app-icon name="eye" [size]="14" />
+                    </button>
                     @if (sesion.puedeGestionarOrdenes()) {
-                      <button class="btn-icon" title="Editar datos del cliente" aria-label="Editar cliente" (click)="abrirEdicion(c)">✏️</button>
-                      <button class="btn-icon btn-icon-cancel" title="Eliminar cliente" aria-label="Eliminar cliente" (click)="desactivar(c)">🗑️</button>
+                      <button class="btn-icon" title="Editar datos del cliente" aria-label="Editar cliente" (click)="abrirEdicion(c)">
+                        <app-icon name="pencil" [size]="14" />
+                      </button>
+                      <button class="btn-icon btn-icon-cancel" title="Eliminar cliente" aria-label="Eliminar cliente" (click)="desactivar(c)">
+                        <app-icon name="trash" [size]="14" />
+                      </button>
                     }
                   </div>
                 </td>
@@ -183,7 +191,10 @@
       }
 
       @if (cliente.notas) {
-        <p class="modal-subtitle" style="margin-top:1rem">📝 {{ cliente.notas }}</p>
+        <p class="modal-subtitle" style="margin-top:1rem; display:flex; align-items:center; gap:0.4rem">
+          <app-icon name="file-text" [size]="14" />
+          <span>{{ cliente.notas }}</span>
+        </p>
       }
 
       <div class="form-actions">

@@ -74,10 +74,10 @@
   flex-shrink: 0;
 }
 
-.stat-icon-neutral { background: var(--surface-3); }
-.stat-icon-warning { background: var(--warning-bg); }
-.stat-icon-success { background: var(--success-bg); }
-.stat-icon-danger  { background: var(--danger-bg); }
+.stat-icon-neutral { background: var(--surface-3); color: var(--text-muted); }
+.stat-icon-warning { background: var(--warning-bg); color: var(--warning); }
+.stat-icon-success { background: var(--success-bg); color: var(--success); }
+.stat-icon-danger  { background: var(--danger-bg); color: var(--danger); }
 
 .stat-body {
   display: flex;
@@ -272,8 +272,11 @@
 }
 
 .empty-icon {
-  font-size: 2.5rem;
-  opacity: 0.5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+  opacity: 0.6;
 }
 
 .empty-state p {
@@ -780,7 +783,11 @@ div.actions-cell {
 .search-icon {
   position: absolute;
   left: 0.7rem;
-  font-size: 0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-faint);
   pointer-events: none;
   line-height: 1;
 }

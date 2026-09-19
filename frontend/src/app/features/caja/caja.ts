@@ -16,6 +16,7 @@ import {
 } from '../../core/models';
 import { formatearFecha, hoyISO } from '../../shared/utilidades/fechas';
 import { mensajeDeError } from '../../shared/utilidades/errores';
+import { IconComponent } from '../../shared/componentes/icon/icon.component';
 
 /**
  * Cierre y arqueo diario de caja dual (RF-12 a RF-14).
@@ -26,7 +27,7 @@ import { mensajeDeError } from '../../shared/utilidades/errores';
 @Component({
   selector: 'app-caja',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, IconComponent],
   templateUrl: './caja.html',
 })
 export class CajaComponent {

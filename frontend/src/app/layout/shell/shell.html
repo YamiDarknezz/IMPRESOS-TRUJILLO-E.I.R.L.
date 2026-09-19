@@ -4,7 +4,9 @@
   <header class="topbar">
     <div class="topbar-left">
       <button class="btn-hamburger" (click)="cajonAbierto.set(!cajonAbierto())"
-              title="Menú" aria-label="Abrir menú">☰</button>
+              title="Menú" aria-label="Abrir menú">
+        <app-icon name="menu" [size]="20" />
+      </button>
       <div class="brand">
         <span class="brand-name">Impresos Trujillo</span>
         <span class="brand-sub">Sistema de gestión</span>
@@ -12,10 +14,13 @@
     </div>
 
     <div class="user-actions">
-      <span class="user-badge">👤 {{ sesion.usuario()?.nombre || 'Usuario' }}</span>
+      <span class="user-badge">
+        <app-icon name="user" [size]="14" />
+        <span>{{ sesion.usuario()?.nombre || 'Usuario' }}</span>
+      </span>
       <button class="btn-theme" (click)="theme.toggle()"
               [title]="theme.theme() === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'">
-        {{ theme.theme() === 'dark' ? '☀️' : '🌙' }}
+        <app-icon [name]="theme.theme() === 'dark' ? 'sun' : 'moon'" [size]="16" />
       </button>
     </div>
   </header>
@@ -57,7 +62,7 @@
             <a class="sidebar-item" [routerLink]="opcion.ruta"
                routerLinkActive="active" [title]="opcion.etiqueta"
                (click)="cerrarCajon()">
-              <span class="sidebar-icon">{{ opcion.icono }}</span>
+              <span class="sidebar-icon"><app-icon [name]="opcion.icono" [size]="16" /></span>
               <span class="sidebar-label">{{ opcion.etiqueta }}</span>
             </a>
           }
@@ -72,7 +77,7 @@
               <a class="sidebar-item" [routerLink]="opcion.ruta"
                  routerLinkActive="active" [title]="opcion.etiqueta"
                  (click)="cerrarCajon()">
-                <span class="sidebar-icon">{{ opcion.icono }}</span>
+                <span class="sidebar-icon"><app-icon [name]="opcion.icono" [size]="16" /></span>
                 <span class="sidebar-label">{{ opcion.etiqueta }}</span>
               </a>
             }
@@ -83,7 +88,7 @@
       <div class="sidebar-footer">
         <button class="sidebar-item btn-sidebar-logout" (click)="cerrarSesion()"
                 title="Cerrar sesión" aria-label="Cerrar sesión">
-          <span class="sidebar-icon">🚪</span>
+          <span class="sidebar-icon"><app-icon name="log-out" [size]="16" /></span>
           <span class="sidebar-label">Cerrar sesión</span>
         </button>
       </div>

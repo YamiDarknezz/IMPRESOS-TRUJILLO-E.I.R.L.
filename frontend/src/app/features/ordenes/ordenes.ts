@@ -24,6 +24,7 @@ import {
 } from '../../core/models';
 import { formatearFecha } from '../../shared/utilidades/fechas';
 import { mensajeDeError } from '../../shared/utilidades/errores';
+import { IconComponent } from '../../shared/componentes/icon/icon.component';
 
 type FiltroEstado = 'todos' | EstadoOrden;
 
@@ -35,7 +36,7 @@ interface OpcionFiltro {
 @Component({
   selector: 'app-ordenes',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, IconComponent],
   templateUrl: './ordenes.html',
 })
 export class OrdenesComponent {

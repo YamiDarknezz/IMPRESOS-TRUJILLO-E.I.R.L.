@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { UnidadesService } from '../../core/services/unidades.service';
 import { Unidad } from '../../core/models';
 import { mensajeDeError } from '../../shared/utilidades/errores';
+import { IconComponent } from '../../shared/componentes/icon/icon.component';
 
 /**
  * Catálogo de unidades de medida.
@@ -15,7 +16,7 @@ import { mensajeDeError } from '../../shared/utilidades/errores';
 @Component({
   selector: 'app-unidades',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, IconComponent],
   templateUrl: './unidades.html',
 })
 export class UnidadesComponent {

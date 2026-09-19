@@ -4,12 +4,14 @@
     <span class="toolbar-title">{{ materiales().length }} materiales registrados</span>
 
     <div class="search-box">
-      <span class="search-icon">🔍</span>
+      <span class="search-icon"><app-icon name="search" [size]="15" /></span>
       <input type="text" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)"
              name="busquedaInventario" class="search-input"
              placeholder="Buscar material por nombre...">
       @if (busqueda()) {
-        <button class="search-clear" (click)="busqueda.set('')">✕</button>
+        <button class="search-clear" (click)="busqueda.set('')" title="Limpiar búsqueda" aria-label="Limpiar búsqueda">
+          <app-icon name="x" [size]="13" />
+        </button>
       }
     </div>
 
@@ -60,11 +62,15 @@
                   <div class="actions-wrapper">
                     <button class="btn-icon" (click)="verMovimientos(mat)"
                             title="Ver historial de reservas, mermas y ajustes del material"
-                            aria-label="Ver movimientos">📜</button>
+                            aria-label="Ver movimientos">
+                      <app-icon name="history" [size]="14" />
+                    </button>
                     @if (sesion.esSupervisor()) {
                       <button class="btn-icon" (click)="abrirEdicion(mat)"
                               title="Editar material y niveles de alerta"
-                              aria-label="Editar material">✏️</button>
+                              aria-label="Editar material">
+                        <app-icon name="pencil" [size]="14" />
+                      </button>
                     }
                   </div>
                 </td>

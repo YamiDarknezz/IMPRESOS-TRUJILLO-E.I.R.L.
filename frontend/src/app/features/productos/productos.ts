@@ -12,6 +12,7 @@ import {
   TipoProducto,
 } from '../../core/models';
 import { mensajeDeError } from '../../shared/utilidades/errores';
+import { IconComponent } from '../../shared/componentes/icon/icon.component';
 
 function formularioVacio(): DatosProducto {
   return {
@@ -23,7 +24,7 @@ function formularioVacio(): DatosProducto {
 @Component({
   selector: 'app-productos',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, IconComponent],
   templateUrl: './productos.html',
 })
 export class ProductosComponent {

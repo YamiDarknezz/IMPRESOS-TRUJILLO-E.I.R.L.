@@ -71,10 +71,12 @@ function formularioVacio(): FormularioOrden {
   };
 }
 
+import { IconComponent } from '../../shared/componentes/icon/icon.component';
+
 @Component({
   selector: 'app-orden-form',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, IconComponent],
   templateUrl: './orden-form.html',
 })
 export class OrdenFormComponent {

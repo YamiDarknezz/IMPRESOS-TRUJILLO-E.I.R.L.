@@ -11,12 +11,12 @@
     </div>
   } @else if (sinPermiso()) {
     <div class="empty-state">
-      <span class="empty-icon">🔒</span>
+      <span class="empty-icon"><app-icon name="lock" [size]="40" /></span>
       <p>Solo un administrador puede ver el registro de auditoría.</p>
     </div>
   } @else if (entradas().length === 0) {
     <div class="empty-state">
-      <span class="empty-icon">🧾</span>
+      <span class="empty-icon"><app-icon name="receipt-text" [size]="40" /></span>
       <p>Aún no hay acciones registradas.</p>
     </div>
   } @else {

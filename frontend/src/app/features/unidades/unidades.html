@@ -33,7 +33,7 @@
 <div class="table-card card">
   @if (unidades().length === 0) {
     <div class="empty-state">
-      <span class="empty-icon">📏</span>
+      <span class="empty-icon"><app-icon name="ruler" [size]="40" /></span>
       <p>Aún no hay unidades registradas.</p>
     </div>
   } @else {
@@ -53,7 +53,9 @@
               <td>{{ u.abreviatura || '—' }}</td>
               <td class="actions-cell">
                 <div class="actions-wrapper">
-                  <button class="btn-icon btn-icon-cancel" title="Eliminar unidad de medida" aria-label="Eliminar unidad" (click)="eliminar(u)">🗑️</button>
+                  <button class="btn-icon btn-icon-cancel" title="Eliminar unidad de medida" aria-label="Eliminar unidad" (click)="eliminar(u)">
+                    <app-icon name="trash" [size]="14" />
+                  </button>
                 </div>
               </td>
             </tr>

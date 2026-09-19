@@ -50,7 +50,9 @@
   <!-- ═══ Totales ═════════════════════════════════════════════════════════ -->
   <div class="stats-row">
     <div class="stat-card">
-      <div class="stat-icon stat-icon-success">💰</div>
+      <div class="stat-icon stat-icon-success">
+        <app-icon name="coins" [size]="20" />
+      </div>
       <div class="stat-body">
         <span class="stat-label" title="Según la fecha real en que se recibió cada pago">
           Ingresos recibidos
@@ -60,7 +62,9 @@
     </div>
 
     <div class="stat-card">
-      <div class="stat-icon stat-icon-neutral">📄</div>
+      <div class="stat-icon stat-icon-neutral">
+        <app-icon name="file-text" [size]="20" />
+      </div>
       <div class="stat-body">
         <span class="stat-label" title="Según la fecha en que se creó la orden">Total contratos</span>
         <span class="stat-value">S/ {{ datos.total_contratos | number:'1.2-2' }}</span>
@@ -68,7 +72,9 @@
     </div>
 
     <div class="stat-card">
-      <div class="stat-icon stat-icon-warning">💵</div>
+      <div class="stat-icon stat-icon-warning">
+        <app-icon name="wallet" [size]="20" />
+      </div>
       <div class="stat-body">
         <span class="stat-label">Adelantos</span>
         <span class="stat-value stat-color-warning">S/ {{ datos.total_adelantos | number:'1.2-2' }}</span>
@@ -76,7 +82,9 @@
     </div>
 
     <div class="stat-card">
-      <div class="stat-icon stat-icon-danger">🧾</div>
+      <div class="stat-icon stat-icon-danger">
+        <app-icon name="receipt-text" [size]="20" />
+      </div>
       <div class="stat-body">
         <span class="stat-label" title="De las órdenes creadas en este rango, cuánto falta cobrar">
           Por cobrar
@@ -86,7 +94,9 @@
     </div>
 
     <div class="stat-card">
-      <div class="stat-icon stat-icon-neutral">🗂️</div>
+      <div class="stat-icon stat-icon-neutral">
+        <app-icon name="folder" [size]="20" />
+      </div>
       <div class="stat-body">
         <span class="stat-label">Órdenes</span>
         <span class="stat-value">{{ datos.total_ordenes }}</span>

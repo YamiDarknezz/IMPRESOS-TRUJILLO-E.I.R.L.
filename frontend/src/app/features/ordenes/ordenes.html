@@ -2,31 +2,42 @@
 @if (sesion.esSupervisor()) {
   <div class="stats-row">
     <div class="stat-card">
-      <div class="stat-icon stat-icon-neutral">🗂️</div>
+      <div class="stat-icon stat-icon-neutral">
+        <app-icon name="folder" [size]="20" />
+      </div>
       <div class="stat-body">
         <span class="stat-label">Total órdenes</span>
         <span class="stat-value">{{ ordenes().length }}</span>
       </div>
     </div>
     <div class="stat-card">
-      <div class="stat-icon stat-icon-warning">⏳</div>
+      <div class="stat-icon stat-icon-warning">
+        <app-icon name="clock" [size]="20" />
+      </div>
       <div class="stat-body">
         <span class="stat-label">En proceso</span>
         <span class="stat-value stat-color-warning">{{ enProceso() }}</span>
         @if (vencidas() > 0) {
-          <span class="stat-vencidas">⚠️ {{ vencidas() }} vencida{{ vencidas() > 1 ? 's' : '' }}</span>
+          <span class="stat-vencidas">
+            <app-icon name="alert-triangle" [size]="13" />
+            <span>{{ vencidas() }} vencida{{ vencidas() > 1 ? 's' : '' }}</span>
+          </span>
         }
       </div>
     </div>
     <div class="stat-card">
-      <div class="stat-icon stat-icon-success">✅</div>
+      <div class="stat-icon stat-icon-success">
+        <app-icon name="check-circle" [size]="20" />
+      </div>
       <div class="stat-body">
         <span class="stat-label">Finalizadas</span>
         <span class="stat-value stat-color-success">{{ finalizadas() }}</span>
       </div>
     </div>
     <div class="stat-card">
-      <div class="stat-icon stat-icon-danger">💰</div>
+      <div class="stat-icon stat-icon-danger">
+        <app-icon name="coins" [size]="20" />
+      </div>
       <div class="stat-body">
         <span class="stat-label">Por cobrar</span>
         <span class="stat-value stat-color-danger">S/ {{ porCobrar() | number:'1.2-2' }}</span>
@@ -45,12 +56,14 @@
   </div>
 
   <div class="search-box">
-    <span class="search-icon">🔍</span>
+    <span class="search-icon"><app-icon name="search" [size]="15" /></span>
     <input type="text" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)"
            name="busquedaOrdenes" class="search-input"
            placeholder="Buscar por código, cliente o descripción...">
     @if (busqueda()) {
-      <button class="search-clear" (click)="busqueda.set('')">✕</button>
+      <button class="search-clear" (click)="busqueda.set('')" title="Limpiar búsqueda" aria-label="Limpiar búsqueda">
+        <app-icon name="x" [size]="13" />
+      </button>
     }
   </div>
 
@@ -66,7 +79,9 @@
              name="hasta" class="date-filter-input">
     </div>
     @if (hayFiltroFecha()) {
-      <button class="search-clear date-filter-clear" (click)="limpiarFiltroFecha()">✕</button>
+      <button class="search-clear date-filter-clear" (click)="limpiarFiltroFecha()" title="Limpiar fechas" aria-label="Limpiar fechas">
+        <app-icon name="x" [size]="13" />
+      </button>
     }
   </div>
 
@@ -84,7 +99,7 @@
     </div>
   } @else if (ordenesFiltradas().length === 0) {
     <div class="empty-state">
-      <span class="empty-icon">📋</span>
+      <span class="empty-icon"><app-icon name="clipboard-list" [size]="40" /></span>
       @if (busqueda()) {
         <p>No se encontraron órdenes para "{{ busqueda() }}".</p>
         <button class="btn-secondary btn-sm" (click)="busqueda.set('')">Limpiar búsqueda</button>
@@ -202,19 +217,25 @@
                   @if (estaEnPipeline(orden)) {
                     @if (sesion.puedeGestionarOrdenes()) {
                       <a class="btn-icon" title="Editar orden" aria-label="Editar orden"
-                         [routerLink]="['/ordenes', orden.id, 'editar']">✏️</a>
+                         [routerLink]="['/ordenes', orden.id, 'editar']">
+                        <app-icon name="pencil" [size]="14" />
+                      </a>
                     }
                     @if (sesion.puedeGestionar(orden)) {
                       <button class="btn-icon btn-icon-complete"
                               title="Reportar uso de insumos y finalizar producción"
                               aria-label="Reportar uso de insumos y finalizar producción"
-                              (click)="abrirCompletar(orden)">📦</button>
+                              (click)="abrirCompletar(orden)">
+                        <app-icon name="package-check" [size]="14" />
+                      </button>
                     }
                     @if (sesion.esSupervisor()) {
                       <button class="btn-icon btn-icon-cancel"
                               title="Cancelar orden (devuelve stock al inventario)"
                               aria-label="Cancelar orden"
-                              (click)="cancelar(orden)">✕</button>
+                              (click)="cancelar(orden)">
+                        <app-icon name="x" [size]="14" />
+                      </button>
                     }
                   }
                   @if (orden.estado !== 'cancelada'
@@ -223,7 +244,9 @@
                     <button class="btn-icon btn-icon-pago"
                             title="Registrar cobro de saldo pendiente"
                             aria-label="Registrar cobro de saldo pendiente"
-                            (click)="abrirCobro(orden)">💵</button>
+                            (click)="abrirCobro(orden)">
+                      <app-icon name="dollar-sign" [size]="14" />
+                    </button>
                   }
                   @if (!estaEnPipeline(orden) && (orden.estado === 'cancelada' || (orden.estado === 'entregada' && orden.finanzas?.pagado_totalmente))) {
                     <span class="text-muted">—</span>

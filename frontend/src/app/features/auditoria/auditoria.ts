@@ -4,12 +4,13 @@ import { CommonModule } from '@angular/common';
 import { AuditoriaService } from '../../core/services/auditoria.service';
 import { ETIQUETA_ACCION } from '../../core/models';
 import { formatearFecha } from '../../shared/utilidades/fechas';
+import { IconComponent } from '../../shared/componentes/icon/icon.component';
 
 /** Historial de acciones. Solo lectura: las entradas nunca se editan ni borran. */
 @Component({
   selector: 'app-auditoria',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, IconComponent],
   templateUrl: './auditoria.html',
 })
 export class AuditoriaComponent {

@@ -8,7 +8,7 @@
   <div class="table-card card">
     @if (productos().length === 0) {
       <div class="empty-state">
-        <span class="empty-icon">🏷️</span>
+        <span class="empty-icon"><app-icon name="tag" [size]="40" /></span>
         <p>Aún no hay productos en el catálogo.</p>
         <button class="btn-primary" (click)="alternarFormulario()">+ Crear primer producto</button>
       </div>
@@ -41,8 +41,12 @@
                 <td>{{ p.notas || '—' }}</td>
                 <td class="actions-cell">
                   <div class="actions-wrapper">
-                    <button class="btn-icon" title="Editar producto" aria-label="Editar producto" (click)="abrirEdicion(p)">✏️</button>
-                    <button class="btn-icon btn-icon-cancel" title="Eliminar producto" aria-label="Eliminar producto" (click)="eliminar(p)">🗑️</button>
+                    <button class="btn-icon" title="Editar producto" aria-label="Editar producto" (click)="abrirEdicion(p)">
+                      <app-icon name="pencil" [size]="14" />
+                    </button>
+                    <button class="btn-icon btn-icon-cancel" title="Eliminar producto" aria-label="Eliminar producto" (click)="eliminar(p)">
+                      <app-icon name="trash" [size]="14" />
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -124,7 +128,9 @@
             @for (mat of form().materiales; track $index) {
               <li>
                 <span>{{ mat.cantidad }} × {{ mat.nombre }}</span>
-                <button type="button" class="delete-btn" (click)="quitarMaterial($index)">✕</button>
+                <button type="button" class="delete-btn" (click)="quitarMaterial($index)" title="Quitar material" aria-label="Quitar material">
+                  <app-icon name="x" [size]="13" />
+                </button>
               </li>
             }
           </ul>

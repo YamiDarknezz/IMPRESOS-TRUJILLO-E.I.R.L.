@@ -12,6 +12,7 @@ import { SesionService } from '../../core/services/sesion.service';
 import { MaterialInventario, MovimientoStock } from '../../core/models';
 import { mensajeDeError } from '../../shared/utilidades/errores';
 import { formatearFecha } from '../../shared/utilidades/fechas';
+import { IconComponent } from '../../shared/componentes/icon/icon.component';
 
 interface FormularioMaterial {
   nombre: string;
@@ -28,7 +29,7 @@ function formularioVacio(): FormularioMaterial {
 @Component({
   selector: 'app-inventario',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, IconComponent],
   templateUrl: './inventario.html',
 })
 export class InventarioComponent {

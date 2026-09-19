@@ -6,12 +6,13 @@ import { AuthService } from '../../core/services/auth.service';
 import { SesionService } from '../../core/services/sesion.service';
 import { ThemeService } from '../../core/services/theme.service';
 import { guardarPreferencia, leerPreferencia } from '../../shared/utilidades/almacenamiento';
+import { IconComponent, IconName } from '../../shared/componentes/icon/icon.component';
 
 const CLAVE_COLAPSADO = 'it-sidebar-colapsado';
 
 interface OpcionMenu {
   ruta: string;
-  icono: string;
+  icono: IconName;
   etiqueta: string;
 }
 
@@ -25,7 +26,7 @@ interface OpcionMenu {
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, IconComponent],
   templateUrl: './shell.html',
   styleUrl: './shell.css',
 })
@@ -42,10 +43,10 @@ export class ShellComponent {
 
   /** Pantallas de operación: las ve todo el personal. */
   readonly menuOperacion: OpcionMenu[] = [
-    { ruta: '/ordenes',    icono: '📋', etiqueta: 'Órdenes' },
-    { ruta: '/inventario', icono: '📦', etiqueta: 'Inventario' },
-    { ruta: '/caja',       icono: '💵', etiqueta: 'Caja' },
-    { ruta: '/finanzas',   icono: '📊', etiqueta: 'Finanzas' },
+    { ruta: '/ordenes',    icono: 'clipboard-list', etiqueta: 'Órdenes' },
+    { ruta: '/inventario', icono: 'package',        etiqueta: 'Inventario' },
+    { ruta: '/caja',       icono: 'wallet',         etiqueta: 'Caja' },
+    { ruta: '/finanzas',   icono: 'bar-chart',      etiqueta: 'Finanzas' },
   ];
 
   /** Administración: cada opción aparece según el rol (el backend manda). */
@@ -53,15 +54,15 @@ export class ShellComponent {
     const opciones: OpcionMenu[] = [];
 
     if (this.sesion.puedeGestionarOrdenes()) {
-      opciones.push({ ruta: '/clientes', icono: '👥', etiqueta: 'Clientes' });
+      opciones.push({ ruta: '/clientes', icono: 'users', etiqueta: 'Clientes' });
     }
     if (this.sesion.esSupervisor()) {
-      opciones.push({ ruta: '/productos', icono: '🏷️', etiqueta: 'Productos' });
+      opciones.push({ ruta: '/productos', icono: 'tag', etiqueta: 'Productos' });
     }
     if (this.sesion.esAdmin()) {
-      opciones.push({ ruta: '/unidades', icono: '📏', etiqueta: 'Unidades' });
-      opciones.push({ ruta: '/usuarios', icono: '🔑', etiqueta: 'Usuarios' });
-      opciones.push({ ruta: '/auditoria', icono: '🧾', etiqueta: 'Auditoría' });
+      opciones.push({ ruta: '/unidades', icono: 'ruler', etiqueta: 'Unidades' });
+      opciones.push({ ruta: '/usuarios', icono: 'key', etiqueta: 'Usuarios' });
+      opciones.push({ ruta: '/auditoria', icono: 'receipt-text', etiqueta: 'Auditoría' });
     }
     return opciones;
   }

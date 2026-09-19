@@ -6,6 +6,7 @@ import { ClientesService, DatosCliente, filtrarClientes } from '../../core/servi
 import { Cliente, ResumenCliente, TIPOS_CLIENTE, TipoCliente } from '../../core/models';
 import { SesionService } from '../../core/services/sesion.service';
 import { mensajeDeError } from '../../shared/utilidades/errores';
+import { IconComponent } from '../../shared/componentes/icon/icon.component';
 
 function formularioVacio(): DatosCliente {
   return {
@@ -17,7 +18,7 @@ function formularioVacio(): DatosCliente {
 @Component({
   selector: 'app-clientes',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, IconComponent],
   templateUrl: './clientes.html',
 })
 export class ClientesComponent {
