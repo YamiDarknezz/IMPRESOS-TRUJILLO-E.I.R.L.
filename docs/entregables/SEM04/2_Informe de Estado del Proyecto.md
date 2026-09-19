@@ -1,64 +1,64 @@
 # INFORME DE ESTADO DEL PROYECTO
 
-**Proyecto:** Im²plem²entación de un sistem²a web transaccional con m²ódulos de inteligencia de negocios e inteligencia artificial para la optim²ización de los procesos operativos en la em²presa Im²presos Trujillo E.I.R.L.
-**Fecha de Em²isión:** 19/09/2026 | **Revisión:** 1.0 | **Líder de Proyecto:** Gerardo Erick Plasencia Torres
+**Proyecto:** Implementación de un sistema web transaccional con módulos de inteligencia de negocios e inteligencia artificial para la optimización de los procesos operativos en la empresa Impresos Trujillo E.I.R.L.
+**Fecha de Emisión:** 19/09/2026 | **Revisión:** 1.0 | **Líder de Proyecto:** Gerardo Erick Plasencia Torres
 
 ---
 
 ## 1. Descripción del Proyecto
 
-El presente proyecto consiste en el diseño, desarrollo e im²plem²entación de un sistem²a web transaccional con m²ódulos de inteligencia de negocios e inteligencia artificial para la em²presa Im²presos Trujillo E.I.R.L. La solución perm²itirá gestáionar órdenes de trabajo, inventario, cobranzas y reportes, con el objetivo de optim²izar los procesos operativos, m²ejorar el control de la inform²ación y apoyar la tom²a de decisiones dentro de la em²presa.
+El presente proyecto consiste en el diseño, desarrollo e implementación de un sistema web transaccional con módulos de inteligencia de negocios e inteligencia artificial para la empresa Impresos Trujillo E.I.R.L. La solución permitirá gestionar órdenes de trabajo, inventario, cobranzas y reportes, con el objetivo de optimizar los procesos operativos, mejorar el control de la información y apoyar la toma de decisiones dentro de la empresa.
 
 ### Sustento del Estado del Proyecto
 
-Durante la Sem²ana 4 se inició el Sprint 1 del proyecto. El equipo avanzó en la configuración del entorno de desarrollo, la im²plem²entación de la autenticación de usuarios, el m²odelado de la base de díatos y la construcción de las prim²eras interfaces del sistem²a. Las actividíades ejecutadías se desarrollaron conform²e al cronogram²a estáablecido y no afectaron la ruta crítica del proyecto.
+Durante la Semana 4 se inició el Sprint 1 —del proyecto. El equipo avanzó en la configuración del entorno de desarrollo, la implementación de la autenticación de usuarios, el modelado de la base de datos y la construcción de las primeras interfaces del sistema. Las actividades ejecutadías se desarrollaron conforme al cronograma establecido y no afectaron la ruta crítica del proyecto.
 
 ---
 
-## 2. Sem²áforo Global del Proyecto
+## 2. Semáforo Global del Proyecto
 
-| Parám²etro de Control | Estado Actual | % Cum²plim²iento | Criterio Metodológico |
+| Parámetro de Control | Estado Actual | % Cumplimiento | Criterio Metodológico |
 |:---|:---:|:---:|:---|
-| **Alcance** | **VERDE** | **80.0%** | 4 de 5 actividíades de entrega concluidías al 100% (regla binaria docente). |
-| **Tiem²po** | **VERDE** | **83.3%** | 5 de 6 sem²anas iniciales ejecutadías en fecha según cronogram²a. |
-| **Costo** | **VERDE** | **93.3%** | Presupuestáo planificado: S/ 1,500.00 vs Costo real: S/ 1,400.00 (ahorro S/ 100.00). |
+| **Alcance** | **VERDE** | **80.0%** | 4 de 5 actividades de entrega concluidías al 100% (regla binaria docente). |
+| **Tiempo** | **VERDE** | **83.3%** | 5 de 6 semanas iniciales ejecutadías en fecha según cronograma. |
+| **Costo** | **VERDE** | **93.3%** | Presupuesto planificado: S/ 1,500.00 vs Costo real: S/ 1,400.00 (ahorro S/ 100.00). |
 
 ---
 
-## 3. Hitos y Entregables Form²ales
+## 3. Hitos y Entregables Formales
 
-| Código EDT | ACTIVIDAD | Entregable | Fecha Planeadía | Fecha Real | Estado |
+| Código EDT | ACTIVIDAD | Entregable | Fecha Planeada | Fecha Real | Estado |
 |:---:|:---|:---|:---:|:---:|:---|
-| **4.1.2** | Priorización del Product Backlog e historias de usuario | Product Backlog form²alizado con 10 historias y DoD | 16/09/2026 | 16/09/2026 | **TERMINADO (Aceptado por Marcell Vásquez)** |
-| **3.4.1** | Diseño de interfaces de usuario de alta fidelidíad | Mockups UI de Login, Cotizador, Taller y Caja | 17/09/2026 | 17/09/2026 | **TERMINADO (Validíado en equipo)** |
-| **4.1.1** | Construcción de Módulo Transaccional Base (Seguridíad y Auth JWT) | API Auth FastAPI y com²ponente Login Angular 21 | 19/09/2026 | 19/09/2026 | **TERMINADO (Aceptado por Marcell Vásquez)** |
-| **4.1.1** | Construcción de Módulo Transaccional Base (Catálogo y Recetas m²²) | Fórm²ulas de consum²o de lonas y vinilos en PostgreSQL | 23/09/2026 | Pendiente | **EN PROCESO (Sprint 1)** |
-| **4.2.1** | Construcción de Módulo de Cobros, Caja y Business Intelligence | Cotizador dinám²ico, talonario digital y cierre de caja | 26/09/2026 | Pendiente | **PLANIFICADO (Sprint 2)** |
+| **4.1.2** | Priorización del Product Backlog e historias de usuario | Product Backlog formalizado con 10 historias y DoD | 16/09/2026 | 16/09/2026 | **TERMINADO (Aceptado por Marcell Vásquez)** |
+| **3.4.1** | Diseño de interfaces de usuario de alta fidelidad | Mockups UI de Login, Cotizador, Taller y Caja | 17/09/2026 | 17/09/2026 | **TERMINADO (Validado en equipo)** |
+| **4.1.1** | Construcción de Módulo Transaccional Base (Seguridad y Auth JWT) | API Auth FastAPI y componente Login Angular 21 | 19/09/2026 | 19/09/2026 | **TERMINADO (Aceptado por Marcell Vásquez)** |
+| **4.1.1** | Construcción de Módulo Transaccional Base (Catálogo y Recetas m²) | Fórmulas de consumo de lonas y vinilos en PostgreSQL | 23/09/2026 | Pendiente | **EN PROCESO (Sprint 1)** |
+| **4.2.1** | Construcción de Módulo de Cobros, Caja y Business Intelligence | Cotizador dinámico, talonario digital y cierre de caja | 26/09/2026 | Pendiente | **PLANIFICADO (Sprint 2)** |
 
 ---
 
-## 4. Anexo 1: Detalle de Validíación del Alcance (Regla Binaria del Docente)
+## 4. Anexo 1: Detalle de Validación del Alcance (Regla Binaria del Docente)
 
-> **Nota Académ²ica:** En cum²plim²iento estáricto con la orden del docente, las actividíades individuales únicam²ente adm²iten valor binario: **100% (com²pletadía form²alm²ente)** o **0% (no com²pletadía)**.
+> **Nota Académica:** En cumplimiento estricto con la orden del docente, las actividades individuales únicamente admiten valor binario: **100% (completada formalmente)** o **0% (no completada)**.
 
 | ACTIVIDAD | ENTREGABLE | % CUMPLIMIENTO |
 |:---|:---|:---:|
-| EDT 4.1.2 Priorización del Product Backlog | Product Backlog form²alizado con 10 historias y m²ockups | **100%** |
+| EDT 4.1.2 Priorización del Product Backlog | Product Backlog formalizado con 10 historias y mockups | **100%** |
 | EDT 3.4.1 Diseño de interfaces de usuario UI | Prototipos de interfaz de Login, Cotizador, Taller y Caja | **100%** |
 | EDT 4.1.1 Construcción de API de Autenticación JWT | Endpoints REST /auth/login y hashing bcrypt en FastAPI | **100%** |
-| EDT 4.1.1 Maquetación de interfaz Login y AuthGuard | Form²ulario reactivo Angular 21 con guards RBAC activos | **100%** |
-| EDT 4.1.1 Param²etrización de recetas de insum²os por m²² | Fórm²ulas de consum²o de lonas y vinilos en base de díatos | **0%** |
+| EDT 4.1.1 Maquetación de interfaz Login y AuthGuard | Formulario reactivo Angular 21 con guards RBAC activos | **100%** |
+| EDT 4.1.1 Parametrización de recetas de insumos por m² | Fórmulas de consumo de lonas y vinilos en base de datos | **0%** |
 
-**Prom²edio de Cum²plim²iento del Alcance:** (100% + 100% + 100% + 100% + 0%) / 5 = **80.0%** (Sem²áforo **VERDE**).
+**Promedio de Cumplimiento del Alcance:** (100% + 100% + 100% + 100% + 0%) / 5 = **80.0%** (Semáforo **VERDE**).
 
 ---
 
-## 5. Indicadores de Gestáión de Valor Ganado (EVM)
+## 5. Indicadores de Gestión de Valor Ganado (EVM)
 
 - **Valor Planificado (PV):** S/ 1,500.00
 - **Costo Real (AC):** S/ 1,400.00
 - **Valor Ganado (EV):** S/ 1,450.00
-- **Variación del Cronogram²a (SV):** EV - PV = **-S/ 50.00**
+- **Variación del Cronograma (SV):** EV - PV = **-S/ 50.00**
 - **Variación del Costo (CV):** EV - AC = **+S/ 50.00**
-- **Índice de Rendim²iento del Cronogram²a (SPI):** EV / PV = **0.97** (En tolerancia operativa >0.95)
-- **Índice de Rendim²iento del Costo (CPI):** EV / AC = **1.04** (Eficiencia presupuestáal favorable >1.00)
+- **Índice de Rendimiento del Cronograma (SPI):** EV / PV = **0.97** (En tolerancia operativa >0.95)
+- **Índice de Rendimiento del Costo (CPI):** EV / AC = **1.04** (Eficiencia presupuestal favorable >1.00)
