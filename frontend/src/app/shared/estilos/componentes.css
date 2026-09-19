@@ -130,14 +130,16 @@
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
+  max-width: 100%;
+  flex-wrap: wrap;
 }
 
 .filter-btn {
   background: none;
   border: none;
   border-right: 1px solid var(--border);
-  padding: 0.45rem 1.1rem;
-  font-size: 0.82rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.78rem;
   font-weight: 600;
   color: var(--text-muted);
   cursor: pointer;
@@ -158,33 +160,46 @@
 }
 
 .table-card { overflow: hidden; }
-.table-wrapper { overflow-x: auto; }
+.table-wrapper {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.table-wrapper::-webkit-scrollbar {
+  height: 6px;
+}
+.table-wrapper::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 4px;
+}
 
 .data-table {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
 }
 
 .data-table th {
   background: var(--surface-2);
   color: var(--text-muted);
   font-weight: 700;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  padding: 0.6rem 0.85rem;
+  padding: 0.45rem 0.65rem;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
 
 .data-table td {
-  padding: 0.6rem 0.85rem;
+  padding: 0.45rem 0.65rem;
   border-bottom: 1px solid var(--border-soft);
   color: var(--text-soft);
   vertical-align: middle;
   white-space: nowrap;
+  font-size: 0.8125rem;
 }
 
 .data-table tr:last-child td { border-bottom: none; }
@@ -280,7 +295,7 @@
 
 /* ─── Buttons ────────────────────────────────────────────────────────────── */
 
-.btn-sm { padding: 0.4rem 0.9rem; font-size: 0.82rem; }
+.btn-sm { padding: 0.3rem 0.65rem; font-size: 0.78rem; font-weight: 600; line-height: 1.2; }
 
 /* ─── Form card ──────────────────────────────────────────────────────────── */
 
@@ -606,14 +621,26 @@
   margin-top: 0.15rem;
 }
 
-/* ─── Edit order ─────────────────────────────────────────────────────────── */
+/* ─── Acciones en tablas (manteniendo display: table-cell en <td>) ────────── */
 
-.actions-cell {
-  display: flex;
+td.actions-cell {
+  text-align: right;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.actions-wrapper {
+  display: inline-flex;
   gap: 0.35rem;
-  flex-wrap: wrap;
   align-items: center;
-  min-width: 160px;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+
+div.actions-cell {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
 }
 
 .btn-complete {
@@ -909,14 +936,14 @@ select.search-input {
 .estado-select {
   border: 1px solid transparent;
   border-radius: 9999px;
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   font-weight: 700;
   letter-spacing: 0.2px;
-  padding: 0.28rem 1.5rem 0.28rem 0.75rem;
-  background-position: right 0.5rem center;
+  padding: 0.22rem 1.3rem 0.22rem 0.65rem;
+  background-position: right 0.45rem center;
   background-size: 8px 6px;
   cursor: pointer;
-  max-width: 150px;
+  max-width: 135px;
 }
 
 .estado-select:focus {
@@ -931,11 +958,11 @@ select.search-input {
   border-radius: 6px;
   background-color: var(--surface);
   color: var(--text);
-  font-size: 0.78rem;
-  padding: 0.25rem 1.4rem 0.25rem 0.4rem;
+  font-size: 0.76rem;
+  padding: 0.22rem 1.2rem 0.22rem 0.4rem;
   background-position: right 0.4rem center;
   background-size: 8px 6px;
-  max-width: 130px;
+  max-width: 120px;
   cursor: pointer;
 }
 .assign-select:focus {

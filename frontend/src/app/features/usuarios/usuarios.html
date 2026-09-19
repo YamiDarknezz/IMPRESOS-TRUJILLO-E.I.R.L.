@@ -47,9 +47,11 @@
                   </span>
                 </td>
                 <td class="actions-cell">
-                  <button class="btn-secondary btn-sm" (click)="alternarActivo(u)" [disabled]="guardando()">
-                    {{ u.activo ? 'Desactivar' : 'Reactivar' }}
-                  </button>
+                  <div class="actions-wrapper">
+                    <button class="btn-secondary btn-sm" (click)="alternarActivo(u)" [disabled]="guardando()">
+                      {{ u.activo ? 'Desactivar' : 'Reactivar' }}
+                    </button>
+                  </div>
                 </td>
               </tr>
             }

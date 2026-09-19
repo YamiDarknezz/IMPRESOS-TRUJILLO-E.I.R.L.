@@ -158,14 +158,16 @@
                   </span>
                 </td>
                 <td>{{ cierre.validador || '—' }}</td>
-                <td>
-                  @if (sesion.esSupervisor() && cierre.estado !== 'congelado') {
-                    <button class="btn-secondary btn-sm" (click)="congelar(cierre)" [disabled]="guardando()">
-                      Congelar
-                    </button>
-                  } @else {
-                    <span class="text-muted">—</span>
-                  }
+                <td class="actions-cell">
+                  <div class="actions-wrapper">
+                    @if (sesion.esSupervisor() && cierre.estado !== 'congelado') {
+                      <button class="btn-secondary btn-sm" (click)="congelar(cierre)" [disabled]="guardando()">
+                        Congelar
+                      </button>
+                    } @else {
+                      <span class="text-muted">—</span>
+                    }
+                  </div>
                 </td>
               </tr>
             }

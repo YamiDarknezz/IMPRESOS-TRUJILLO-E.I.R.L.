@@ -51,11 +51,13 @@
                 <td>{{ c.telefono || '—' }}</td>
                 <td>{{ c.email || '—' }}</td>
                 <td class="actions-cell">
-                  <button class="btn-secondary btn-sm" (click)="verDetalle(c)">Ver ficha</button>
-                  @if (sesion.puedeGestionarOrdenes()) {
-                    <button class="btn-secondary btn-sm" (click)="abrirEdicion(c)">Editar</button>
-                    <button class="btn-secondary btn-sm btn-cancel" (click)="desactivar(c)">Eliminar</button>
-                  }
+                  <div class="actions-wrapper">
+                    <button class="btn-secondary btn-sm" (click)="verDetalle(c)">Ver ficha</button>
+                    @if (sesion.puedeGestionarOrdenes()) {
+                      <button class="btn-secondary btn-sm" (click)="abrirEdicion(c)">Editar</button>
+                      <button class="btn-secondary btn-sm btn-cancel" (click)="desactivar(c)">Eliminar</button>
+                    }
+                  </div>
                 </td>
               </tr>
             }

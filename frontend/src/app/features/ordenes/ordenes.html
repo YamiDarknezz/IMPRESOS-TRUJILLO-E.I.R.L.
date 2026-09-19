@@ -198,29 +198,34 @@
               </td>
 
               <td class="actions-cell">
-                @if (estaEnPipeline(orden)) {
-                  @if (sesion.puedeGestionarOrdenes()) {
-                    <a class="btn-secondary btn-sm" title="Editar orden"
-                       [routerLink]="['/ordenes', orden.id, 'editar']">Editar</a>
+                <div class="actions-wrapper">
+                  @if (estaEnPipeline(orden)) {
+                    @if (sesion.puedeGestionarOrdenes()) {
+                      <a class="btn-secondary btn-sm" title="Editar orden"
+                         [routerLink]="['/ordenes', orden.id, 'editar']">Editar</a>
+                    }
+                    @if (sesion.puedeGestionar(orden)) {
+                      <button class="btn-secondary btn-sm btn-complete"
+                              title="Reportar uso real de materiales y finalizar la producción"
+                              (click)="abrirCompletar(orden)">Reportar uso</button>
+                    }
+                    @if (sesion.esSupervisor()) {
+                      <button class="btn-secondary btn-sm btn-cancel"
+                              title="Cancelar orden (devuelve stock al inventario)"
+                              (click)="cancelar(orden)">Cancelar</button>
+                    }
                   }
-                  @if (sesion.puedeGestionar(orden)) {
-                    <button class="btn-secondary btn-sm btn-complete"
-                            title="Reportar uso real de materiales y finalizar la producción"
-                            (click)="abrirCompletar(orden)">Reportar uso</button>
+                  @if (orden.estado !== 'cancelada'
+                       && !orden.finanzas?.pagado_totalmente
+                       && sesion.puedeGestionar(orden)) {
+                    <button class="btn-sm btn-pago"
+                            title="Confirmar que el pago fue recibido en su totalidad"
+                            (click)="abrirCobro(orden)">Pago recibido</button>
                   }
-                  @if (sesion.esSupervisor()) {
-                    <button class="btn-secondary btn-sm btn-cancel"
-                            title="Cancelar orden (devuelve stock al inventario)"
-                            (click)="cancelar(orden)">Cancelar</button>
+                  @if (!estaEnPipeline(orden) && (orden.estado === 'cancelada' || (orden.estado === 'entregada' && orden.finanzas?.pagado_totalmente))) {
+                    <span class="text-muted">—</span>
                   }
-                }
-                @if (orden.estado !== 'cancelada'
-                     && !orden.finanzas?.pagado_totalmente
-                     && sesion.puedeGestionar(orden)) {
-                  <button class="btn-sm btn-pago"
-                          title="Confirmar que el pago fue recibido en su totalidad"
-                          (click)="abrirCobro(orden)">Pago recibido</button>
-                }
+                </div>
               </td>
             </tr>
           }
