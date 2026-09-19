@@ -653,6 +653,75 @@ td.actions-cell {
   line-height: 1.15;
 }
 
+/* Botones de acción compactos con iconos (UX moderna y sin desborde horizontal) */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: var(--r-sm, 6px);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-soft);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.btn-icon:hover {
+  background: var(--surface-2);
+  border-color: var(--text-faint);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.btn-icon:active {
+  transform: translateY(0);
+}
+
+.btn-icon:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-icon-complete {
+  color: var(--info-fg);
+  border-color: var(--info-bg);
+  background: var(--info-bg);
+}
+
+.btn-icon-complete:hover {
+  background: var(--info-fg);
+  color: #ffffff;
+}
+
+.btn-icon-pago {
+  color: var(--success-fg);
+  border-color: var(--success-bg);
+  background: var(--success-bg);
+}
+
+.btn-icon-pago:hover {
+  background: var(--success);
+  color: #ffffff;
+}
+
+.btn-icon-cancel {
+  color: var(--danger);
+  border-color: var(--error-border);
+}
+
+.btn-icon-cancel:hover {
+  background: var(--danger-bg);
+  border-color: var(--danger);
+}
+
 div.actions-cell {
   display: inline-flex;
   gap: 0.25rem;

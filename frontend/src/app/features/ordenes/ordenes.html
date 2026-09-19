@@ -201,26 +201,29 @@
                 <div class="actions-wrapper">
                   @if (estaEnPipeline(orden)) {
                     @if (sesion.puedeGestionarOrdenes()) {
-                      <a class="btn-secondary btn-sm" title="Editar orden"
-                         [routerLink]="['/ordenes', orden.id, 'editar']">Editar</a>
+                      <a class="btn-icon" title="Editar orden" aria-label="Editar orden"
+                         [routerLink]="['/ordenes', orden.id, 'editar']">✏️</a>
                     }
                     @if (sesion.puedeGestionar(orden)) {
-                      <button class="btn-secondary btn-sm btn-complete"
-                              title="Reportar uso real de materiales y finalizar la producción"
-                              (click)="abrirCompletar(orden)">Reportar uso</button>
+                      <button class="btn-icon btn-icon-complete"
+                              title="Reportar uso de insumos y finalizar producción"
+                              aria-label="Reportar uso de insumos y finalizar producción"
+                              (click)="abrirCompletar(orden)">📦</button>
                     }
                     @if (sesion.esSupervisor()) {
-                      <button class="btn-secondary btn-sm btn-cancel"
+                      <button class="btn-icon btn-icon-cancel"
                               title="Cancelar orden (devuelve stock al inventario)"
-                              (click)="cancelar(orden)">Cancelar</button>
+                              aria-label="Cancelar orden"
+                              (click)="cancelar(orden)">✕</button>
                     }
                   }
                   @if (orden.estado !== 'cancelada'
                        && !orden.finanzas?.pagado_totalmente
                        && sesion.puedeGestionar(orden)) {
-                    <button class="btn-sm btn-pago"
-                            title="Confirmar que el pago fue recibido en su totalidad"
-                            (click)="abrirCobro(orden)">Cobrar</button>
+                    <button class="btn-icon btn-icon-pago"
+                            title="Registrar cobro de saldo pendiente"
+                            aria-label="Registrar cobro de saldo pendiente"
+                            (click)="abrirCobro(orden)">💵</button>
                   }
                   @if (!estaEnPipeline(orden) && (orden.estado === 'cancelada' || (orden.estado === 'entregada' && orden.finanzas?.pagado_totalmente))) {
                     <span class="text-muted">—</span>

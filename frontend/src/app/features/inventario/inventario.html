@@ -58,10 +58,13 @@
                 </td>
                 <td class="actions-cell">
                   <div class="actions-wrapper">
-                    <button class="btn-secondary btn-sm" (click)="verMovimientos(mat)"
-                            title="Ver reservas, mermas y ajustes del material">Movimientos</button>
+                    <button class="btn-icon" (click)="verMovimientos(mat)"
+                            title="Ver historial de reservas, mermas y ajustes del material"
+                            aria-label="Ver movimientos">📜</button>
                     @if (sesion.esSupervisor()) {
-                      <button class="btn-secondary btn-sm" (click)="abrirEdicion(mat)">Editar</button>
+                      <button class="btn-icon" (click)="abrirEdicion(mat)"
+                              title="Editar material y niveles de alerta"
+                              aria-label="Editar material">✏️</button>
                     }
                   </div>
                 </td>

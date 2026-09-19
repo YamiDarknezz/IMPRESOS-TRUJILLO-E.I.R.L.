@@ -52,10 +52,10 @@
                 <td>{{ c.email || '—' }}</td>
                 <td class="actions-cell">
                   <div class="actions-wrapper">
-                    <button class="btn-secondary btn-sm" (click)="verDetalle(c)">Ver ficha</button>
+                    <button class="btn-icon" title="Ver ficha del cliente" aria-label="Ver ficha" (click)="verDetalle(c)">👁️</button>
                     @if (sesion.puedeGestionarOrdenes()) {
-                      <button class="btn-secondary btn-sm" (click)="abrirEdicion(c)">Editar</button>
-                      <button class="btn-secondary btn-sm btn-cancel" (click)="desactivar(c)">Eliminar</button>
+                      <button class="btn-icon" title="Editar datos del cliente" aria-label="Editar cliente" (click)="abrirEdicion(c)">✏️</button>
+                      <button class="btn-icon btn-icon-cancel" title="Eliminar cliente" aria-label="Eliminar cliente" (click)="desactivar(c)">🗑️</button>
                     }
                   </div>
                 </td>

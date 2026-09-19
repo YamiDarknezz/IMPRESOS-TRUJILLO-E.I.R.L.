@@ -41,8 +41,8 @@
                 <td>{{ p.notas || '—' }}</td>
                 <td class="actions-cell">
                   <div class="actions-wrapper">
-                    <button class="btn-secondary btn-sm" (click)="abrirEdicion(p)">Editar</button>
-                    <button class="btn-secondary btn-sm btn-cancel" (click)="eliminar(p)">Eliminar</button>
+                    <button class="btn-icon" title="Editar producto" aria-label="Editar producto" (click)="abrirEdicion(p)">✏️</button>
+                    <button class="btn-icon btn-icon-cancel" title="Eliminar producto" aria-label="Eliminar producto" (click)="eliminar(p)">🗑️</button>
                   </div>
                 </td>
               </tr>
