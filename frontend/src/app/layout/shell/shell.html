@@ -17,7 +17,6 @@
               [title]="theme.theme() === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'">
         {{ theme.theme() === 'dark' ? '☀️' : '🌙' }}
       </button>
-      <button class="btn-logout" (click)="cerrarSesion()">Cerrar sesión</button>
     </div>
   </header>
 
@@ -56,10 +55,18 @@
         }
       </nav>
 
-      <button class="sidebar-collapse-btn" (click)="alternarColapsado()"
-              [title]="colapsado() ? 'Expandir menú' : 'Colapsar menú'">
-        {{ colapsado() ? '»' : '«' }}
-      </button>
+      <div class="sidebar-footer">
+        <button class="sidebar-item btn-sidebar-logout" (click)="cerrarSesion()"
+                title="Cerrar sesión" aria-label="Cerrar sesión">
+          <span class="sidebar-icon">🚪</span>
+          <span class="sidebar-label">Cerrar sesión</span>
+        </button>
+
+        <button class="sidebar-collapse-btn" (click)="alternarColapsado()"
+                [title]="colapsado() ? 'Expandir menú' : 'Colapsar menú'">
+          {{ colapsado() ? '»' : '«' }}
+        </button>
+      </div>
     </aside>
 
     @if (cajonAbierto()) {
