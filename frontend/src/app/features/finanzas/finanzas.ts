@@ -48,6 +48,18 @@ export class FinanzasComponent {
     this.cargar();
   }
 
+  filtrarMesActual(): void {
+    this.finanzasService.setMesActual();
+  }
+
+  filtrarHoy(): void {
+    this.finanzasService.setHoy();
+  }
+
+  filtrarTodo(): void {
+    this.finanzasService.setTodo();
+  }
+
   /** Exporta el resumen tal como se ve, para pasárselo al contador. */
   exportarCSV(): void {
     const datos = this.resumen();

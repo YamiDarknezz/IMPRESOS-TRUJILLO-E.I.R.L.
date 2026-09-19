@@ -40,8 +40,10 @@
                 </td>
                 <td>{{ p.notas || '—' }}</td>
                 <td class="actions-cell">
-                  <button class="btn-secondary btn-sm" (click)="abrirEdicion(p)">Editar</button>
-                  <button class="btn-secondary btn-sm btn-cancel" (click)="eliminar(p)">Eliminar</button>
+                  <div class="actions-wrapper">
+                    <button class="btn-secondary btn-sm" (click)="abrirEdicion(p)">Editar</button>
+                    <button class="btn-secondary btn-sm btn-cancel" (click)="eliminar(p)">Eliminar</button>
+                  </div>
                 </td>
               </tr>
             }

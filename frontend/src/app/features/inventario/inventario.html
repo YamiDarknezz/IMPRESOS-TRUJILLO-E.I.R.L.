@@ -56,12 +56,14 @@
                     <span class="metodo-label">reponer · ~{{ mat.dias_reabastecimiento }} días</span>
                   }
                 </td>
-                <td>
-                  <button class="btn-secondary btn-sm" (click)="verMovimientos(mat)"
-                          title="Ver reservas, mermas y ajustes del material">Movimientos</button>
-                  @if (sesion.esSupervisor()) {
-                    <button class="btn-secondary btn-sm" (click)="abrirEdicion(mat)">Editar</button>
-                  }
+                <td class="actions-cell">
+                  <div class="actions-wrapper">
+                    <button class="btn-secondary btn-sm" (click)="verMovimientos(mat)"
+                            title="Ver reservas, mermas y ajustes del material">Movimientos</button>
+                    @if (sesion.esSupervisor()) {
+                      <button class="btn-secondary btn-sm" (click)="abrirEdicion(mat)">Editar</button>
+                    }
+                  </div>
                 </td>
               </tr>
             }

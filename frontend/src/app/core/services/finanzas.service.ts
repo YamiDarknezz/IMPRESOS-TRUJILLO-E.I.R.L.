@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { ApiService } from './api.service';
 import { ETIQUETA_METODO, MetodoPago, RespuestaItem, ResumenFinanzas } from '../models';
-import { hoyISO } from '../../shared/utilidades/fechas';
+import { hoyISO, primerDiaDelMesISO } from '../../shared/utilidades/fechas';
 import { guardarPreferencia, leerPreferencia } from '../../shared/utilidades/almacenamiento';
 
 const CLAVE_DESDE = 'it-fin-desde';
@@ -14,8 +14,8 @@ export class FinanzasService {
   readonly resumen = signal<ResumenFinanzas | null>(null);
   readonly cargando = signal(false);
 
-  /** El último rango consultado se recuerda entre sesiones. */
-  readonly desde = signal(leerPreferencia(CLAVE_DESDE) || hoyISO());
+  /** Por defecto se muestra el mes en curso para reflejar la actividad del negocio. */
+  readonly desde = signal(leerPreferencia(CLAVE_DESDE) || primerDiaDelMesISO());
   readonly hasta = signal(leerPreferencia(CLAVE_HASTA) || hoyISO());
   readonly trabajador = signal<number | null>(null);
 
@@ -41,6 +41,24 @@ export class FinanzasService {
     } finally {
       this.cargando.set(false);
     }
+  }
+
+  setMesActual(): void {
+    this.desde.set(primerDiaDelMesISO());
+    this.hasta.set(hoyISO());
+    this.cargar();
+  }
+
+  setHoy(): void {
+    this.desde.set(hoyISO());
+    this.hasta.set(hoyISO());
+    this.cargar();
+  }
+
+  setTodo(): void {
+    this.desde.set('');
+    this.hasta.set('');
+    this.cargar();
   }
 
   private consulta(): string {

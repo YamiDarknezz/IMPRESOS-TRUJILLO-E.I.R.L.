@@ -51,8 +51,10 @@
             <tr>
               <td><strong>{{ u.nombre }}</strong></td>
               <td>{{ u.abreviatura || '—' }}</td>
-              <td>
-                <button class="btn-secondary btn-sm btn-cancel" (click)="eliminar(u)">Eliminar</button>
+              <td class="actions-cell">
+                <div class="actions-wrapper">
+                  <button class="btn-secondary btn-sm btn-cancel" (click)="eliminar(u)">Eliminar</button>
+                </div>
               </td>
             </tr>
           }

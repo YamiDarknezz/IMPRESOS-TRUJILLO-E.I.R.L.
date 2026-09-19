@@ -11,6 +11,14 @@ export function hoyISO(): string {
   return new Date().toISOString().split('T')[0];
 }
 
+/** Primer día del mes actual en formato 'AAAA-MM-DD'. */
+export function primerDiaDelMesISO(): string {
+  const d = new Date();
+  const anio = d.getFullYear();
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  return `${anio}-${mes}-01`;
+}
+
 /** Lleva cualquiera de las dos formas a 'AAAA-MM-DD', para poder comparar. */
 export function aFechaISO(fecha: unknown): string {
   if (!fecha) return '';
