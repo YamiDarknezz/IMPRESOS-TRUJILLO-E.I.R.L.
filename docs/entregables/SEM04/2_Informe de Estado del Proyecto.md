@@ -7,7 +7,11 @@
 
 ## 1. Descripción del Proyecto
 
-El presente proyecto comprende la implementación de un sistema web integral diseñado para la empresa Impresos Trujillo E.I.R.L., enfocado en sistematizar el flujo operativo comercial mediante un cotizador paramétrico con recetas de insumos por m², gestión de órdenes de trabajo con talonario digital correlativo, control de producción en taller gráfico mediante tablero visual, candado digital de despacho con validación de saldo cero, control de ingresos en mostrador segregado por turnos y dashboards analíticos con algoritmos de apoyo al reabastecimiento mensual; sustentado en una arquitectura distribuida basada en Angular 21, FastAPI, PostgreSQL 17 nativo en Docker y operación local sin despliegues tempranos.
+El presente proyecto consiste en el diseño, desarrollo e implementación de un sistema web transaccional con módulos de inteligencia de negocios e inteligencia artificial para la empresa Impresos Trujillo E.I.R.L. La solución permitirá gestionar órdenes de trabajo, inventario, cobranzas y reportes, con el objetivo de optimizar los procesos operativos, mejorar el control de la información y apoyar la toma de decisiones dentro de la empresa.
+
+### Sustento del Estado del Proyecto
+
+Durante la Semana 4 se inició el Sprint 1 del proyecto. El equipo avanzó en la configuración del entorno de desarrollo, la implementación de la autenticación de usuarios, el modelado de la base de datos y la construcción de las primeras interfaces del sistema. Las actividades ejecutadas se desarrollaron conforme al cronograma establecido y no afectaron la ruta crítica del proyecto.
 
 ---
 
