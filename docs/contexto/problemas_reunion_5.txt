@@ -1,0 +1,25 @@
+Noto que actualmente no tienen centralizado lo que queda pendiente por pagar, dependen de whatsapp para validar cuanto faltaba cobrar tienen que revisar chats separados validar cuando fue el adelanto lo cual toma tiempo y retrasa la entrega y finalización de un pedido. al llegar el cliente identifica el pedido pero al no haber una trazabilidad tienen que saber de memoria que pedido le tocaba a dicha persona no hay una fácil trazabilidad del pedido, dependen de la persona que hizo el pedido si no se encuentra tienen que contactar a la persona que hizo el pedido
+--
+IDENTIFICAR EN EL INVENTARIO DONDE ESTAN UBICADAS CADA COSA PARA FACILITAR EL RAPIDO ACCESO AL PRODUCTO
+--
+el inventario debe tener un precio de compra para poder sacar márgenes de ganancias netas, y de algún modo tener mapeado el tiempo que toma en realizarse un pedido para mapear el costo del personal. se debería poder identificar si algún producto necesita cobrarse mas o cobrarse menos
+--
+historial de adelantos y poner descripción de adelantos
+--
+en producción se retira
+--
+crear forma de seguimiento cuando el cliente sea una empresa porque en esos casos se entrega antes de pagar
+--
+agregar filtros en auditoria
+--
+impresión directa exportar el pdf 
+--
+extras pequeñas
+copias
+fotochecks
+varios, etc
+--
+especficiar el tipo de contrato por whatsapp, llamada, físico.
+--
+poner descarto y poner mermas
+-un seguimiento por rollos por pedidos, para saber cuando se acaba un rollo

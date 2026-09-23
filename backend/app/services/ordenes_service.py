@@ -24,6 +24,7 @@ from app.core.fechas import ahora_utc
 from app.models import (
     Cliente,
     EstadoOrden,
+    EstadoPago,
     Material,
     MetodoPago,
     MotivoMovimiento,
@@ -33,11 +34,11 @@ from app.models import (
     PagoOrden,
     Producto,
     Rol,
+    TipoDocumento,
     TipoPago,
     Usuario,
 )
-from app.schemas.orden import OrdenCreateData
-from app.schemas.orden import MaterialEstimado
+from app.schemas.orden import MaterialEstimado, OrdenCreateData, VentaRapidaData
 from app.services import inventario_service
 from app.services.inventario_service import AjusteStock
 
@@ -473,6 +474,90 @@ async def crear_orden(sesion: AsyncSession, data: OrdenCreateData, usuario: Usua
         orden,
         f"Cliente: {cliente.nombre}, Total: S/ {_redondear(total)}",
         nuevos={"estado": orden.estado.value, "total": float(total)},
+    )
+    await sesion.flush()
+    return orden
+
+
+async def crear_venta_rapida(
+    sesion: AsyncSession, data: VentaRapidaData, usuario: Usuario
+) -> Orden:
+    """
+    Registra una venta express en mostrador (copias, fotochecks, servicios rápidos).
+    Se crea la orden con pago al 100% y queda inmediatamente entregada.
+    """
+    nombre_cliente = (data.cliente_nombre or "Cliente Mostrador").strip()
+    cliente = (
+        await sesion.execute(select(Cliente).where(Cliente.nombre.ilike(nombre_cliente)))
+    ).scalars().first()
+    if cliente is None:
+        cliente = Cliente(nombre=nombre_cliente)
+        sesion.add(cliente)
+        await sesion.flush()
+
+    monto = _redondear(_decimal(data.monto_total))
+    hoy = ahora_utc().date()
+    ahora = ahora_utc()
+
+    orden = Orden(
+        tipo_documento=TipoDocumento.CONTRATO,
+        cliente=cliente,
+        direccion="",
+        telefono="",
+        asignado=usuario,
+        creado_por=usuario.id,
+        descripcion=f"[VENTA RÁPIDA] {data.descripcion}",
+        unidad_negocio=data.unidad_negocio,
+        fecha_entrega=hoy,
+        incluye_igv=False,
+        subtotal=monto,
+        igv=Decimal("0.00"),
+        descuento=Decimal("0.00"),
+        motivo_descuento="",
+        total=monto,
+        adelanto=monto,
+        saldo_pendiente=Decimal("0.00"),
+        pagado_totalmente=True,
+        metodo_pago_adelanto=data.metodo_pago,
+        estado=EstadoOrden.ENTREGADA,
+        finalizada_en=ahora,
+        entregada_en=ahora,
+        items=[],
+        materiales=[],
+        pagos=[],
+    )
+    sesion.add(orden)
+    await sesion.flush()
+
+    item = OrdenItem(
+        orden_id=orden.id,
+        descripcion=data.descripcion,
+        cantidad=Decimal("1.00"),
+        precio_unitario=monto,
+        importe=monto,
+    )
+    orden.items.append(item)
+
+    pago = PagoOrden(
+        orden_id=orden.id,
+        monto=monto,
+        metodo=data.metodo_pago,
+        tipo=TipoPago.ADELANTO,
+        registrado_por=usuario.id,
+        usuario=usuario,
+        referencia=data.referencia,
+        estado_pago=EstadoPago.CONFORME,
+    )
+    orden.pagos.append(pago)
+    await sesion.flush()
+
+    _auditar_orden(
+        sesion,
+        usuario,
+        "crear",
+        orden,
+        f"Venta rápida {orden.codigo} por S/ {monto} ({data.metodo_pago.value}).",
+        nuevos={"total": float(monto), "descripcion": data.descripcion, "express": True},
     )
     await sesion.flush()
     return orden

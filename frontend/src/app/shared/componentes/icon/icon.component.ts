@@ -24,6 +24,7 @@ export type IconName =
   | 'dollar-sign'
   | 'coins'
   | 'x'
+  | 'plus'
   | 'search'
   | 'file-text'
   | 'smartphone'
@@ -175,6 +176,10 @@ export type IconName =
         @case ('x') {
           <path d="M18 6 6 18"/>
           <path d="m6 6 12 12"/>
+        }
+        @case ('plus') {
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
         }
         @case ('search') {
           <circle cx="11" cy="11" r="8"/>

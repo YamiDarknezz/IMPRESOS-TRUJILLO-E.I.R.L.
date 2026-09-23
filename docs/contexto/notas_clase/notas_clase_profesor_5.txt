@@ -1,0 +1,73 @@
+Semana 5:
+Acta de aceptación de entregables, apartir de hoy 19-09 todo las correciones de semanas pasadas deben haber sido subsanadas y deben ser entregadas al encargado el cliente debe saber lo que hicimos. Se llena el nombre de quien recibe el documento, el responsable, las fechas de inicio y demás salen del cronograma hecho equivalente de días y horas, y la fecha en la que nos acercamos a la empresa y nos acercamos a entregar. PUNTO IMPORTANTE SE ENTREGA Y DEBE SER ACEPTADO EL DOCUMENTO, en la matriz de comunicación esta lo ultimo del primer cuadro del acta de aceptación de entregables. en observaciones adicionales de parte del cliente ahi pones si quiere cambiar el color de un botón o cosas puntuales. Y en lo ultimo se pone los datos ya de firmas y fecha 
+Documento del Costeo, ósea presupuesto se pone código EDT:
+en el lado izquierdo se dispone de la actividades con su código EDT y en la categorización todo debe estar en los documentos como el documento de asignación, horas invertidas etc costo hora y demás llenas el cuadro OJO que con la suma de todas las tablas debe sumar al total del presupuesto, tiene que aparecer consumibles energía eléctrica, el alquiler de la laptop de trabajo. COMPRAS POR PARTE DEL CLIENTE NO NOS COMPETE A NOSOTROS, compras se ponen en matriz de compra y solo se hace una vez (no tenemos esa plantilla asi que de momento no lo haríamos )
+El profesor dice que no coloquen "ES el sprint 1" porque dice "de que trata el sprint 1?" en formato de lecciones si podemos poner nuestras debilidades que encontremos lecciones aprendidas y demás 
+
+Evaluación T1:
+RESUMEN NO SE REALIZA SIN RESULTADOS
+CAPITULO 2 SI
+2.1
+Esto ya esta en la documentación business case, etc
+2.2
+Aca se menciona como se recogio información, cual es la situación actual y como se recogio la información (entrevistas etc)
+CAPITULO 3 SI
+3.1 Antecedentes (nota en los documentos el formato de antecedentes hechos no le había gustado al profesor corregir eso)
+3.2 Aca dice el docente "Para llegar un diagrama de pareto hay que reflexionar que es lo que realmente hace pareto y es una priorización de problemas entonces si hay una priorizacion de problemas los problemsa se consiguen de los hallazgos y para lograrlo se debe lograr el famoso arbol de problemas este arbol es simbólico y sirve para decirnos que hay ramificaciones y que hay un problema que genera un sin numero de otros subproblemas y estos son causales para mas problemas todo se ramifica con el arbol hecho hay que listar los problemas identificados y priorizarlos cual es el que se establecera como numero 1, 2, 3, 4, etc. y cual es la necesidad de la empresa por resolverlo ojo nosotros no establecemos el orden de los problemas lo establece el cliente no es una corazonada del grupo, es algo del cliente producido por las entrevistas y se debe colocar en anexos las evidencias", Después también se puede hacer el diagrama de Ishikawa aca se pone los problemas que se van a solucionar si hay dos problemas se realiza 2 ishikawas, el profe dice que siempre nos insiste con la pregunta problema. Problema general y especifico en una tabla 
+3.3
+describir que es
+3.4
+ya se hizo
+3.7
+es matriz de dimensiones debes buscar de que trata, es Matriz de Operaciones de variable o algo asi MOV. aca se coloca la Variable independiente y dependiente, luego definiciones conceptuales, el como se mide(definición operacional), Grupos de indicadores (dimenciones), Indicadores (se saca de la ISO de calidad de software repasar eso), Escala de medicion (lo mas basico que existe hay 4 tipos: Nominal, Ordinal, De razon, y de intervalo)
+3.8 
+ya se tiene
+3.9 tambien se tiene aca se separa en utabla debe haber una relacion entrete la tecnica y el instrumento
+3.10
+validacion y confiabilidad de datos aca se debe usar ej: Juicio de expertos(OJO EL EXPERTO NO ES EL PROFESOR PORQUE EL PROFESOR ES EL QUE CALIFICA), para confiabilidad el Alfa de cronbach es un ejemplo no es que se tengan que usar los mencionados
+EL CAPITULO 4 SE IGNORA NOS SALTAMOS AL 5 DIRECTAMENTE 
+CAPITULO 5 
+5.1 Alternativas de solucion
+aca se debe colocar nombres de otras soluciones que existen en el mercado y nosotros estamos en la columna App Elegida y nos comparamos el profe dije que a veces no hay comparativa ej: ponen "EXCEL" y quieren competir contra el es tonto JALADOS porque esa comparacion es parcializada
+5.2 
+restricciones ya esta riesgos limitaciones etc aca solo se adiciona el contexto de necesidades los requermientos como lista no todas amontonadas en un solo cuadro la plantilla lo tiene amontonado
+5.3
+aca se debe llenar el aspecto social son las personas 
+5.3.1 
+Analisis es que observas cuando trabajan? el trabajo es tedioso, su labar excede su tiempo de jornada, que es lo que ves ?
+Impacto es el efecto de nuestra propuesta, se supone que todo sea mas facil porque si dificultamos la labor hemos fallado
+5.3.2
+Análisis del clima laboral que es lo que ofrece nuestro sistema para esto
+5.3.4 
+aca son las normas internas de la empresa que es lo que observamos en las labores 
+5.3.5
+normales legales
+5.3.6 en medio ambiente tiene que ver con la huella de carbono
+5.5.7 seguridad de la información 
+5.3.8 aca se coloca un resumen de lo que es el impacto por cada contexto colocar solo una oracion 
+5.4 aca es el consolidado del análisis en toda la empresa
+5.5
+diseño de la alternativa solucionada, aca es full esquemas aca hay dos cosas importantes que son la arquitectura del software y también la infraestructura tecnológica ACA NO SE COLOCA UML, PORQUE EL PROFE TE JALA TODO VA ESTAR MAL CAE TODO PROHIBIDO
+5.6 esto ya esta hecho aca se traslada del documento  y acomodarlo 
+5.8
+5.8.1 aca es en base a la matriz de riesgos corregida, hay una persona asignada para la mitigación y ese es el rol "ejecutar" ósea el responsable aca el que acompaña es el líder y hay apoyo 
+5.8.2 hasta este punto el presupuesto debe estar completado para que veamos cuanto se asigna al presupuesto de contingencia un 10% ? validarlo algo coherente
+5.9.1
+aquí se coloca todos los state holders implicados de manera individual incluidos nosotros los estudiantes nombres, posición si estamos dentro de la empresa ofuera, rol en el proyecoto, expectativa en que fase tenemos mayor presencia nosotros debemos estar en todo los clientes NO  también hay un análisis si el state holder esta a favor, em contra o neutral.
+5.9.2 alcance e impacto nuestro impacto es directo y los clientes no tienen un impacto directo pero tienen un grado de relación algunos solo observaran otros usaran el software otrs solo reciben información etc.
+5.10 presupuesto del proyecto
+5.11 esta NO LO HACEMOS  ESTO ES PARA LA SEMANA 11, NO ES EN SEMANA 6
+5.12 PLAN de calidad de software la ISO 25010 después del análisis de la matriz de operación de variables y hemos escojido algunos criterios de la ISO aca se mencionan que hemos elegido y que pruebas acreditaran estos criterios  por ejemplo, pertinencia funcional, confiabilidad, etc y que pruebas acreditan que efectivamente al escoger esto evidenciaran esto
+EN LAS PRUEBAS HAY RIESGO TECNOLOGICO DIFERENTE A LOS OTROS RIESGOS COMO BAJA COBERTURA DE TESTEOS
+
+--
+la maquetación en el scrum diario no se coloco como terminado, ósea nunca acabo integrarlo a hecho
+ANEXO 1 SE COLOCA TODAS LAS ACTIVIDADES SIEMPRE DEL EDT
+
+EL RESUMEN DEBE JUSTIFICARSE CON ESO NO CON CORAZONADA
+revisar los valores del 2, como se obtuvo 
+alcance/tiempo/costo separados en el putno 3
+el 4 nunca se llenada nada porque es el primer cambio 
+cuando se coloca TERMINADO ES PORQUE HAY UN ACTA DE ACEPTACION DE ENTREGABLES, MIENTRAS TANTO NO ESTA TERMINADO ASI QUE TODO ESTA EN PENDIENTE TIENE QUE SER ACEPTADO POR EL CLIENTE
+se coloco formulas como entregables y eso no existe
+

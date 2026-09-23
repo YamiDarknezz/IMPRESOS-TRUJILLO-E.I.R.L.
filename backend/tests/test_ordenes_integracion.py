@@ -233,3 +233,36 @@ async def test_trabajador_si_gestiona_su_orden(sesion, admin, operario, material
         sesion, orden.id, EstadoOrden.EN_DISENO, operario
     )
     assert orden.estado == EstadoOrden.EN_DISENO
+
+
+async def test_crear_venta_rapida_mostrador(sesion, admin):
+    """
+    Venta Express de mostrador (copias, fotochecks, servicios rápidos):
+    se cobra al 100%, se genera la orden entregada y entra al arqueo del día.
+    """
+    from app.models import EstadoOrden, EstadoPago, MetodoPago, UnidadNegocio
+    from app.schemas.orden import VentaRapidaData
+
+    data = VentaRapidaData(
+        descripcion="10 Copias a color + Anillado",
+        monto_total=15.50,
+        metodo_pago=MetodoPago.YAPE,
+        unidad_negocio=UnidadNegocio.IMPRENTA,
+        cliente_nombre="Juan Pérez",
+        referencia="Yape 987654321",
+    )
+
+    orden = await ordenes_service.crear_venta_rapida(sesion, data, admin)
+
+    assert orden.id is not None
+    assert orden.codigo.startswith("ORD-")
+    assert orden.estado == EstadoOrden.ENTREGADA
+    assert float(orden.total) == 15.50
+    assert float(orden.saldo_pendiente) == 0.0
+    assert orden.pagado_totalmente is True
+    assert len(orden.items) == 1
+    assert orden.items[0].descripcion == "10 Copias a color + Anillado"
+    assert len(orden.pagos) == 1
+    assert float(orden.pagos[0].monto) == 15.50
+    assert orden.pagos[0].metodo == MetodoPago.YAPE
+    assert orden.pagos[0].estado_pago == EstadoPago.CONFORME

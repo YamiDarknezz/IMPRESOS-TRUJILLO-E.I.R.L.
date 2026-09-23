@@ -4,7 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel, field_validator
 
-from app.models import UnidadNegocio
+from app.models import MotivoObservacionPago, UnidadNegocio
 from app.schemas.comunes import limpiar
 
 
@@ -30,3 +30,16 @@ class CongelarCajaData(BaseModel):
     @classmethod
     def _limpiar(cls, v: str) -> str:
         return limpiar(v)
+
+
+class ObservarPagoData(BaseModel):
+    """Motivo y justificación para observar o anular un cobro en auditoría."""
+
+    motivo: MotivoObservacionPago
+    nota: str = ""
+
+    @field_validator("nota")
+    @classmethod
+    def _limpiar(cls, v: str) -> str:
+        return limpiar(v)
+

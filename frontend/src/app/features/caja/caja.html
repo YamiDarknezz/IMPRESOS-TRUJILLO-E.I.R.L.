@@ -17,6 +17,9 @@
     </div>
   </div>
 
+  <button class="btn-primary btn-sm" (click)="abrirModalVentaRapida()" style="background:#16a34a; border-color:#16a34a;">
+    <app-icon name="plus" [size]="16" /> Venta Rápida / Mostrador
+  </button>
   <button class="btn-secondary btn-sm" (click)="cargar()">↻ Actualizar</button>
 
   <div class="actions-cell">
@@ -75,6 +78,17 @@
         <span class="stat-value stat-color-danger">S/ {{ datos.total.total | number:'1.2-2' }}</span>
       </div>
     </div>
+    @if ((datos.total_observado ?? 0) > 0) {
+      <div class="stat-card" style="border-left: 4px solid #ef4444;">
+        <div class="stat-icon stat-icon-danger">
+          <app-icon name="alert-triangle" [size]="20" />
+        </div>
+        <div class="stat-body">
+          <span class="stat-label">Deducciones / Observados</span>
+          <span class="stat-value stat-color-danger">- S/ {{ datos.total_observado | number:'1.2-2' }}</span>
+        </div>
+      </div>
+    }
   </div>
 
   <!-- ═══ Caja dual: Imprenta vs Gigantografías ═══════════════════════════ -->
@@ -94,6 +108,45 @@
       }
     </div>
   </div>
+
+  <!-- ═══ Pagos Observados / Auditados (si existen) ════════════════════════ -->
+  @if ((datos.observados?.length ?? 0) > 0) {
+    <div class="table-card card" style="margin-bottom:1.5rem; border-left:4px solid #ef4444;">
+      <div class="toolbar" style="padding:1rem 1.25rem 0">
+        <span class="toolbar-title" style="color:#b91c1c;">
+          ⚠ Pagos Observados / Anulados en Arqueo (Total deducido: S/ {{ datos.total_observado | number:'1.2-2' }})
+        </span>
+      </div>
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Orden</th>
+              <th>Cliente</th>
+              <th>Método</th>
+              <th>Monto Deducido</th>
+              <th>Motivo</th>
+              <th>Nota / Justificación</th>
+              <th>Auditado por</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (obs of datos.observados; track obs.pago_id) {
+              <tr>
+                <td><code class="id-chip">{{ obs.orden }}</code></td>
+                <td>{{ obs.cliente || '—' }}</td>
+                <td>{{ etiquetaDeMetodo(obs.metodo) }}</td>
+                <td><strong class="stat-color-danger">- S/ {{ obs.monto | number:'1.2-2' }}</strong></td>
+                <td><span class="badge badge-danger">{{ obs.motivo }}</span></td>
+                <td>{{ obs.nota || '—' }}</td>
+                <td>{{ obs.observado_por || '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
 
   <!-- ═══ Arqueo por usuario ══════════════════════════════════════════════ -->
   <div class="table-card card" style="margin-bottom:1.5rem">
@@ -204,23 +257,154 @@
               <th>Tipo</th>
               <th>Método</th>
               <th>Monto</th>
+              <th>Estado</th>
+              <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
-            @for (item of datos.detalle; track item.orden + item.fecha) {
-              <tr>
+            @for (item of datos.detalle; track item.orden + item.fecha + (item.pago_id ?? '')) {
+              <tr [style.opacity]="item.estado_pago === 'observado' ? '0.65' : '1'">
                 <td class="fecha-cell">{{ formatearFecha(item.fecha, true) }}</td>
                 <td><code class="id-chip">{{ item.orden }}</code></td>
                 <td>{{ item.cliente || '—' }}</td>
                 <td>{{ etiquetaUnidad[item.unidad_negocio] }}</td>
                 <td>{{ item.tipo }}</td>
                 <td>{{ etiquetaDeMetodo(item.metodo) }}</td>
-                <td><strong>S/ {{ item.monto | number:'1.2-2' }}</strong></td>
+                <td>
+                  <strong [style.textDecoration]="item.estado_pago === 'observado' ? 'line-through' : 'none'">
+                    S/ {{ item.monto | number:'1.2-2' }}
+                  </strong>
+                </td>
+                <td>
+                  @if (item.estado_pago === 'observado') {
+                    <span class="badge badge-danger" title="{{ item.nota_observacion || item.motivo_observacion }}">
+                      ⚠ Observado ({{ item.motivo_observacion }})
+                    </span>
+                  } @else {
+                    <span class="badge badge-success">✓ Conforme</span>
+                  }
+                </td>
+                <td class="actions-cell">
+                  <div class="actions-wrapper">
+                    @if (item.estado_pago !== 'observado' && item.pago_id) {
+                      <button class="btn-secondary btn-sm" (click)="abrirModalObservar(item)" title="Auditar / Reportar Yape o billete falso">
+                        ⚠ Observar
+                      </button>
+                    } @else if (item.estado_pago === 'observado') {
+                      <small class="text-muted" style="font-size:0.75rem;">Deducido de caja</small>
+                    }
+                  </div>
+                </td>
               </tr>
             }
           </tbody>
         </table>
       </div>
     }
+  </div>
+}
+
+<!-- ═══ Modal: Observar Cobro Fraudulento / Erróneo ════════════════════════ -->
+@if (pagoAObservar(); as pago) {
+  <div class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" style="color:#b91c1c;">Auditar / Observar Cobro</h3>
+        <button class="btn-icon" (click)="cerrarModalObservar()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.9rem; margin-bottom:1rem;">
+          Se observará el pago de <strong>S/ {{ pago.monto | number:'1.2-2' }}</strong>
+          ({{ etiquetaDeMetodo(pago.metodo) }}) de la orden <code>{{ pago.orden }}</code>.
+          <br>
+          <em style="color:#b91c1c;">Este monto se restará del arqueo de caja y se reabrirá la deuda al cliente (bloqueando la entrega).</em>
+        </p>
+
+        <div class="form-group" style="margin-bottom:1rem;">
+          <label class="form-label">Motivo de observación</label>
+          <select [ngModel]="motivoObservacion()" (ngModelChange)="motivoObservacion.set($event)" class="form-input">
+            @for (m of motivosObservacion; track m.id) {
+              <option [value]="m.id">{{ m.nombre }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Justificación / Evidencia</label>
+          <textarea [ngModel]="notaObservacion()" (ngModelChange)="notaObservacion.set($event)"
+                    rows="3" class="form-input"
+                    placeholder="Ej: Captura falsa enviada por WhatsApp sin abono en banca móvil..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="cerrarModalObservar()" [disabled]="guardando()">Cancelar</button>
+        <button class="btn-danger" (click)="guardarObservacion()" [disabled]="guardando()">
+          {{ guardando() ? 'Observando...' : 'Confirmar y Deducir de Caja' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ═══ Modal: Venta Rápida / Mostrador ═════════════════════════════════════ -->
+@if (modalVentaRapida()) {
+  <div class="modal-backdrop">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" style="color:#16a34a;">⚡ Venta Rápida en Mostrador</h3>
+        <button class="btn-icon" (click)="cerrarModalVentaRapida()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group" style="margin-bottom:1rem;">
+          <label class="form-label">Descripción del servicio o artículo *</label>
+          <input type="text" [ngModel]="vrDescripcion()" (ngModelChange)="vrDescripcion.set($event)"
+                 class="form-input" placeholder="Ej: 10 Fotocopias a color, Fotocheck con mica...">
+        </div>
+
+        <div class="form-row" style="display:flex; gap:1rem; margin-bottom:1rem;">
+          <div class="form-group" style="flex:1;">
+            <label class="form-label">Monto Total (S/) *</label>
+            <input type="number" step="0.50" min="0.10" [ngModel]="vrMonto()" (ngModelChange)="vrMonto.set($event)"
+                   class="form-input" placeholder="0.00">
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label class="form-label">Método de Pago</label>
+            <select [ngModel]="vrMetodo()" (ngModelChange)="vrMetodo.set($event)" class="form-input">
+              @for (m of metodos; track m) {
+                <option [value]="m">{{ etiquetaMetodo[m] }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row" style="display:flex; gap:1rem; margin-bottom:1rem;">
+          <div class="form-group" style="flex:1;">
+            <label class="form-label">Unidad de Negocio</label>
+            <select [ngModel]="vrUnidad()" (ngModelChange)="vrUnidad.set($event)" class="form-input">
+              @for (u of unidades; track u) {
+                <option [value]="u">{{ etiquetaUnidad[u] }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label class="form-label">Cliente (opcional)</label>
+            <input type="text" [ngModel]="vrCliente()" (ngModelChange)="vrCliente.set($event)"
+                   class="form-input" placeholder="Cliente Mostrador">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Referencia / Celular (opcional)</label>
+          <input type="text" [ngModel]="vrReferencia()" (ngModelChange)="vrReferencia.set($event)"
+                 class="form-input" placeholder="Ej: Yape 987654321...">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="cerrarModalVentaRapida()" [disabled]="guardando()">Cancelar</button>
+        <button class="btn-primary" (click)="guardarVentaRapida()" [disabled]="guardando()" style="background:#16a34a; border-color:#16a34a;">
+          {{ guardando() ? 'Cobrando...' : 'Cobrar y Finalizar Venta' }}
+        </button>
+      </div>
+    </div>
   </div>
 }

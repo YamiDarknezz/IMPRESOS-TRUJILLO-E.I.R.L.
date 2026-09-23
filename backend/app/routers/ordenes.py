@@ -18,6 +18,7 @@ from app.schemas import (
     ConfirmarPagoData,
     OrdenCompletionData,
     OrdenCreateData,
+    VentaRapidaData,
 )
 from app.services import ordenes_service
 from app.services.serializadores import serializar_orden
@@ -56,6 +57,17 @@ async def crear_orden(
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
 ):
     orden = await ordenes_service.crear_orden(sesion, data, usuario)
+    return {"status": "success", "data": serializar_orden(orden)}
+
+
+@router.post("/caja-rapida")
+async def crear_venta_rapida(
+    data: VentaRapidaData,
+    usuario: Annotated[Usuario, Depends(personal_venta)],
+    sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
+):
+    """Venta express en mostrador (copias, fotochecks, servicios rápidos) con pago al 100%."""
+    orden = await ordenes_service.crear_venta_rapida(sesion, data, usuario)
     return {"status": "success", "data": serializar_orden(orden)}
 
 

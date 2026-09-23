@@ -24,7 +24,9 @@ from app.core.fechas import ahora_utc
 from app.models.base import Base, TemporalMixin, enum_columna
 from app.models.enums import (
     EstadoOrden,
+    EstadoPago,
     MetodoPago,
+    MotivoObservacionPago,
     TipoDocumento,
     TipoPago,
     UnidadNegocio,
@@ -182,5 +184,25 @@ class PagoOrden(Base, TemporalMixin):
     # Referencia del voucher/captura de Yape o transferencia (RF-11).
     referencia: Mapped[str] = mapped_column(String(120), default="", nullable=False)
 
+    # Conciliación y auditoría de pagos (Yape falso, billete falso, etc.)
+    estado_pago: Mapped[EstadoPago] = mapped_column(
+        enum_columna(EstadoPago, "estado_pago", 15),
+        default=EstadoPago.CONFORME,
+        nullable=False,
+    )
+    motivo_observacion: Mapped[Optional[MotivoObservacionPago]] = mapped_column(
+        enum_columna(MotivoObservacionPago, "motivo_observacion_pago", 30),
+        nullable=True,
+    )
+    nota_observacion: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    observado_por: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("usuarios.id"), nullable=True
+    )
+    observado_en: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     orden = relationship("Orden", back_populates="pagos")
-    usuario = relationship("Usuario", lazy="joined")
+    usuario = relationship("Usuario", foreign_keys=[registrado_por], lazy="joined")
+    observador = relationship("Usuario", foreign_keys=[observado_por], lazy="joined")
+

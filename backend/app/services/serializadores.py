@@ -75,7 +75,56 @@ def serializar_material(material) -> dict[str, Any]:
         "alerta_minima": num(material.alerta_minima),
         "dias_reabastecimiento": material.dias_reabastecimiento,
         "stock_bajo": material.stock_bajo,
+        "precio_compra": num(material.precio_compra),
+        "ubicacion_estante": material.ubicacion_estante,
+        "tipo_formato": material.tipo_formato.value if material.tipo_formato else "unidad_pieza",
+        "ancho_predeterminado_m": num(material.ancho_predeterminado_m) if material.ancho_predeterminado_m is not None else None,
+        "largo_predeterminado_m": num(material.largo_predeterminado_m) if material.largo_predeterminado_m is not None else None,
+        "espesor_mm": num(material.espesor_mm) if material.espesor_mm is not None else None,
         "activo": material.activo,
+    }
+
+
+def serializar_pieza(pieza) -> dict[str, Any]:
+    return {
+        "id": pieza.id,
+        "material_id": pieza.material_id,
+        "material_nombre": pieza.material.nombre if pieza.material else "",
+        "codigo_identificador": pieza.codigo_identificador,
+        "ancho_m": num(pieza.ancho_m) if pieza.ancho_m is not None else None,
+        "largo_m": num(pieza.largo_m) if pieza.largo_m is not None else None,
+        "espesor_mm": num(pieza.espesor_mm) if pieza.espesor_mm is not None else None,
+        "capacidad_inicial": num(pieza.capacidad_inicial),
+        "saldo_restante": num(pieza.saldo_restante),
+        "unidad_medida": pieza.unidad_medida,
+        "costo_adquisicion": num(pieza.costo_adquisicion),
+        "estado": pieza.estado.value if hasattr(pieza.estado, "value") else str(pieza.estado),
+        "ubicacion": pieza.ubicacion,
+        "maquina_asignada": pieza.maquina_asignada,
+        "fecha_ingreso": iso(pieza.fecha_ingreso),
+        "fecha_termino": iso(pieza.fecha_termino),
+        "nota": pieza.nota,
+        "total_recaudado": num(pieza.total_recaudado),
+        "ganancia_neta": num(pieza.ganancia_neta),
+        "consumos": [serializar_consumo(c) for c in (pieza.consumos or [])],
+    }
+
+
+def serializar_consumo(consumo) -> dict[str, Any]:
+    return {
+        "id": consumo.id,
+        "pieza_id": consumo.pieza_id,
+        "orden_id": consumo.orden_id,
+        "orden_codigo": consumo.orden.codigo if consumo.orden else None,
+        "trabajo_descripcion": consumo.trabajo_descripcion,
+        "cantidad_consumida": num(consumo.cantidad_consumida),
+        "saldo_anterior": num(consumo.saldo_anterior),
+        "saldo_nuevo": num(consumo.saldo_nuevo),
+        "monto_cobrado": num(consumo.monto_cobrado),
+        "merma_desperdicio": num(consumo.merma_desperdicio),
+        "fecha": iso(consumo.fecha),
+        "usuario": consumo.usuario.nombre if consumo.usuario else "",
+        "nota": consumo.nota,
     }
 
 
@@ -134,6 +183,11 @@ def _serializar_pago(pago) -> dict[str, Any]:
         "tipo": pago.tipo.value,
         "referencia": pago.referencia,
         "registrado_por": pago.registrado_por,
+        "estado_pago": pago.estado_pago.value if pago.estado_pago else "conforme",
+        "motivo_observacion": pago.motivo_observacion.value if pago.motivo_observacion else None,
+        "nota_observacion": pago.nota_observacion or "",
+        "observado_por": pago.observador.nombre if pago.observador else None,
+        "observado_en": iso(pago.observado_en),
     }
 
 

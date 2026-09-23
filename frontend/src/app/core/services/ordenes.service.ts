@@ -11,6 +11,7 @@ import {
   RespuestaItem,
   TipoDocumento,
   UnidadNegocio,
+  VentaRapidaData,
 } from '../models';
 import { ListaRemota } from './lista-remota';
 import { aFechaISO, hoyISO } from '../../shared/utilidades/fechas';
@@ -124,6 +125,12 @@ export class OrdenesService {
       referencia,
     });
     await this.lista.recargar();
+  }
+
+  async crearVentaRapida(data: VentaRapidaData): Promise<Orden> {
+    const res = await this.api.post<RespuestaItem<Orden>>('/api/ordenes/caja-rapida', data);
+    await this.lista.recargar();
+    return res.data;
   }
 
   /**

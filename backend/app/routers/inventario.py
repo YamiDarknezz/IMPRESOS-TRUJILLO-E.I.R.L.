@@ -15,6 +15,7 @@ from app.core.database import obtener_sesion
 from app.core.errores import Conflicto, NoEncontrado
 from app.core.security import supervision, usuario_actual
 from app.models import (
+    EstadoPieza,
     Material,
     MotivoMovimiento,
     MovimientoStock,
@@ -22,9 +23,21 @@ from app.models import (
     Unidad,
     Usuario,
 )
-from app.schemas import MaterialCreateData, MaterialEditData, MaterialStockData
+from app.schemas import (
+    ConsumoPiezaCreateData,
+    MaterialCreateData,
+    MaterialEditData,
+    MaterialStockData,
+    PiezaLoteCreateData,
+)
+from app.services import inventario_service
 from app.services.inventario_service import AjusteStock, aplicar_ajustes
-from app.services.serializadores import serializar_material, serializar_movimiento
+from app.services.serializadores import (
+    serializar_consumo,
+    serializar_material,
+    serializar_movimiento,
+    serializar_pieza,
+)
 
 router = APIRouter(prefix="/api/inventario", tags=["Inventario"])
 
@@ -85,6 +98,12 @@ async def crear_material(
         stock_actual=0,
         alerta_minima=data.alerta_minima,
         dias_reabastecimiento=data.dias_reabastecimiento,
+        precio_compra=data.precio_compra,
+        ubicacion_estante=data.ubicacion_estante,
+        tipo_formato=data.tipo_formato,
+        ancho_predeterminado_m=data.ancho_predeterminado_m,
+        largo_predeterminado_m=data.largo_predeterminado_m,
+        espesor_mm=data.espesor_mm,
     )
     sesion.add(material)
     await sesion.flush()
@@ -136,6 +155,12 @@ async def editar_material(
     material.unidad = unidad
     material.alerta_minima = data.alerta_minima
     material.dias_reabastecimiento = data.dias_reabastecimiento
+    material.precio_compra = data.precio_compra
+    material.ubicacion_estante = data.ubicacion_estante
+    material.tipo_formato = data.tipo_formato
+    material.ancho_predeterminado_m = data.ancho_predeterminado_m
+    material.largo_predeterminado_m = data.largo_predeterminado_m
+    material.espesor_mm = data.espesor_mm
 
     registrar(
         sesion,
@@ -177,3 +202,53 @@ async def ajustar_stock(
         )
 
     return {"status": "success", "data": serializar_material(material)}
+
+
+# ══ Endpoints de Rollos y Planchas Pre-dimensionadas ══════════════════════
+
+@router.get("/piezas")
+async def listar_piezas(
+    usuario: Annotated[Usuario, Depends(usuario_actual)],
+    sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
+    material_id: Optional[int] = None,
+    estado: Optional[EstadoPieza] = None,
+):
+    """Lista las piezas físicas, rollos y planchas pre-establecidas."""
+    piezas = await inventario_service.listar_piezas(sesion, material_id, estado)
+    return {"status": "success", "data": [serializar_pieza(p) for p in piezas]}
+
+
+@router.post("/piezas")
+async def registrar_pieza(
+    data: PiezaLoteCreateData,
+    usuario: Annotated[Usuario, Depends(supervision)],
+    sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
+):
+    """Registra una nueva plancha pre-dimensionada o rollo continuo con costo."""
+    pieza = await inventario_service.registrar_pieza(sesion, data, usuario)
+    return {"status": "success", "data": serializar_pieza(pieza)}
+
+
+@router.get("/piezas/{pieza_id}")
+async def obtener_pieza(
+    pieza_id: int,
+    usuario: Annotated[Usuario, Depends(usuario_actual)],
+    sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
+):
+    """Detalle de una pieza con su historial de cortes y ganancia neta generada."""
+    pieza = await inventario_service.obtener_pieza(sesion, pieza_id)
+    return {"status": "success", "data": serializar_pieza(pieza)}
+
+
+@router.post("/piezas/{pieza_id}/consumos")
+async def registrar_consumo_pieza(
+    pieza_id: int,
+    data: ConsumoPiezaCreateData,
+    usuario: Annotated[Usuario, Depends(usuario_actual)],
+    sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
+):
+    """Registra un corte/trabajo consumido de la pieza (como en CONTROL ROLLOS A+B)."""
+    consumo = await inventario_service.registrar_consumo_pieza(
+        sesion, pieza_id, data, usuario
+    )
+    return {"status": "success", "data": serializar_consumo(consumo)}

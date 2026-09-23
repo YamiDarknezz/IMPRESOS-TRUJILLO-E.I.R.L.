@@ -123,3 +123,25 @@ class ConfirmarPagoData(BaseModel):
 
 class CambiarEstadoData(BaseModel):
     estado: EstadoOrden
+
+
+class VentaRapidaData(BaseModel):
+    """Venta express en mostrador (copias, fotochecks, varios) cobrada al 100%."""
+
+    descripcion: str
+    monto_total: float
+    metodo_pago: MetodoPago = MetodoPago.EFECTIVO
+    unidad_negocio: UnidadNegocio = UnidadNegocio.IMPRENTA
+    cliente_nombre: str = "Cliente Mostrador"
+    referencia: str = ""
+
+    @field_validator("descripcion")
+    @classmethod
+    def _texto_obligatorio(cls, v: str) -> str:
+        return exigir_texto(v, "La descripción del servicio rápido es requerida")
+
+    @field_validator("monto_total")
+    @classmethod
+    def _monto_positivo(cls, v: float) -> float:
+        return exigir_positivo(v, "El monto debe ser mayor a 0")
+

@@ -9,7 +9,7 @@ from app.core.database import obtener_sesion
 from app.core.fechas import a_fecha_peru, ahora_utc
 from app.core.security import personal_venta, supervision, usuario_actual
 from app.models import Rol, UnidadNegocio, Usuario
-from app.schemas import CerrarCajaData, CongelarCajaData
+from app.schemas import CerrarCajaData, CongelarCajaData, ObservarPagoData
 from app.services import caja_service
 from app.services.serializadores import serializar_cierre
 
@@ -79,3 +79,17 @@ async def congelar_caja(
     """La Gerencia valida y congela el cierre del día."""
     cierre = await caja_service.congelar_caja(sesion, cierre_id, data.observacion, usuario)
     return {"status": "success", "data": serializar_cierre(cierre)}
+
+
+@router.post("/pagos/{pago_id}/observar")
+async def observar_pago(
+    pago_id: int,
+    data: ObservarPagoData,
+    usuario: Annotated[Usuario, Depends(personal_venta)],
+    sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
+):
+    """Audita y observa/anula un cobro erróneo o fraudulento (Yape falso, billete falso, etc.)."""
+    resultado = await caja_service.observar_pago(
+        sesion, pago_id, data.motivo, data.nota, usuario
+    )
+    return {"status": "success", "data": resultado}

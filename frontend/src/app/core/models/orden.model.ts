@@ -54,6 +54,20 @@ export interface PagoOrden {
   tipo: 'adelanto' | 'saldo';
   referencia?: string;
   registrado_por?: number | null;
+  estado_pago?: 'conforme' | 'observado' | 'anulado';
+  motivo_observacion?: string | null;
+  nota_observacion?: string;
+  observado_por?: string | null;
+  observado_en?: string | null;
+}
+
+export interface VentaRapidaData {
+  descripcion: string;
+  monto_total: number;
+  metodo_pago?: MetodoPago;
+  unidad_negocio?: UnidadNegocio;
+  cliente_nombre?: string;
+  referencia?: string;
 }
 
 export interface FinanzasOrden {

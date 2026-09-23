@@ -16,8 +16,18 @@ from typing import Iterable, Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errores import ErrorDeNegocio
-from app.models import Material, MotivoMovimiento, MovimientoStock
+from app.core.errores import Conflicto, ErrorDeNegocio, NoEncontrado
+from app.core.fechas import ahora_utc
+from app.models import (
+    ConsumoPieza,
+    EstadoPieza,
+    Material,
+    MotivoMovimiento,
+    MovimientoStock,
+    PiezaLoteMaterial,
+    Usuario,
+)
+from app.schemas.inventario import ConsumoPiezaCreateData, PiezaLoteCreateData
 
 
 @dataclass(frozen=True)
@@ -145,3 +155,129 @@ def calcular_delta_reserva(
             )
         )
     return ajustes
+
+
+# ══ Gestión de Rollos y Planchas Pre-dimensionadas ════════════════════════
+
+async def registrar_pieza(
+    sesion: AsyncSession,
+    data: PiezaLoteCreateData,
+    usuario: Usuario,
+) -> PiezaLoteMaterial:
+    """Registra un nuevo rollo continuo o plancha rígida pre-dimensionada."""
+    material = await sesion.get(Material, data.material_id)
+    if material is None:
+        raise NoEncontrado("Material no encontrado.")
+
+    existente = (
+        await sesion.execute(
+            select(PiezaLoteMaterial).where(
+                PiezaLoteMaterial.codigo_identificador == data.codigo_identificador.strip()
+            )
+        )
+    ).scalar_one_or_none()
+    if existente is not None:
+        raise Conflicto(f"Ya existe una pieza o rollo con el código '{data.codigo_identificador}'.")
+
+    ahora = ahora_utc()
+    capacidad = _redondear(_decimal(data.capacidad_inicial))
+    pieza = PiezaLoteMaterial(
+        material_id=data.material_id,
+        codigo_identificador=data.codigo_identificador.strip(),
+        ancho_m=_decimal(data.ancho_m) if data.ancho_m is not None else material.ancho_predeterminado_m,
+        largo_m=_decimal(data.largo_m) if data.largo_m is not None else material.largo_predeterminado_m,
+        espesor_mm=_decimal(data.espesor_mm) if data.espesor_mm is not None else material.espesor_mm,
+        capacidad_inicial=capacidad,
+        saldo_restante=capacidad,
+        unidad_medida=data.unidad_medida,
+        costo_adquisicion=_redondear(_decimal(data.costo_adquisicion)),
+        estado=EstadoPieza.DISPONIBLE,
+        ubicacion=data.ubicacion or material.ubicacion_estante,
+        maquina_asignada=data.maquina_asignada,
+        fecha_ingreso=ahora,
+        nota=data.nota,
+        consumos=[],
+    )
+    sesion.add(pieza)
+    await sesion.flush()
+    return pieza
+
+
+async def listar_piezas(
+    sesion: AsyncSession,
+    material_id: Optional[int] = None,
+    estado: Optional[EstadoPieza] = None,
+) -> list[PiezaLoteMaterial]:
+    """Lista las piezas/rollos filtrados opcionalmente por material o estado."""
+    consulta = (
+        select(PiezaLoteMaterial)
+        .order_by(PiezaLoteMaterial.fecha_ingreso.desc(), PiezaLoteMaterial.id.desc())
+    )
+    if material_id is not None:
+        consulta = consulta.where(PiezaLoteMaterial.material_id == material_id)
+    if estado is not None:
+        consulta = consulta.where(PiezaLoteMaterial.estado == estado)
+    return list((await sesion.execute(consulta)).scalars())
+
+
+async def obtener_pieza(sesion: AsyncSession, pieza_id: int) -> PiezaLoteMaterial:
+    """Devuelve la pieza o rollo con su historial completo de consumos y cortes."""
+    pieza = await sesion.get(PiezaLoteMaterial, pieza_id)
+    if pieza is None:
+        raise NoEncontrado("Pieza o rollo no encontrado.")
+    return pieza
+
+
+async def registrar_consumo_pieza(
+    sesion: AsyncSession,
+    pieza_id: int,
+    data: ConsumoPiezaCreateData,
+    usuario: Usuario,
+) -> ConsumoPieza:
+    """
+    Registra un corte o uso de rollo/plancha (como en CONTROL ROLLOS A+B).
+    Deduce el saldo restante y recalcula el estado y la ganancia.
+    """
+    pieza = await sesion.get(PiezaLoteMaterial, pieza_id)
+    if pieza is None:
+        raise NoEncontrado("Pieza o rollo no encontrado.")
+
+    if pieza.estado == EstadoPieza.AGOTADO:
+        raise ErrorDeNegocio("Esta pieza o rollo ya se encuentra agotado.")
+
+    cantidad = _redondear(_decimal(data.cantidad_consumida))
+    if cantidad > _decimal(pieza.saldo_restante):
+        raise ErrorDeNegocio(
+            f"El consumo solicitado ({cantidad} {pieza.unidad_medida}) supera el saldo disponible "
+            f"({pieza.saldo_restante} {pieza.unidad_medida})."
+        )
+
+    saldo_anterior = _decimal(pieza.saldo_restante)
+    saldo_nuevo = _redondear(saldo_anterior - cantidad)
+    pieza.saldo_restante = saldo_nuevo
+
+    ahora = ahora_utc()
+    if saldo_nuevo == Decimal("0.00"):
+        pieza.estado = EstadoPieza.AGOTADO
+        pieza.fecha_termino = ahora
+    else:
+        pieza.estado = EstadoPieza.EN_USO
+
+    consumo = ConsumoPieza(
+        pieza=pieza,
+        orden_id=data.orden_id,
+        usuario_id=usuario.id,
+        trabajo_descripcion=data.trabajo_descripcion,
+        cantidad_consumida=cantidad,
+        saldo_anterior=saldo_anterior,
+        saldo_nuevo=saldo_nuevo,
+        monto_cobrado=_redondear(_decimal(data.monto_cobrado)),
+        merma_desperdicio=_redondear(_decimal(data.merma_desperdicio)),
+        fecha=ahora,
+        nota=data.nota,
+    )
+    if consumo not in pieza.consumos:
+        pieza.consumos.append(consumo)
+    sesion.add(consumo)
+    await sesion.flush()
+    return consumo

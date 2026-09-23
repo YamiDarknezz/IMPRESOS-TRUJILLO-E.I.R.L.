@@ -121,3 +121,51 @@ async def test_cada_usuario_liquida_sus_propios_cobros(sesion, admin, operario, 
     assert float(cierre_admin.monto_efectivo) == 50
     assert float(cierre_operario.total) == 50
     assert float(cierre_operario.monto_yape) == 50
+
+
+async def test_observar_pago_deduce_de_caja_y_reabre_deuda(sesion, admin, material, cliente):
+    """
+    Auditoría al cierre de caja: si se detecta un Yape falso o billete falso,
+    el cobro se anula/observa, se deduce del arqueo y se restaura la deuda en la orden.
+    """
+    from app.models import EstadoPago, MotivoObservacionPago
+
+    orden = await _crear_cobro(
+        sesion, admin, material, cliente,
+        precio_total=100, adelanto_pago=100, metodo_pago=MetodoPago.YAPE,
+    )
+    pago = orden.pagos[0]
+    assert float(orden.saldo_pendiente) == 0
+    assert orden.pagado_totalmente is True
+
+    hoy = a_fecha_peru(ahora_utc())
+    resumen_antes = await caja_service.resumen_dia(sesion, hoy)
+    assert resumen_antes["total"]["yape"] == 100
+    assert len(resumen_antes["observados"]) == 0
+
+    # Observar el pago fraudulento antes de cerrar la caja
+    resultado = await caja_service.observar_pago(
+        sesion, pago.id, MotivoObservacionPago.YAPE_FALSO, "Captura editada sin abono real", admin
+    )
+    assert resultado["estado_pago"] == EstadoPago.OBSERVADO.value
+    assert resultado["motivo"] == MotivoObservacionPago.YAPE_FALSO.value
+    assert float(orden.saldo_pendiente) == 100
+    assert orden.pagado_totalmente is False
+
+    # El arqueo del día ya no incluye el pago observado
+    resumen_despues = await caja_service.resumen_dia(sesion, hoy)
+    assert resumen_despues["total"]["yape"] == 0
+    assert resumen_despues["total"]["total"] == 0
+    assert resumen_despues["total_observado"] == 100
+    assert len(resumen_despues["observados"]) == 1
+    assert resumen_despues["observados"][0]["motivo"] == "yape_falso"
+
+    # Al cerrar la caja, el monto recaudado es 0
+    cierre = await caja_service.cerrar_caja(sesion, hoy, UnidadNegocio.IMPRENTA, "", admin)
+    assert float(cierre.total) == 0
+
+    # Intentar observar un pago ya observado falla
+    with pytest.raises(ErrorDeNegocio):
+        await caja_service.observar_pago(
+            sesion, pago.id, MotivoObservacionPago.BILLETE_FALSO, "Duplicado", admin
+        )

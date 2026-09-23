@@ -63,4 +63,15 @@ export class CajaService {
     );
     return res.data;
   }
+
+  async observarPago(
+    pagoId: number,
+    data: { motivo: string; nota: string }
+  ): Promise<any> {
+    const res = await this.api.post<RespuestaItem<any>>(
+      `/api/caja/pagos/${pagoId}/observar`,
+      data
+    );
+    return res.data;
+  }
 }

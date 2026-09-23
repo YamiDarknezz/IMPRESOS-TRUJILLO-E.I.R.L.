@@ -65,6 +65,42 @@ class TipoPago(StrEnum):
     SALDO = "saldo"
 
 
+class EstadoPago(StrEnum):
+    """Estado de conciliación de un pago."""
+
+    CONFORME = "conforme"
+    OBSERVADO = "observado"
+    ANULADO = "anulado"
+
+
+class MotivoObservacionPago(StrEnum):
+    """Causas operativas para observar o anular un pago en arqueo."""
+
+    YAPE_FALSO = "yape_falso"
+    BILLETE_FALSO = "billete_falso"
+    VOUCHER_NO_UBICADO = "voucher_no_ubicado"
+    COBRO_DUPLICADO = "cobro_duplicado"
+    ERROR_DIGITACION = "error_digitacion"
+    OTRO = "otro"
+
+
+class TipoFormatoMaterial(StrEnum):
+    """Naturaleza física del material para su seguimiento de inventario."""
+
+    CONTINUO_ROLLO = "continuo_rollo"
+    PLANCHA_RIGIDA = "plancha_rigida"
+    UNIDAD_PIEZA = "unidad_pieza"
+    QUIMICO_TINTA = "quimico_tinta"
+
+
+class EstadoPieza(StrEnum):
+    """Estado de una bobina o plancha preestablecida en taller."""
+
+    DISPONIBLE = "disponible"
+    EN_USO = "en_uso"
+    AGOTADO = "agotado"
+
+
 class MotivoMovimiento(StrEnum):
     """Por qué se movió el stock de un material."""
 
@@ -89,3 +125,5 @@ class TipoEventoAuditoria(StrEnum):
     AJUSTE_STOCK = "ajuste_stock"
     SESION = "sesion"
     CIERRE_CAJA = "cierre_caja"
+    OBSERVACION_PAGO = "observacion_pago"
+
