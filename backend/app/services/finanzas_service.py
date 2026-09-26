@@ -66,6 +66,11 @@ async def resumen(
             await sesion.execute(select(Orden).where(Orden.estado != EstadoOrden.CANCELADA))
         ).scalars()
     )
+    ordenes_canceladas = list(
+        (
+            await sesion.execute(select(Orden).where(Orden.estado == EstadoOrden.CANCELADA))
+        ).scalars()
+    )
     nombres = {
         u.id: u.nombre for u in (await sesion.execute(select(Usuario))).scalars()
     }
@@ -125,6 +130,15 @@ async def resumen(
             fila["ingresos"] += monto
             unidad["ingresos"] += monto
 
+    total_canceladas = 0
+    for orden in ordenes_canceladas:
+        if trabajador_id is not None and orden.asignado_a != trabajador_id:
+            continue
+        if unidad_negocio is not None and orden.unidad_negocio != unidad_negocio:
+            continue
+        if dentro_del_rango(orden.creado_en, desde, hasta):
+            total_canceladas += 1
+
     return {
         "es_supervisor": es_supervisor,
         "total_contratos": _redondear(total_contratos),
@@ -132,6 +146,7 @@ async def resumen(
         "total_ingresos": _redondear(total_ingresos),
         "total_por_cobrar": _redondear(total_por_cobrar),
         "total_ordenes": total_ordenes,
+        "total_ordenes_canceladas": total_canceladas,
         "por_metodo": {k: _redondear(v) for k, v in por_metodo.items()},
         "por_unidad_negocio": {
             clave: {k: _redondear(v) for k, v in valores.items()}

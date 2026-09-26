@@ -1,9 +1,23 @@
-import { aFechaISO, formatearFecha, hoyISO, primerDiaDelMesISO } from './fechas';
+import { aFechaISO, ayerISO, formatearFecha, hoyISO, primerDiaDelMesISO } from './fechas';
 
 describe('hoyISO', () => {
-  it('devuelve la fecha de hoy en formato AAAA-MM-DD', () => {
-    const esperado = new Date().toISOString().split('T')[0];
-    expect(hoyISO()).toBe(esperado);
+  it('devuelve la fecha de hoy en formato local AAAA-MM-DD', () => {
+    const d = new Date();
+    const anio = d.getFullYear();
+    const mes = String(d.getMonth() + 1).padStart(2, '0');
+    const dia = String(d.getDate()).padStart(2, '0');
+    expect(hoyISO()).toBe(`${anio}-${mes}-${dia}`);
+  });
+});
+
+describe('ayerISO', () => {
+  it('devuelve la fecha de ayer en formato local AAAA-MM-DD', () => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    const anio = d.getFullYear();
+    const mes = String(d.getMonth() + 1).padStart(2, '0');
+    const dia = String(d.getDate()).padStart(2, '0');
+    expect(ayerISO()).toBe(`${anio}-${mes}-${dia}`);
   });
 });
 

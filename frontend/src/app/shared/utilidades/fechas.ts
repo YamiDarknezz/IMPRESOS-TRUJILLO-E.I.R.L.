@@ -6,9 +6,23 @@
  * creación). Estas funciones tratan ambas por igual.
  */
 
-/** Fecha de hoy en formato 'AAAA-MM-DD'. */
+/** Fecha de hoy en formato local 'AAAA-MM-DD' (evita desfases por UTC en husos horarios como Perú UTC-5). */
 export function hoyISO(): string {
-  return new Date().toISOString().split('T')[0];
+  const d = new Date();
+  const anio = d.getFullYear();
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${anio}-${mes}-${dia}`;
+}
+
+/** Fecha de ayer en formato local 'AAAA-MM-DD'. */
+export function ayerISO(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const anio = d.getFullYear();
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${anio}-${mes}-${dia}`;
 }
 
 /** Primer día del mes actual en formato 'AAAA-MM-DD'. */

@@ -16,7 +16,7 @@ import {
   UNIDADES_NEGOCIO,
   UnidadNegocio,
 } from '../../core/models';
-import { formatearFecha, hoyISO } from '../../shared/utilidades/fechas';
+import { ayerISO, formatearFecha, hoyISO } from '../../shared/utilidades/fechas';
 import { mensajeDeError } from '../../shared/utilidades/errores';
 import { IconComponent } from '../../shared/componentes/icon/icon.component';
 
@@ -82,6 +82,22 @@ export class CajaComponent {
   cambiarFecha(valor: string): void {
     this.fecha.set(valor);
     this.cargar();
+  }
+
+  esHoy(): boolean {
+    return this.fecha() === hoyISO();
+  }
+
+  esAyer(): boolean {
+    return this.fecha() === ayerISO();
+  }
+
+  irAHoy(): void {
+    this.cambiarFecha(hoyISO());
+  }
+
+  irAAyer(): void {
+    this.cambiarFecha(ayerISO());
   }
 
   cambiarUnidad(valor: string): void {

@@ -19,6 +19,7 @@ export interface ResumenFinanzas {
   total_contratos: number;
   total_por_cobrar: number;
   total_ordenes: number;
+  total_ordenes_canceladas?: number;
   /** Por fecha real de cada pago: lo cobrado. */
   total_ingresos: number;
   total_adelantos: number;

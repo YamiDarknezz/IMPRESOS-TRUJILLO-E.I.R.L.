@@ -5,6 +5,10 @@
       <input type="date" [ngModel]="fecha()" name="cajaFecha" class="date-filter-input"
              (ngModelChange)="cambiarFecha($event)">
     </div>
+    <div class="filter-group" style="align-self:flex-end; margin-bottom:2px;">
+      <button type="button" class="filter-btn" [class.active]="esHoy()" (click)="irAHoy()">Hoy</button>
+      <button type="button" class="filter-btn" [class.active]="esAyer()" (click)="irAAyer()">Ayer</button>
+    </div>
     <div class="date-filter-item">
       <label class="date-filter-label">Unidad</label>
       <select [ngModel]="unidad()" name="cajaUnidad" class="date-filter-input"
@@ -154,7 +158,15 @@
       <span class="toolbar-title">Arqueo por usuario</span>
     </div>
     @if (datos.por_usuario.length === 0) {
-      <div class="empty-state"><p>Sin cobros registrados en la fecha.</p></div>
+      <div class="empty-state">
+        <p>Sin cobros registrados en la fecha ({{ formatearFecha(fecha()) }}).</p>
+        @if (esHoy()) {
+          <p style="margin-top:0.25rem; font-size:0.85rem; color:#6b7280;">¿Buscando los cobros del cierre o jornada anterior?</p>
+          <button type="button" class="btn-secondary btn-sm" (click)="irAAyer()" style="margin-top:0.35rem;">
+            Ver cobros de ayer
+          </button>
+        }
+      </div>
     } @else {
       <div class="table-wrapper">
         <table class="data-table">
