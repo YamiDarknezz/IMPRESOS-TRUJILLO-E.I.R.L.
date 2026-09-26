@@ -98,8 +98,16 @@
         <app-icon name="folder" [size]="20" />
       </div>
       <div class="stat-body">
-        <span class="stat-label">Órdenes</span>
+        <span class="stat-label" title="Órdenes con contrato activo (se excluyen órdenes canceladas)">
+          Órdenes activas
+        </span>
         <span class="stat-value">{{ datos.total_ordenes }}</span>
+        @if (datos.total_ordenes_canceladas; as canceladas) {
+          <span style="font-size:0.75rem; color:#6b7280; display:block; margin-top:2px;"
+                title="Las órdenes canceladas no generan ingresos ni contratos">
+            ({{ canceladas }} cancelada{{ canceladas > 1 ? 's' : '' }} excluida{{ canceladas > 1 ? 's' : '' }})
+          </span>
+        }
       </div>
     </div>
   </div>

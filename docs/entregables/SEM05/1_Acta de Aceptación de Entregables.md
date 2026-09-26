@@ -56,9 +56,9 @@ El presente entregable formal consolida la entrega técnica e institucional de l
 - **Auditoría y Arqueo de Caja con Candado Digital:** Candado digital inviolable que inhabilita físicamente el botón de entrega si existe saldo pendiente; auditoría de cierre de caja con opción de observar/anular transacciones fraudulentas o erróneas ("Yape falso", billete falso), deduciendo el arqueo y reabriendo el bloqueo de despacho.
 
 ### 2.4 Evidencia de Calidad y Verificación Técnica
-- **Suite de Pruebas Automatizadas:** 93 pruebas unitarias y de integración en backend ejecutadas con pytest (0 fallos).
-- **Compilación Frontend:** Angular 21 compilado limpiamente en 3.2 segundos sin errores de TypeScript ni hojas de estilo.
-- **Demostración Funcional en Vivo:** Demostración sobre software funcionando en entorno local contenerizado.
+- **Batería Integral de Pruebas Automatizadas:** 374 pruebas automatizadas con 100% de éxito (0 fallos), distribuidas en 93 pruebas unitarias y de integración en backend con pytest/FastAPI y 281 pruebas unitarias en frontend con Vitest y Angular 21 (servicios, componentes y guards).
+- **Pipeline CI/CD Automatizado:** Workflows en GitHub Actions ejecutando compilación limpia y ejecución de pruebas en cada Pull Request.
+- **Demostración Funcional en Vivo:** Demostración sobre software funcionando en entorno local contenerizado con Docker Compose y respaldo en VPS propio.
 
 ---
 
