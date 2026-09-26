@@ -1,0 +1,141 @@
+# docker-compose.yml de PRODUCCIÓN — IMPRESOS TRUJILLO E.I.R.L.
+#
+# ⚠️ Este archivo NO se ejecuta desde el repositorio. Es la plantilla de lo que
+#    vive en el VPS, en:  $HOME/data/deploy/impresos/docker-compose.yml
+#    Ahí es donde está también el `.env` real (con los secretos), y esa carpeta
+#    no es un repositorio git: por eso los secretos pueden vivir ahí sin riesgo.
+#
+# Cómo funciona el despliegue:
+#   CI (GitHub Actions) -> SSH al VPS -> git pull en $HOME/data/repos/impresos-trujillo
+#   -> docker compose run --rm api python -m alembic upgrade head
+#   -> docker compose up -d --build
+#
+# Nada se publica a internet salvo a través de Traefik. Los puertos 5432 y 8080
+# NO se exponen: la base de datos y la API no son alcanzables desde fuera.
+#
+# Si el usuario del VPS deja de ser `yami`, hay que ajustar las rutas absolutas
+# de este archivo (compose NO expande $HOME).
+
+services:
+  # ── Base de datos ────────────────────────────────────────────────────────
+  db:
+    image: postgres:17-alpine
+    container_name: impresos-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      # Datos en el volumen persistente, nunca en el disco de arranque.
+      - /home/yami/data/volumes/impresos/postgres:/var/lib/postgresql/data
+      # Extensiones del proyecto (solo se ejecutan la PRIMERA vez, cuando el
+      # directorio de datos está vacío).
+      - /home/yami/data/repos/impresos-trujillo/db/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - interna
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ── API FastAPI ──────────────────────────────────────────────────────────
+  api:
+    build:
+      # El contexto es el código fuente sincronizado por el CI. Al cambiar los
+      # archivos, Docker invalida la caché y reconstruye con el commit nuevo.
+      context: /home/yami/data/repos/impresos-trujillo/backend
+      dockerfile: Dockerfile
+    container_name: impresos-api
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    env_file:
+      - .env
+    environment:
+      # La contraseña vive una sola vez, en el .env; aquí solo se arma la URL.
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      ENTORNO: produccion
+      LOG_LEVEL: INFO
+      PORT: "8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      # Solo la red interna: Traefik no la ve, internet tampoco. Quien habla con
+      # la API es el nginx del contenedor `web`, que reenvía /api.
+      - interna
+    healthcheck:
+      # La imagen es python:3.13-slim y NO trae curl ni wget: se usa python,
+      # que sí está.
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/health').status==200 else 1)",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ── Frontend Angular (nginx) ─────────────────────────────────────────────
+  web:
+    build:
+      context: /home/yami/data/repos/impresos-trujillo/frontend
+      dockerfile: Dockerfile
+    container_name: impresos-web
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      # `proxy` para que Traefik lo publique, `interna` para hablar con la API.
+      - proxy
+      - interna
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.impresos.rule=Host(`${IMPRESOS_DOMAIN}`)"
+      - "traefik.http.routers.impresos.entrypoints=websecure"
+      - "traefik.http.routers.impresos.tls.certresolver=letsencrypt"
+      - "traefik.http.services.impresos.loadbalancer.server.port=80"
+      # Límite de peticiones ANTES de llegar a la aplicación: el login de la API
+      # es una superficie de fuerza bruta. `ratelimit-http` ya está definido en
+      # el contenedor de Traefik (30/s con ráfaga de 60).
+      - "traefik.http.routers.impresos.middlewares=ratelimit-http"
+    healthcheck:
+      # nginx:alpine es Alpine: `wget` viene de busybox. Se apunta a 0.0.0.0
+      # porque `localhost` puede resolverse a IPv6 y nginx solo escucha en IPv4.
+      test: ["CMD", "wget", "-q", "--spider", "http://0.0.0.0:80/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  # Red del stack darknezz: la crea el repositorio darknezz-infra.
+  proxy:
+    external: true
+  # Red privada de este proyecto: aísla la API y la base de datos.
+  interna:
+    driver: bridge

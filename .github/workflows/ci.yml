@@ -1,0 +1,161 @@
+# Integración continua y despliegue — IMPRESOS TRUJILLO E.I.R.L.
+#
+# Qué hace:
+#   backend   -> instala dependencias, aplica las migraciones sobre un PostgreSQL
+#                real y corre las 96 pruebas (incluidas las de integración que se
+#                saltan cuando no hay base de datos).
+#   frontend  -> instala, corre las pruebas y compila el build de producción.
+#   desplegar -> solo en main y solo si los dos anteriores pasaron: entra por SSH
+#                al VPS, aplica migraciones y reconstruye los contenedores.
+#
+# El artefacto compilado NO viaja al VPS: el despliegue reconstruye en el VPS
+# desde el mismo commit ya validado. Los binarios nunca se suben por SSH.
+
+name: CI
+
+on:
+  push:
+    branches: [main, develop, gerardo]
+  pull_request:
+    branches: [main, develop, gerardo]
+  # Permite relanzar el despliegue a mano desde la pestaña Actions.
+  workflow_dispatch:
+
+# Si llegan varios pushes seguidos, cancela el anterior: no vale la pena validar
+# commits que ya quedaron obsoletos.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ────────────────────────────────────────────────────────────────────────
+  backend:
+    name: Backend (FastAPI)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    # PostgreSQL real, igual que en el VPS: así las pruebas de integración que
+    # se saltan sin base de datos SÍ corren y validan el dialecto de verdad
+    # (FOR UPDATE, NUMERIC, enums como VARCHAR con CHECK).
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: impresos_test
+          POSTGRES_USER: impresos_test
+          POSTGRES_PASSWORD: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U impresos_test -d impresos_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql+asyncpg://impresos_test:test@localhost:5432/impresos_test
+      ENTORNO: pruebas
+      LOG_LEVEL: WARNING
+      # Valor de relleno: en producción el JWT_SECRET real se genera en el VPS.
+      JWT_SECRET: secreto-solo-para-ci-no-reutilizar
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+
+      - name: Instalar dependencias
+        run: pip install -r requirements-dev.txt
+
+      # Aplicar las migraciones desde cero detecta una migración rota ANTES de
+      # que llegue a producción, que es donde duele.
+      - name: Aplicar migraciones sobre base vacía
+        run: python -m alembic upgrade head
+
+      - name: Pruebas
+        run: python -m pytest -q
+
+  # ────────────────────────────────────────────────────────────────────────
+  frontend:
+    name: Frontend (Angular)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      # --watch=false es obligatorio: sin eso el runner se queda esperando
+      # cambios de archivos y el job nunca termina.
+      - name: Pruebas
+        run: npm run test -- --watch=false
+
+      - name: Build de producción
+        run: npm run build
+
+  # ────────────────────────────────────────────────────────────────────────
+  desplegar:
+    name: Desplegar en el VPS
+    needs: [backend, frontend]
+    # Solo desde main (nunca desde una rama de trabajo) y solo con todo verde.
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Entrar por SSH y reconstruir
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          command_timeout: 20m
+          script: |
+            # set -e es OBLIGATORIO: sin él, un fallo de git o de compose deja
+            # el job en verde mientras los contenedores siguen con el código viejo.
+            set -e
+
+            echo "── 1/5 fuente: sincronizar el código ──"
+            cd $HOME/data/repos/impresos-trujillo
+            git pull --ff-only origin main
+
+            echo "── 2/5 construir la imagen nueva ──"
+            # Se construye ANTES de migrar a proposito: las migraciones viven
+            # dentro de la imagen (el Dockerfile hace COPY . .), asi que un
+            # `run` sobre una imagen vieja aplicaria las migraciones viejas y el
+            # cambio nuevo quedaria sin aplicar en la base.
+            cd $HOME/data/deploy/impresos
+            docker compose build api
+
+            echo "── 3/5 migraciones: antes de arrancar el codigo nuevo ──"
+            docker compose run --rm api python -m alembic upgrade head
+
+            echo "── 4/5 levantar los tres servicios ──"
+            docker compose up -d --build
+            docker compose ps
+
+            echo "── 5/5 smoke test: si esto falla, el despliegue falla ──"
+            # -k es obligatorio: se conecta a 127.0.0.1 mandando el Host del
+            # dominio, asi que el certificado presentado no coincide con el
+            # nombre al que se conecta. Sin -k, curl falla la validacion TLS y
+            # el smoke test daria rojo con la aplicacion funcionando bien.
+            dominio=$(grep -E '^IMPRESOS_DOMAIN=' .env | cut -d= -f2)
+            codigo=$(curl -sk -o /dev/null -w '%{http_code}' -H "Host: $dominio" https://127.0.0.1/health)
+            echo "GET /health -> $codigo"
+            [ "$codigo" = "200" ] || { echo "El smoke test falló"; exit 1; }
+            echo "DONE"
