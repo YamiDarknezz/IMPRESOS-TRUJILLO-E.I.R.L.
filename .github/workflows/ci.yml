@@ -130,20 +130,32 @@ jobs:
             # el job en verde mientras los contenedores siguen con el código viejo.
             set -e
 
-            echo "── 1/4 fuente: sincronizar el código ──"
+            echo "── 1/5 fuente: sincronizar el código ──"
             cd $HOME/data/repos/impresos-trujillo
             git pull --ff-only origin main
 
-            echo "── 2/4 migraciones: antes de arrancar el código nuevo ──"
+            echo "── 2/5 construir la imagen nueva ──"
+            # Se construye ANTES de migrar a proposito: las migraciones viven
+            # dentro de la imagen (el Dockerfile hace COPY . .), asi que un
+            # `run` sobre una imagen vieja aplicaria las migraciones viejas y el
+            # cambio nuevo quedaria sin aplicar en la base.
             cd $HOME/data/deploy/impresos
+            docker compose build api
+
+            echo "── 3/5 migraciones: antes de arrancar el codigo nuevo ──"
             docker compose run --rm api python -m alembic upgrade head
 
-            echo "── 3/4 reconstruir y levantar ──"
+            echo "── 4/5 levantar los tres servicios ──"
             docker compose up -d --build
             docker compose ps
 
-            echo "── 4/4 smoke test: si esto falla, el despliegue falla ──"
-            codigo=$(curl -s -o /dev/null -w '%{http_code}' -H "Host: $(grep -E '^IMPRESOS_DOMAIN=' .env | cut -d= -f2)" https://127.0.0.1/health)
+            echo "── 5/5 smoke test: si esto falla, el despliegue falla ──"
+            # -k es obligatorio: se conecta a 127.0.0.1 mandando el Host del
+            # dominio, asi que el certificado presentado no coincide con el
+            # nombre al que se conecta. Sin -k, curl falla la validacion TLS y
+            # el smoke test daria rojo con la aplicacion funcionando bien.
+            dominio=$(grep -E '^IMPRESOS_DOMAIN=' .env | cut -d= -f2)
+            codigo=$(curl -sk -o /dev/null -w '%{http_code}' -H "Host: $dominio" https://127.0.0.1/health)
             echo "GET /health -> $codigo"
             [ "$codigo" = "200" ] || { echo "El smoke test falló"; exit 1; }
             echo "DONE"
