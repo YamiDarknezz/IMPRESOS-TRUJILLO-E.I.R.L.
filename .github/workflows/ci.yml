@@ -23,9 +23,14 @@ on:
 
 # Si llegan varios pushes seguidos, cancela el anterior: no vale la pena validar
 # commits que ya quedaron obsoletos.
+#
+# PERO en main NO se cancela. Dos merges seguidos a main cancelarian el primero
+# a mitad de camino, y si eso pasa despues de las migraciones y antes de
+# `up -d`, la base ya tiene el esquema nuevo mientras los contenedores siguen
+# con el codigo viejo. En main los runs se encolan en vez de pisarse.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   # ────────────────────────────────────────────────────────────────────────
