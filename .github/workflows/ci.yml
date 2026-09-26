@@ -145,17 +145,35 @@ jobs:
             echo "── 3/5 migraciones: antes de arrancar el codigo nuevo ──"
             docker compose run --rm api python -m alembic upgrade head
 
-            echo "── 4/5 levantar los tres servicios ──"
-            docker compose up -d --build
+            echo "── 4/5 levantar los tres servicios (esperando los healthchecks) ──"
+            # --wait no devuelve el control hasta que los tres pasen su
+            # healthcheck, en vez de dejarlos en "health: starting".
+            docker compose up -d --build --wait --wait-timeout 180
             docker compose ps
 
-            echo "── 5/5 smoke test: si esto falla, el despliegue falla ──"
+            echo "── 5/5 smoke test ──"
+            # Se reintenta a proposito. `up -d` deja el contenedor arriba en
+            # menos de un segundo, pero Traefik tarda unos segundos mas en leer
+            # las etiquetas del contenedor nuevo y crear el router. Una unica
+            # consulta inmediata devuelve 404 y tumba el despliegue con la
+            # aplicacion ya funcionando perfectamente.
+            #
             # -k es obligatorio: se conecta a 127.0.0.1 mandando el Host del
-            # dominio, asi que el certificado presentado no coincide con el
-            # nombre al que se conecta. Sin -k, curl falla la validacion TLS y
-            # el smoke test daria rojo con la aplicacion funcionando bien.
+            # dominio, asi que el certificado no coincide con el nombre al que
+            # se conecta. Sin -k, curl falla la validacion TLS.
             dominio=$(grep -E '^IMPRESOS_DOMAIN=' .env | cut -d= -f2)
-            codigo=$(curl -sk -o /dev/null -w '%{http_code}' -H "Host: $dominio" https://127.0.0.1/health)
+            codigo=000
+            for intento in $(seq 1 30); do
+              codigo=$(curl -sk -o /dev/null -w '%{http_code}' -H "Host: $dominio" https://127.0.0.1/health)
+              if [ "$codigo" = "200" ]; then
+                break
+              fi
+              echo "   intento $intento/30 -> $codigo (esperando a que Traefik registre el contenedor)"
+              sleep 4
+            done
             echo "GET /health -> $codigo"
-            [ "$codigo" = "200" ] || { echo "El smoke test falló"; exit 1; }
+            if [ "$codigo" != "200" ]; then
+              echo "El smoke test fallo: la aplicacion no responde por el dominio"
+              exit 1
+            fi
             echo "DONE"
