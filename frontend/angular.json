@@ -92,12 +92,7 @@
         "test": {
           "builder": "@angular/build:unit-test",
           "options": {
-            "polyfills": ["zone.js"],
-            "tsConfig": "tsconfig.spec.json",
-            "styles": [
-              "src/styles.css"
-            ],
-            "scripts": []
+            "tsConfig": "tsconfig.spec.json"
           }
         }
       }

@@ -17,6 +17,9 @@ out-tsc/
 # Entornos y secretos
 .env
 .env.*
+# La plantilla SÍ se versiona: documenta qué variables necesita el sistema.
+# Sin esta excepción, la regla `.env.*` la deja fuera del repositorio.
+!.env.example
 *.local
 secrets.json
 credentials.json
