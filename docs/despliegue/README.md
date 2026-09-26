@@ -146,6 +146,7 @@ Estos ya están contemplados; se dejan escritos para que nadie los "arregle" de 
 | **No** se pone filtro de rutas (`paths:`) en el workflow | Si un job filtrado por ruta es un check obligatorio, los PRs que no tocan esa ruta quedan bloqueados para siempre |
 | `proxy_pass` con variable + `resolver` en nginx | Con el nombre fijo, nginx resuelve una sola vez al arrancar y al recrear la API queda con una IP muerta |
 | `set -e` en el script del job de despliegue | Sin él, un fallo de `git` o de compose deja el job en verde con el código viejo en producción |
+| En `main` los runs **no se cancelan** entre sí | Dos merges seguidos cancelarían el primero a mitad de despliegue: base migrada y contenedores sin recrear. En `main` se encolan; en ramas de trabajo sí se cancela |
 | La contraseña de la base es alfanumérica | Un símbolo tipo `@` o `:` rompe la URL de conexión y el error se ve como fallo de autenticación |
 | Las cabeceras de seguridad están en `nginx.conf`, no en `public/_headers` | `_headers` es una convención de **Netlify / Cloudflare Pages**: nginx no la lee. Estando ahí, la aplicación se servía sin CSP, sin `X-Frame-Options` y sin `nosniff` |
 | La extensión `unaccent` / `pg_trgm` | Las declara `db/init/`, pero el código usa `ILIKE` simple: **ninguna consulta las usa hoy**. Ver "Pendientes" |
