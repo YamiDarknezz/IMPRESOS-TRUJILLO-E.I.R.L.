@@ -23,16 +23,16 @@
       </div>
 
       @if (errorMessage) {
-      <div class="error-msg">{{ errorMessage }}</div>
+        <div class="error-msg">{{ errorMessage }}</div>
       }
 
       <button type="submit" class="btn-login" [disabled]="loading">
         @if (loading) {
-        <span class="spinner"></span>
-        Validando...
+          <span class="spinner"></span>
+          Validando...
         } @else {
-        Ingresar
-        <span class="arrow">→</span>
+          Ingresar
+          <span class="arrow">→</span>
         }
       </button>
     </form>

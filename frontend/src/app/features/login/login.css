@@ -55,7 +55,7 @@
 
 .brand-header p {
   color: var(--text-faint);
-  margin-top: 1.5rem; /* ← Ajusta este valor (1rem, 1.5rem, 20px) para bajarlo lo que necesites */
+  margin-top: 1.5rem; /* separación respecto al logo */
   margin-bottom: 0;
   font-size: 0.875rem;
 }
