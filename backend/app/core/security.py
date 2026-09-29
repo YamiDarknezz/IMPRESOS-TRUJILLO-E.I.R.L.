@@ -22,6 +22,13 @@ seguridad = HTTPBearer(auto_error=False)
 
 CREDENCIALES_INVALIDAS = "Sesión no válida. Vuelve a iniciar sesión."
 
+# Hash señuelo fijo (issue #43): cuando el correo del login no existe, se
+# compara igual contra ESTE hash para que bcrypt (costo 12) corra el mismo
+# tiempo que si la cuenta existiera. Sin esto, el tiempo de respuesta
+# revelaba qué correos están registrados (~7x más lento con cuenta real,
+# medido contra producción). No corresponde a ninguna contraseña real.
+HASH_SENUELO = "$2b$12$1aW1dqzbx73F.coh63k/.OmguWEg2iXuKCgiiuntBGpkK20NgQfA6"
+
 
 # ── Contraseñas (bcrypt) ────────────────────────────────────────────────────
 
