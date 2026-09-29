@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auditoria import registrar
 from app.core.database import obtener_sesion
-from app.core.errores import Conflicto, NoEncontrado
+from app.core.errores import Conflicto, ErrorDeNegocio, NoEncontrado
 from app.core.security import hash_password, solo_admin, supervision, usuario_actual
 from app.models import TipoEventoAuditoria, Usuario
 from app.schemas import UsuarioCreateData, UsuarioUpdateData
@@ -77,6 +77,15 @@ async def actualizar_usuario(
     usuario = await sesion.get(Usuario, usuario_id)
     if usuario is None:
         raise NoEncontrado("Usuario no encontrado.")
+
+    if usuario_id == admin.id:
+        # Desactivarse revoca la sesión propia de inmediato: si era el único
+        # admin, nadie queda con acceso a /usuarios y la única recuperación
+        # es por SSH. Que lo haga otro administrador.
+        if data.rol is not None and data.rol != usuario.rol:
+            raise ErrorDeNegocio("No puedes cambiar tu propio rol. Pídeselo a otro administrador.")
+        if data.activo is not None and not data.activo:
+            raise ErrorDeNegocio("No puedes desactivar tu propia cuenta. Pídeselo a otro administrador.")
 
     anteriores = {"nombre": usuario.nombre, "rol": usuario.rol.value, "activo": usuario.activo}
 

@@ -260,3 +260,49 @@ async def test_error_de_validacion_llega_como_texto_legible(cliente_api, admin):
     detalle = respuesta.json()["detail"]
     assert isinstance(detalle, str)
     assert "nombre" in detalle
+
+
+# ══ Issue #42: un admin no puede des-administrarse ni desactivarse solo ═══
+
+async def test_admin_no_puede_cambiarse_su_propio_rol(cliente_api, admin):
+    respuesta = await cliente_api.patch(
+        f"/api/usuarios/{admin.id}",
+        json={"rol": "operario"},
+        headers=cabecera_token(admin),
+    )
+    assert respuesta.status_code == 400
+    assert "propio rol" in respuesta.json()["detail"].lower()
+
+
+async def test_admin_no_puede_desactivarse_a_si_mismo(cliente_api, admin):
+    respuesta = await cliente_api.patch(
+        f"/api/usuarios/{admin.id}",
+        json={"activo": False},
+        headers=cabecera_token(admin),
+    )
+    assert respuesta.status_code == 400
+    assert "propia cuenta" in respuesta.json()["detail"].lower()
+
+
+async def test_admin_si_puede_editarse_el_nombre(cliente_api, admin):
+    """El bloqueo es solo para rol/activo: editar el nombre propio es inofensivo."""
+    respuesta = await cliente_api.patch(
+        f"/api/usuarios/{admin.id}",
+        json={"nombre": "Admin Renombrado"},
+        headers=cabecera_token(admin),
+    )
+    assert respuesta.status_code == 200
+    assert respuesta.json()["data"]["nombre"] == "Admin Renombrado"
+
+
+async def test_un_admin_si_puede_desactivar_a_otro_admin(cliente_api, sesion, admin):
+    """El bloqueo es sobre la propia cuenta, no sobre el rol admin en general."""
+    otro_admin = await _usuario(sesion, Rol.ADMIN, "otro-admin@impresos.test")
+
+    respuesta = await cliente_api.patch(
+        f"/api/usuarios/{otro_admin.id}",
+        json={"activo": False},
+        headers=cabecera_token(admin),
+    )
+    assert respuesta.status_code == 200
+    assert respuesta.json()["data"]["activo"] is False
