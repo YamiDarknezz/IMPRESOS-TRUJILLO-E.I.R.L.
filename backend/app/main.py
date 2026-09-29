@@ -20,7 +20,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.core.config import settings
+from app.core.config import settings, validar_jwt_secret
 from app.core.contexto import ip_cliente
 from app.core.errores import MENSAJE_ERROR_INTERNO, ErrorDeNegocio, logger
 from app.routers import (
@@ -37,6 +37,7 @@ from app.routers import (
 )
 
 logging.basicConfig(level=settings.log_level)
+validar_jwt_secret(settings.entorno, settings.jwt_secret)
 
 app = FastAPI(
     title=settings.app_nombre,
@@ -57,9 +58,17 @@ app.add_middleware(
 
 @app.middleware("http")
 async def registrar_ip(request: Request, call_next):
-    """Deja la IP del cliente disponible para el registro de auditoría."""
-    reenviada = request.headers.get("x-forwarded-for", "")
-    ip_cliente.set((reenviada.split(",")[0].strip() if reenviada else None) or (request.client.host if request.client else ""))
+    """
+    Deja la IP del cliente disponible para el registro de auditoría.
+
+    `X-Forwarded-For` no sirve como fuente: nginx lo AMPLÍA en vez de
+    reemplazarlo (`$proxy_add_x_forwarded_for`), así que el primer valor
+    sigue siendo el que decide mandar el cliente. `X-Real-IP` en cambio lo
+    fija nginx con `$remote_addr` (`frontend/nginx.conf`), su propio socket,
+    y lo sobreescribe sin importar qué mande el cliente.
+    """
+    ip_real = request.headers.get("x-real-ip", "").strip()
+    ip_cliente.set(ip_real or (request.client.host if request.client else ""))
     return await call_next(request)
 
 
