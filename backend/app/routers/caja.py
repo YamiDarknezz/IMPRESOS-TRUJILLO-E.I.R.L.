@@ -85,7 +85,7 @@ async def congelar_caja(
 async def observar_pago(
     pago_id: int,
     data: ObservarPagoData,
-    usuario: Annotated[Usuario, Depends(personal_venta)],
+    usuario: Annotated[Usuario, Depends(supervision)],
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
 ):
     """Audita y observa/anula un cobro erróneo o fraudulento (Yape falso, billete falso, etc.)."""

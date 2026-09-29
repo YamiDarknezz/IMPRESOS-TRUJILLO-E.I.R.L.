@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auditoria import registrar
 from app.core.errores import Conflicto, ErrorDeNegocio, NoEncontrado
-from app.core.fechas import ahora_utc, rango_dia_peru_a_utc
+from app.core.fechas import a_fecha_peru, ahora_utc, rango_dia_peru_a_utc
 from app.models import (
     CierreCaja,
     EstadoCierre,
@@ -167,6 +167,25 @@ async def observar_pago(
     if orden is None:
         raise NoEncontrado("Orden asociada al pago no encontrada.")
 
+    # El cierre congelado es el documento de control de gerencia: si el pago
+    # ya quedó dentro de uno, no se toca más (issue #19 trata el resto de ese
+    # problema; aquí solo se cierra esta puerta puntual).
+    cierre_del_dia = (
+        await sesion.execute(
+            select(CierreCaja).where(
+                CierreCaja.fecha == a_fecha_peru(pago.fecha),
+                CierreCaja.unidad_negocio == orden.unidad_negocio,
+                CierreCaja.usuario_id == pago.registrado_por,
+            )
+        )
+    ).scalar_one_or_none()
+    if cierre_del_dia is not None and cierre_del_dia.estado == EstadoCierre.CONGELADO:
+        raise ErrorDeNegocio(
+            "No se puede observar un pago de un cierre de caja ya congelado."
+        )
+
+    cajero = await sesion.get(Usuario, pago.registrado_por) if pago.registrado_por else None
+
     pago.estado_pago = EstadoPago.OBSERVADO
     pago.motivo_observacion = motivo
     pago.nota_observacion = nota
@@ -183,13 +202,18 @@ async def observar_pago(
         TipoEventoAuditoria.OBSERVACION_PAGO,
         tabla_afectada="pagos_orden",
         registro_id=pago.id,
-        detalle=f"Pago #{pago.id} de {orden.codigo} observado por {motivo.value}: S/ {pago.monto}. {nota}",
+        detalle=(
+            f"Pago #{pago.id} de {orden.codigo}, cobrado por "
+            f"{cajero.nombre if cajero else 'usuario desconocido'}, "
+            f"observado por {motivo.value}: S/ {pago.monto}. {nota}"
+        ),
         valores_anteriores={"estado_pago": "conforme"},
         valores_nuevos={
             "estado_pago": pago.estado_pago.value,
             "motivo": motivo.value,
             "nota": nota,
             "orden_id": orden.id,
+            "registrado_por": pago.registrado_por,
             "nuevo_saldo_pendiente": float(orden.saldo_pendiente),
         },
     )

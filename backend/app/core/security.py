@@ -112,3 +112,12 @@ solo_admin = requiere_roles(Rol.ADMIN)
 supervision = requiere_roles(Rol.ADMIN, Rol.SUBGERENTE)
 gestion_ordenes = requiere_roles(Rol.ADMIN, Rol.SUBGERENTE, Rol.SECRETARIA)
 personal_venta = requiere_roles(Rol.ADMIN, Rol.SUBGERENTE, Rol.SECRETARIA, Rol.OPERARIO)
+# Avanzar etapa, reportar uso de materiales y cobrar el saldo de una orden: lo
+# hace quien la tiene asignada (operario o diseñadora, según el trabajo) o
+# quien supervisa. A propósito NO es lo mismo que `personal_venta`: esas
+# operaciones son de mostrador/caja (venta rápida, cerrar caja) y la
+# diseñadora no las hace. `ordenes_service.puede_gestionar()` /
+# `puede_avanzar_etapa()` ya limitan a operario/diseñadora a solo lo suyo.
+personal_produccion = requiere_roles(
+    Rol.ADMIN, Rol.SUBGERENTE, Rol.SECRETARIA, Rol.OPERARIO, Rol.DISENADORA
+)

@@ -572,7 +572,6 @@ async def actualizar(sesion: AsyncSession, id_orden: int, data: OrdenCreateData,
             "(antes de finalizar la producción)."
         )
 
-    asignado = await _validar_asignado(sesion, data.asignado_a)
     cliente = await _resolver_cliente(sesion, data)
 
     subtotal = _calcular_subtotal(data)
@@ -595,7 +594,13 @@ async def actualizar(sesion: AsyncSession, id_orden: int, data: OrdenCreateData,
     orden.cliente = cliente
     orden.direccion = data.direccion or cliente.direccion
     orden.telefono = data.telefono or cliente.telefono
-    orden.asignado = asignado
+    # El asignado NO se toca aquí a propósito: el formulario de edición ni
+    # siquiera muestra ese campo salvo a supervisión, y por rol no puede
+    # mandar "no cambiar" — solo puede mandar `asignado_a` o nada. Cambiar a
+    # quién le toca una orden ya tiene su propio endpoint permisionado
+    # (`POST /{id_orden}/asignar`, solo supervisión); aceptar el campo aquí
+    # también es lo que dejaba a Secretaría desasignar la orden sin querer
+    # con cada edición.
     orden.descripcion = data.descripcion
     orden.tipo_documento = data.tipo_documento
     orden.unidad_negocio = data.unidad_negocio

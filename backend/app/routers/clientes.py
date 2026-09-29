@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auditoria import registrar
 from app.core.database import obtener_sesion
 from app.core.errores import NoEncontrado
-from app.core.security import gestion_ordenes, usuario_actual
+from app.core.security import gestion_ordenes
 from app.models import Cliente, TipoEventoAuditoria, Usuario
 from app.schemas import ClienteCreateData, ClienteUpdateData
 from app.services import ordenes_service
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/api/clientes", tags=["Clientes"])
 
 @router.get("")
 async def listar_clientes(
-    usuario: Annotated[Usuario, Depends(usuario_actual)],
+    usuario: Annotated[Usuario, Depends(gestion_ordenes)],
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
     q: Optional[str] = Query(default=None, description="Búsqueda por nombre o documento"),
     incluir_inactivos: bool = False,
@@ -39,7 +39,7 @@ async def listar_clientes(
 @router.get("/{cliente_id}")
 async def obtener_cliente(
     cliente_id: int,
-    usuario: Annotated[Usuario, Depends(usuario_actual)],
+    usuario: Annotated[Usuario, Depends(gestion_ordenes)],
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
 ):
     cliente = await sesion.get(Cliente, cliente_id)
@@ -51,7 +51,7 @@ async def obtener_cliente(
 @router.get("/{cliente_id}/resumen")
 async def resumen_cliente(
     cliente_id: int,
-    usuario: Annotated[Usuario, Depends(usuario_actual)],
+    usuario: Annotated[Usuario, Depends(gestion_ordenes)],
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
 ):
     """Ficha del cliente: historial de órdenes, facturado y por cobrar."""
