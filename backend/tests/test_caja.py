@@ -169,3 +169,27 @@ async def test_observar_pago_deduce_de_caja_y_reabre_deuda(sesion, admin, materi
         await caja_service.observar_pago(
             sesion, pago.id, MotivoObservacionPago.BILLETE_FALSO, "Duplicado", admin
         )
+
+
+async def test_no_se_observa_un_pago_de_un_cierre_ya_congelado(sesion, admin, material, cliente):
+    """
+    El cierre congelado es el documento de control de gerencia: si los pagos
+    del día siguen siendo observables después, el arqueo deja de valer como
+    evidencia (issue relacionado: #19).
+    """
+    from app.models import MotivoObservacionPago
+
+    orden = await _crear_cobro(
+        sesion, admin, material, cliente,
+        precio_total=100, adelanto_pago=100, metodo_pago=MetodoPago.EFECTIVO,
+    )
+    pago = orden.pagos[0]
+
+    hoy = a_fecha_peru(ahora_utc())
+    cierre = await caja_service.cerrar_caja(sesion, hoy, UnidadNegocio.IMPRENTA, "", admin)
+    await caja_service.congelar_caja(sesion, cierre.id, "Validado", admin)
+
+    with pytest.raises(ErrorDeNegocio, match="congelado"):
+        await caja_service.observar_pago(
+            sesion, pago.id, MotivoObservacionPago.YAPE_FALSO, "Tarde para esto", admin
+        )
