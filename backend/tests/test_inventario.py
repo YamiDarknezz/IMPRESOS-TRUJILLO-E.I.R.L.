@@ -2,9 +2,10 @@
 from decimal import Decimal
 
 import pytest
+from sqlalchemy import select
 
 from app.core.errores import ErrorDeNegocio
-from app.models import MotivoMovimiento
+from app.models import Auditoria, MotivoMovimiento, TipoEventoAuditoria
 from app.schemas import MaterialEstimado
 from app.services import ordenes_service
 from app.services.inventario_service import (
@@ -234,3 +235,133 @@ async def test_plancha_rigida_predimensionada_area(sesion, admin, material):
             ),
             admin,
         )
+
+
+# ══ Issue #56: la pieza es desglose del material, no un inventario aparte ══
+
+async def test_registrar_pieza_suma_su_capacidad_al_stock_del_material(sesion, admin, material):
+    from app.schemas.inventario import PiezaLoteCreateData
+    from app.services import inventario_service
+
+    assert float(material.stock_actual) == 10
+    await inventario_service.registrar_pieza(
+        sesion,
+        PiezaLoteCreateData(
+            material_id=material.id,
+            codigo_identificador="ROLL-STOCK-001",
+            capacidad_inicial=100.0,
+            unidad_medida="m",
+            costo_adquisicion=350.0,
+        ),
+        admin,
+    )
+    assert float(material.stock_actual) == 110
+
+
+async def test_consumir_pieza_descuenta_del_stock_del_material(sesion, admin, material):
+    from app.schemas.inventario import ConsumoPiezaCreateData, PiezaLoteCreateData
+    from app.services import inventario_service
+
+    pieza = await inventario_service.registrar_pieza(
+        sesion,
+        PiezaLoteCreateData(
+            material_id=material.id,
+            codigo_identificador="ROLL-STOCK-002",
+            capacidad_inicial=100.0,
+            unidad_medida="m",
+            costo_adquisicion=350.0,
+        ),
+        admin,
+    )
+    assert float(material.stock_actual) == 110
+
+    await inventario_service.registrar_consumo_pieza(
+        sesion,
+        pieza.id,
+        ConsumoPiezaCreateData(trabajo_descripcion="Corte de prueba", cantidad_consumida=30.0),
+        admin,
+    )
+    assert float(material.stock_actual) == 80  # 110 - 30
+    assert float(pieza.saldo_restante) == 70
+
+
+# ══ Issue #50: alta y consumo de piezas quedan auditados ═══════════════════
+
+async def test_registrar_pieza_deja_auditoria(sesion, admin, material):
+    from app.schemas.inventario import PiezaLoteCreateData
+    from app.services import inventario_service
+
+    await inventario_service.registrar_pieza(
+        sesion,
+        PiezaLoteCreateData(
+            material_id=material.id,
+            codigo_identificador="ROLL-AUD-001",
+            capacidad_inicial=50.0,
+            unidad_medida="m",
+            costo_adquisicion=100.0,
+        ),
+        admin,
+    )
+
+    entradas = (
+        await sesion.execute(
+            select(Auditoria).where(Auditoria.tabla_afectada == "piezas_lote_material")
+        )
+    ).scalars().all()
+    assert len(entradas) == 1
+    assert entradas[0].accion == TipoEventoAuditoria.CREAR
+    assert entradas[0].registro_id == "ROLL-AUD-001"
+    assert entradas[0].usuario_id == admin.id
+
+
+async def test_consumir_pieza_deja_auditoria(sesion, admin, material):
+    from app.schemas.inventario import ConsumoPiezaCreateData, PiezaLoteCreateData
+    from app.services import inventario_service
+
+    pieza = await inventario_service.registrar_pieza(
+        sesion,
+        PiezaLoteCreateData(
+            material_id=material.id,
+            codigo_identificador="ROLL-AUD-002",
+            capacidad_inicial=50.0,
+            unidad_medida="m",
+            costo_adquisicion=100.0,
+        ),
+        admin,
+    )
+    await inventario_service.registrar_consumo_pieza(
+        sesion,
+        pieza.id,
+        ConsumoPiezaCreateData(trabajo_descripcion="Corte auditado", cantidad_consumida=10.0),
+        admin,
+    )
+
+    entradas = (
+        await sesion.execute(
+            select(Auditoria).where(Auditoria.tabla_afectada == "consumos_pieza")
+        )
+    ).scalars().all()
+    assert len(entradas) == 1
+    assert entradas[0].accion == TipoEventoAuditoria.CREAR
+    assert entradas[0].valores_anteriores == {"saldo_restante": 50.0}
+    assert entradas[0].valores_nuevos == {"saldo_restante": 40.0}
+
+
+async def test_ajustar_stock_por_api_deja_auditoria(cliente_api, sesion, admin, material):
+    from tests.apoyo import cabecera_token
+
+    respuesta = await cliente_api.patch(
+        f"/api/inventario/{material.id}/stock",
+        json={"stock_actual": 3, "nota": "conteo físico"},
+        headers=cabecera_token(admin),
+    )
+    assert respuesta.status_code == 200
+
+    entradas = (
+        await sesion.execute(
+            select(Auditoria).where(Auditoria.accion == TipoEventoAuditoria.AJUSTE_STOCK)
+        )
+    ).scalars().all()
+    assert len(entradas) == 1
+    assert entradas[0].valores_anteriores == {"stock_actual": 10.0}
+    assert entradas[0].valores_nuevos == {"stock_actual": 3.0}
