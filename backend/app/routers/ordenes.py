@@ -129,7 +129,7 @@ async def confirmar_pago(
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
 ):
     orden = await ordenes_service.confirmar_pago(
-        sesion, id_orden, data.metodo_pago, data.referencia, usuario
+        sesion, id_orden, data.metodo_pago, data.referencia, usuario, monto=data.monto
     )
     return {"status": "success", "data": serializar_orden(orden)}
 

@@ -119,6 +119,17 @@ class ConfirmarPagoData(BaseModel):
     # Método del pago final; si no se indica, se reusa el del adelanto.
     metodo_pago: Optional[MetodoPago] = None
     referencia: str = Field(default="", max_length=120)
+    # Si no se indica, se cobra el saldo pendiente completo (issue #13):
+    # mandar un monto menor registra un abono parcial en vez de forzar a
+    # elegir entre "todo" o "nada".
+    monto: Optional[float] = None
+
+    @field_validator("monto")
+    @classmethod
+    def _monto_positivo(cls, v: Optional[float]) -> Optional[float]:
+        if v is None:
+            return v
+        return exigir_positivo(v, "El monto cobrado debe ser mayor a 0")
 
 
 class CambiarEstadoData(BaseModel):
