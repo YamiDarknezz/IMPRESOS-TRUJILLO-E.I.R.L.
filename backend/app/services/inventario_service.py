@@ -14,6 +14,7 @@ from decimal import Decimal
 from typing import Iterable, Optional
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errores import Conflicto, ErrorDeNegocio, NoEncontrado
@@ -199,7 +200,14 @@ async def registrar_pieza(
         consumos=[],
     )
     sesion.add(pieza)
-    await sesion.flush()
+    try:
+        await sesion.flush()
+    except IntegrityError as error:
+        # El SELECT de arriba no cierra la carrera entre dos peticiones
+        # concurrentes; el UNIQUE de la base sí. Si dos llegan a la vez, una
+        # gana el INSERT y la otra cae aquí en vez de romperse con un 500.
+        await sesion.rollback()
+        raise Conflicto(f"Ya existe una pieza o rollo con el código '{data.codigo_identificador}'.") from error
     return pieza
 
 
@@ -279,5 +287,16 @@ async def registrar_consumo_pieza(
     if consumo not in pieza.consumos:
         pieza.consumos.append(consumo)
     sesion.add(consumo)
-    await sesion.flush()
+    try:
+        await sesion.flush()
+    except IntegrityError as error:
+        # Sin `SELECT ... FOR UPDATE` (issue aparte) dos consumos a la vez
+        # pueden leer el mismo saldo y validar los dos contra él; el CHECK de
+        # la base es el único que de verdad lo impide. Si eso pasa, se
+        # traduce al mismo error de negocio en vez de un 500 crudo.
+        await sesion.rollback()
+        raise ErrorDeNegocio(
+            "No se pudo registrar el consumo: el saldo de la pieza cambió por una "
+            "operación concurrente. Vuelve a intentarlo."
+        ) from error
     return consumo

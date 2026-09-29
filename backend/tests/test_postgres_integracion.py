@@ -14,6 +14,7 @@ import uuid
 import pytest
 import pytest_asyncio
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
@@ -23,8 +24,10 @@ from app.core.security import hash_password
 from app.models import (
     Cliente,
     EstadoOrden,
+    EstadoPieza,
     Material,
     MetodoPago,
+    PiezaLoteMaterial,
     Rol,
     Unidad,
     UnidadNegocio,
@@ -184,3 +187,80 @@ async def test_cierre_de_caja_en_postgres(sesion_pg, entorno_pg):
     congelado = await caja_service.congelar_caja(sesion_pg, cierre.id, "Validado", admin)
     assert congelado.estado.value == "congelado"
     assert congelado.validado_por == admin.id
+
+
+async def test_check_de_enum_rechaza_un_valor_fuera_del_dominio(sesion_pg, entorno_pg):
+    """
+    El docstring de este módulo dice que los enums se guardan como `VARCHAR`
+    con `CHECK`: esta prueba es la que de verdad lo comprueba. Sin el CHECK,
+    este UPDATE por SQL directo pasaría silenciosamente y dejaría un
+    `tipo_formato` que ningún camino del código (ni Pydantic, que aquí ni
+    interviene) considera posible.
+    """
+    material = entorno_pg["material"]
+
+    with pytest.raises(IntegrityError):
+        async with sesion_pg.begin_nested():
+            await sesion_pg.execute(
+                text("UPDATE materiales SET tipo_formato = 'no_existe' WHERE id = :id"),
+                {"id": material.id},
+            )
+
+
+async def test_codigo_de_pieza_duplicado_lo_rechaza_la_base(sesion_pg, entorno_pg):
+    """
+    `registrar_pieza` ya comprueba el duplicado con un SELECT antes del
+    INSERT, pero eso no cierra la carrera entre dos peticiones concurrentes.
+    Esta prueba comprueba la barrera real: el índice único de
+    `codigo_identificador`.
+    """
+    material = entorno_pg["material"]
+    ahora = ahora_utc()
+
+    sesion_pg.add(
+        PiezaLoteMaterial(
+            material_id=material.id,
+            codigo_identificador=f"ROLL-{SUFIJO}",
+            capacidad_inicial=100,
+            saldo_restante=100,
+            unidad_medida="m",
+            estado=EstadoPieza.DISPONIBLE,
+            fecha_ingreso=ahora,
+        )
+    )
+    await sesion_pg.flush()
+
+    with pytest.raises(IntegrityError):
+        async with sesion_pg.begin_nested():
+            sesion_pg.add(
+                PiezaLoteMaterial(
+                    material_id=material.id,
+                    codigo_identificador=f"ROLL-{SUFIJO}",
+                    capacidad_inicial=50,
+                    saldo_restante=50,
+                    unidad_medida="m",
+                    estado=EstadoPieza.DISPONIBLE,
+                    fecha_ingreso=ahora,
+                )
+            )
+            await sesion_pg.flush()
+
+
+async def test_saldo_restante_fuera_de_capacidad_lo_rechaza_la_base(sesion_pg, entorno_pg):
+    """El CHECK es el respaldo si algún día un bug deja escribir un saldo imposible."""
+    material = entorno_pg["material"]
+
+    with pytest.raises(IntegrityError):
+        async with sesion_pg.begin_nested():
+            sesion_pg.add(
+                PiezaLoteMaterial(
+                    material_id=material.id,
+                    codigo_identificador=f"ROLL-NEG-{SUFIJO}",
+                    capacidad_inicial=100,
+                    saldo_restante=-1,
+                    unidad_medida="m",
+                    estado=EstadoPieza.DISPONIBLE,
+                    fecha_ingreso=ahora_utc(),
+                )
+            )
+            await sesion_pg.flush()

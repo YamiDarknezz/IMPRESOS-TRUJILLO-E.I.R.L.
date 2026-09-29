@@ -3,7 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TemporalMixin, enum_columna
@@ -51,10 +51,19 @@ class PiezaLoteMaterial(Base, TemporalMixin):
     """
 
     __tablename__ = "piezas_lote_material"
+    __table_args__ = (
+        # El servicio ya rechazaba duplicados con un SELECT previo al INSERT,
+        # pero eso deja una carrera entre dos peticiones concurrentes; el
+        # UNIQUE es la única forma de que la propia base lo impida siempre.
+        CheckConstraint(
+            "saldo_restante >= 0 AND saldo_restante <= capacidad_inicial",
+            name="ck_piezas_lote_material_saldo_dentro_de_capacidad",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     material_id: Mapped[int] = mapped_column(ForeignKey("materiales.id"), nullable=False, index=True)
-    codigo_identificador: Mapped[str] = mapped_column(String(60), nullable=False, index=True)
+    codigo_identificador: Mapped[str] = mapped_column(String(60), unique=True, nullable=False, index=True)
     ancho_m: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 2), nullable=True)
     largo_m: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 2), nullable=True)
     espesor_mm: Mapped[Optional[Decimal]] = mapped_column(Numeric(6, 2), nullable=True)
