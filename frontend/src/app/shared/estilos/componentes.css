@@ -1213,6 +1213,31 @@ select.date-filter-input:focus {
   .stat-value { font-size: 1.5rem; }
   .filter-btn { padding: 0.4rem 0.7rem; font-size: 0.78rem; }
 
+  /* Issue #41: Fecha + Hoy/Ayer + Unidad sin apilarse ni comprimir la fecha */
+.date-filter-group {
+  flex-wrap: wrap;
+  width: 100%;
+  box-sizing: border-box;
+  row-gap: 0.5rem;
+}
+
+.date-filter-group .date-filter-item {
+  flex-shrink: 0;
+}
+
+.date-filter-group .filter-group {
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+}
+
+.date-filter-group .date-filter-item:last-child {
+  flex: 1 1 100%;
+}
+
+.date-filter-group .date-filter-item:last-child .date-filter-input {
+  flex: 1;
+}
+
   /* Los grupos de filtros se desplazan en lugar de romper la línea */
   .filter-group { overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; }
 
