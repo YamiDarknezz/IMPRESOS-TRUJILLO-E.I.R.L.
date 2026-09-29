@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auditoria import registrar
 from app.core.database import obtener_sesion
-from app.core.errores import NoEncontrado
+from app.core.errores import Conflicto, NoEncontrado
 from app.core.security import gestion_ordenes
 from app.models import Cliente, TipoEventoAuditoria, Usuario
 from app.schemas import ClienteCreateData, ClienteUpdateData
@@ -67,6 +67,23 @@ async def crear_cliente(
     usuario: Annotated[Usuario, Depends(gestion_ordenes)],
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
 ):
+    existente = (
+        await sesion.execute(
+            select(Cliente).where(func.lower(Cliente.nombre) == data.nombre.lower())
+        )
+    ).scalar_one_or_none()
+    if existente is not None:
+        raise Conflicto("Ya existe un cliente con ese nombre.")
+
+    if data.documento:
+        existente_doc = (
+            await sesion.execute(
+                select(Cliente).where(Cliente.documento == data.documento)
+            )
+        ).scalar_one_or_none()
+        if existente_doc is not None:
+            raise Conflicto(f"Ya existe un cliente con el documento {data.documento}.")
+
     cliente = Cliente(**data.model_dump())
     sesion.add(cliente)
     await sesion.flush()

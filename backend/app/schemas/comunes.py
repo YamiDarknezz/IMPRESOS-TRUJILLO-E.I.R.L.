@@ -1,4 +1,5 @@
 """Validadores y respuestas compartidas por todos los esquemas."""
+import math
 from typing import Generic, TypeVar
 
 from pydantic import BaseModel
@@ -20,13 +21,27 @@ def limpiar(valor: str) -> str:
     return (valor or "").strip()
 
 
+def _exigir_finito(valor: float) -> None:
+    """
+    `NaN < 0` y `NaN <= 0` son ambas falsas, así que sin esto un monto `NaN`
+    pasa cualquiera de los dos validadores de abajo como si fuera válido.
+    Pydantic (y el parser de Starlette) aceptan los literales JSON no
+    estándar `NaN`/`Infinity` por defecto, así que esto es lo único que
+    realmente los detiene.
+    """
+    if not math.isfinite(valor):
+        raise ValueError("El valor debe ser un número finito.")
+
+
 def exigir_no_negativo(valor: float, mensaje: str = "El valor no puede ser negativo") -> float:
+    _exigir_finito(valor)
     if valor < 0:
         raise ValueError(mensaje)
     return valor
 
 
 def exigir_positivo(valor: float, mensaje: str = "El valor debe ser mayor a 0") -> float:
+    _exigir_finito(valor)
     if valor <= 0:
         raise ValueError(mensaje)
     return valor

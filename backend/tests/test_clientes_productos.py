@@ -4,7 +4,7 @@ import pytest
 from app.core.errores import NoEncontrado
 from app.models import Producto, TipoProducto
 from app.services import ordenes_service
-from tests.apoyo import datos_orden
+from tests.apoyo import cabecera_token, datos_orden
 
 
 # ══ Clientes ═══════════════════════════════════════════════════════════════
@@ -48,6 +48,36 @@ async def test_no_se_crea_orden_para_cliente_inactivo(sesion, admin, material, c
         await ordenes_service.crear_orden(
             sesion, datos_orden(material.id, cliente_id=cliente.id), admin
         )
+
+
+# ══ Issue #59: no se permiten clientes duplicados ═══════════════════════════
+
+async def test_no_se_permite_cliente_con_nombre_duplicado(cliente_api, admin):
+    payload = {"nombre": "Cliente Duplicado", "documento": "12345678"}
+    assert (
+        await cliente_api.post("/api/clientes", json=payload, headers=cabecera_token(admin))
+    ).status_code == 200
+
+    otra_vez = {"nombre": "cliente duplicado"}  # sin importar mayúsculas
+    respuesta = await cliente_api.post(
+        "/api/clientes", json=otra_vez, headers=cabecera_token(admin)
+    )
+    assert respuesta.status_code == 409
+
+
+async def test_no_se_permite_documento_duplicado_con_otro_nombre(cliente_api, admin):
+    await cliente_api.post(
+        "/api/clientes",
+        json={"nombre": "Primer Cliente", "documento": "12345678"},
+        headers=cabecera_token(admin),
+    )
+
+    respuesta = await cliente_api.post(
+        "/api/clientes",
+        json={"nombre": "Otro Cliente Distinto", "documento": "12345678"},
+        headers=cabecera_token(admin),
+    )
+    assert respuesta.status_code == 409
 
 
 # ══ Productos y recetas ════════════════════════════════════════════════════

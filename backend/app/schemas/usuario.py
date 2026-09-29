@@ -1,7 +1,7 @@
 """Esquemas de usuarios."""
 from typing import Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from app.models import Rol
 from app.schemas.auth import LONGITUD_MAXIMA_CONTRASENA
@@ -9,8 +9,8 @@ from app.schemas.comunes import exigir_texto, limpiar
 
 
 class UsuarioCreateData(BaseModel):
-    nombre: str
-    email: str
+    nombre: str = Field(max_length=120)
+    email: str = Field(max_length=150)
     password: str
     rol: Rol = Rol.OPERARIO
 
@@ -30,7 +30,7 @@ class UsuarioCreateData(BaseModel):
 
 
 class UsuarioUpdateData(BaseModel):
-    nombre: Optional[str] = None
+    nombre: Optional[str] = Field(default=None, max_length=120)
     rol: Optional[Rol] = None
     activo: Optional[bool] = None
 

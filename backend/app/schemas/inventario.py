@@ -1,20 +1,20 @@
 """Esquemas de inventario."""
 from typing import Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from app.models.enums import TipoFormatoMaterial
 from app.schemas.comunes import exigir_no_negativo, exigir_positivo, exigir_texto, limpiar
 
 
 class MaterialCreateData(BaseModel):
-    nombre: str
+    nombre: str = Field(max_length=120)
     unidad_id: int
     stock_inicial: float = 0.0
     alerta_minima: float = 0.0
     dias_reabastecimiento: int = 0
     precio_compra: float = 0.0
-    ubicacion_estante: str = ""
+    ubicacion_estante: str = Field(default="", max_length=120)
     tipo_formato: TipoFormatoMaterial = TipoFormatoMaterial.UNIDAD_PIEZA
     ancho_predeterminado_m: Optional[float] = None
     largo_predeterminado_m: Optional[float] = None
@@ -34,12 +34,12 @@ class MaterialCreateData(BaseModel):
 class MaterialEditData(BaseModel):
     """Edición de la ficha del material; el stock se ajusta por otro endpoint."""
 
-    nombre: str
+    nombre: str = Field(max_length=120)
     unidad_id: int
     alerta_minima: float = 0.0
     dias_reabastecimiento: int = 0
     precio_compra: float = 0.0
-    ubicacion_estante: str = ""
+    ubicacion_estante: str = Field(default="", max_length=120)
     tipo_formato: TipoFormatoMaterial = TipoFormatoMaterial.UNIDAD_PIEZA
     ancho_predeterminado_m: Optional[float] = None
     largo_predeterminado_m: Optional[float] = None
@@ -72,15 +72,15 @@ class PiezaLoteCreateData(BaseModel):
     """Alta de un rollo continuo (100m) o plancha rígida pre-dimensionada (ej: MDF 2.44x1.22m)."""
 
     material_id: int
-    codigo_identificador: str
+    codigo_identificador: str = Field(max_length=60)
     capacidad_inicial: float
-    unidad_medida: str = "m"
+    unidad_medida: str = Field(default="m", max_length=20)
     costo_adquisicion: float = 0.0
     ancho_m: Optional[float] = None
     largo_m: Optional[float] = None
     espesor_mm: Optional[float] = None
-    ubicacion: str = ""
-    maquina_asignada: str = ""
+    ubicacion: str = Field(default="", max_length=120)
+    maquina_asignada: str = Field(default="", max_length=120)
     nota: str = ""
 
     @field_validator("codigo_identificador")
@@ -102,7 +102,7 @@ class PiezaLoteCreateData(BaseModel):
 class ConsumoPiezaCreateData(BaseModel):
     """Descuento por trabajo/corte en una pieza o rollo en uso."""
 
-    trabajo_descripcion: str
+    trabajo_descripcion: str = Field(max_length=250)
     cantidad_consumida: float
     orden_id: Optional[int] = None
     monto_cobrado: float = 0.0

@@ -318,13 +318,18 @@ def _reemplazar_materiales(
     orden.materiales.clear()
     for estimado in estimados:
         material = materiales.get(estimado.material_id)
+        if material is None:
+            # Antes esto quedaba con nombre="" y el INSERT fallaba recién al
+            # violar la FK a materiales.id: un 500 crudo por una entrada del
+            # usuario que ya se podía rechazar aquí con el id que falla.
+            raise NoEncontrado(f"El material {estimado.material_id} no existe.")
         orden.materiales.append(
             OrdenMaterial(
                 material_id=estimado.material_id,
-                nombre=material.nombre if material else "",
+                nombre=material.nombre,
                 unidad=(
                     (material.unidad.abreviatura or material.unidad.nombre)
-                    if material and material.unidad
+                    if material.unidad
                     else ""
                 ),
                 cantidad_estimada=_redondear(_decimal(estimado.cantidad)),
@@ -622,12 +627,15 @@ async def actualizar(sesion: AsyncSession, id_orden: int, data: OrdenCreateData,
     await sesion.flush()
 
     if ajustes:
+        # `_reemplazar_materiales` (arriba) ya garantiza que todo material_id
+        # nuevo existe; exigir_material=True cierra el mismo hueco para el
+        # ajuste de stock que ya reservaban las líneas que no cambiaron.
         await inventario_service.aplicar_ajustes(
             sesion,
             ajustes,
             orden_id=orden.id,
             usuario_id=usuario.id,
-            exigir_material=False,
+            exigir_material=True,
         )
 
     _recalcular_finanzas(orden)
