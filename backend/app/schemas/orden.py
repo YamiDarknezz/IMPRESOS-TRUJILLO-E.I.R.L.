@@ -2,7 +2,7 @@
 from datetime import date
 from typing import Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from app.models import EstadoOrden, MetodoPago, TipoDocumento, UnidadNegocio
 from app.schemas.comunes import exigir_no_negativo, exigir_positivo, exigir_texto, limpiar
@@ -23,7 +23,7 @@ class MaterialEstimado(BaseModel):
 class OrdenItemData(BaseModel):
     """Línea del contrato; las gigantografías llevan medidas alto x ancho."""
 
-    descripcion: str
+    descripcion: str = Field(max_length=300)
     producto_id: Optional[int] = None
     ancho_m: Optional[float] = None
     alto_m: Optional[float] = None
@@ -38,9 +38,9 @@ class OrdenItemData(BaseModel):
     @field_validator("ancho_m", "alto_m")
     @classmethod
     def _medida_positiva(cls, v: Optional[float]) -> Optional[float]:
-        if v is not None and v <= 0:
-            raise ValueError("Las medidas deben ser mayores a 0")
-        return v
+        if v is None:
+            return v
+        return exigir_positivo(v, "Las medidas deben ser mayores a 0")
 
     @field_validator("cantidad")
     @classmethod
@@ -58,9 +58,9 @@ class OrdenCreateData(BaseModel):
 
     # Se puede mandar el id del cliente o solo el nombre (alta rápida).
     cliente_id: Optional[int] = None
-    cliente: str = ""
-    direccion: str = ""
-    telefono: str = ""
+    cliente: str = Field(default="", max_length=150)
+    direccion: str = Field(default="", max_length=200)
+    telefono: str = Field(default="", max_length=30)
 
     asignado_a: Optional[int] = None
     descripcion: str
@@ -74,7 +74,7 @@ class OrdenCreateData(BaseModel):
     materiales_estimados: list[MaterialEstimado] = []
 
     descuento: float = 0.0
-    motivo_descuento: str = ""
+    motivo_descuento: str = Field(default="", max_length=200)
     # Subtotal directo cuando la orden no se detalla por líneas.
     precio_total: Optional[float] = None
 
@@ -99,9 +99,9 @@ class OrdenCreateData(BaseModel):
     @field_validator("precio_total")
     @classmethod
     def _precio_no_negativo(cls, v: Optional[float]) -> Optional[float]:
-        if v is not None and v < 0:
-            raise ValueError("El precio no puede ser negativo")
-        return v
+        if v is None:
+            return v
+        return exigir_no_negativo(v, "El precio no puede ser negativo")
 
 
 class OrdenCompletionData(BaseModel):
@@ -118,7 +118,7 @@ class AsignarData(BaseModel):
 class ConfirmarPagoData(BaseModel):
     # Método del pago final; si no se indica, se reusa el del adelanto.
     metodo_pago: Optional[MetodoPago] = None
-    referencia: str = ""
+    referencia: str = Field(default="", max_length=120)
 
 
 class CambiarEstadoData(BaseModel):
@@ -132,8 +132,8 @@ class VentaRapidaData(BaseModel):
     monto_total: float
     metodo_pago: MetodoPago = MetodoPago.EFECTIVO
     unidad_negocio: UnidadNegocio = UnidadNegocio.IMPRENTA
-    cliente_nombre: str = "Cliente Mostrador"
-    referencia: str = ""
+    cliente_nombre: str = Field(default="Cliente Mostrador", max_length=150)
+    referencia: str = Field(default="", max_length=120)
 
     @field_validator("descripcion")
     @classmethod

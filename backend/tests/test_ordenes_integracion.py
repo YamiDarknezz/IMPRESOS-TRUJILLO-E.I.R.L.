@@ -7,7 +7,7 @@ reajuste, cancelación, reporte de consumo real, candado de entrega y permisos.
 import pytest
 from sqlalchemy import select
 
-from app.core.errores import Conflicto, ErrorDeNegocio, PermisoDenegado
+from app.core.errores import Conflicto, ErrorDeNegocio, NoEncontrado, PermisoDenegado
 from app.models import (
     EstadoOrden,
     MetodoPago,
@@ -266,3 +266,30 @@ async def test_crear_venta_rapida_mostrador(sesion, admin):
     assert float(orden.pagos[0].monto) == 15.50
     assert orden.pagos[0].metodo == MetodoPago.YAPE
     assert orden.pagos[0].estado_pago == EstadoPago.CONFORME
+
+
+# ══ Issue #35: material_id inexistente no debe llegar a un 500 ═════════════
+
+async def test_crear_orden_con_material_inexistente_no_revienta(sesion, admin, cliente):
+    """
+    Antes esto quedaba con nombre="" y reventaba recién al insertar, por la
+    FK a materiales.id: un 500 crudo en vez de decirle al usuario qué id
+    estaba mal.
+    """
+    with pytest.raises(NoEncontrado):
+        await ordenes_service.crear_orden(
+            sesion,
+            datos_orden(9999, cliente_id=cliente.id),
+            admin,
+        )
+
+
+async def test_editar_orden_con_material_inexistente_no_revienta(sesion, admin, material, cliente):
+    orden = await ordenes_service.crear_orden(
+        sesion, datos_orden(material.id, cliente_id=cliente.id), admin
+    )
+
+    with pytest.raises(NoEncontrado):
+        await ordenes_service.actualizar(
+            sesion, orden.id, datos_orden(9999, cliente_id=cliente.id), admin
+        )

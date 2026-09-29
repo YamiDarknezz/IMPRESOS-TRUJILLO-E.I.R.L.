@@ -15,7 +15,8 @@ le llega un mensaje genérico.
 """
 import logging
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -71,6 +72,24 @@ async def manejar_error_de_negocio(request: Request, exc: ErrorDeNegocio):
     muestra, porque le dice exactamente qué corregir.
     """
     return JSONResponse(status_code=exc.estado_http, content={"detail": str(exc)})
+
+
+@app.exception_handler(RequestValidationError)
+async def manejar_error_de_validacion(request: Request, exc: RequestValidationError):
+    """
+    FastAPI manda el `detail` de un 422 como una LISTA de errores; el cliente
+    (`mensajeDeError`, en el frontend) espera un texto. Sin este handler,
+    ninguna validación de esquema (Pydantic) le llega al usuario: solo ve
+    "Error al guardar...", el mensaje de respaldo genérico.
+    """
+    mensajes = []
+    for error in exc.errors():
+        campo = ".".join(str(parte) for parte in error["loc"] if parte != "body")
+        mensajes.append(f"{campo}: {error['msg']}" if campo else error["msg"])
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        content={"detail": " | ".join(mensajes)},
+    )
 
 
 @app.exception_handler(Exception)

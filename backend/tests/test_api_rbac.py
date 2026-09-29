@@ -243,3 +243,20 @@ async def test_editar_orden_no_desasigna_al_trabajador(
     )
     assert respuesta.status_code == 200
     assert respuesta.json()["data"]["asignado_a"] == operario.id
+
+
+async def test_error_de_validacion_llega_como_texto_legible(cliente_api, admin):
+    """
+    Issue #55: FastAPI manda el `detail` de un 422 como lista; el frontend
+    (`mensajeDeError`) espera un texto. Sin el handler, esto era invisible
+    para el usuario ("Error al guardar...") en vez del campo y el motivo.
+    """
+    respuesta = await cliente_api.post(
+        "/api/clientes",
+        json={"nombre": "x" * 200},  # supera el tope de 150 (issue #49)
+        headers=cabecera_token(admin),
+    )
+    assert respuesta.status_code == 422
+    detalle = respuesta.json()["detail"]
+    assert isinstance(detalle, str)
+    assert "nombre" in detalle
