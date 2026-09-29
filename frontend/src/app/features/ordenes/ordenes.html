@@ -103,7 +103,12 @@
       @if (busqueda()) {
         <p>No se encontraron órdenes para "{{ busqueda() }}".</p>
         <button class="btn-secondary btn-sm" (click)="busqueda.set('')">Limpiar búsqueda</button>
-      } @else {
+      } @else if (hayFiltroFecha()) {
+  <p>No hay órdenes en el rango de fechas seleccionado.</p>
+  <button class="btn-secondary btn-sm" (click)="limpiarFiltroFecha()">
+    Limpiar fechas
+  </button>
+} @else {
         <p>{{ filtroEstado() === 'todos' ? 'Aún no hay órdenes registradas.' : 'No hay órdenes con este estado.' }}</p>
         @if (filtroEstado() === 'todos' && sesion.esAdmin()) {
           <a class="btn-primary" routerLink="/ordenes/nueva">+ Crear primera orden</a>
