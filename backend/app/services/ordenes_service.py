@@ -436,7 +436,9 @@ async def crear_orden(sesion: AsyncSession, data: OrdenCreateData, usuario: Usua
     subtotal = _calcular_subtotal(data)
     descuento = _redondear(_decimal(data.descuento))
     igv, total = calcular_totales(subtotal, data.incluye_igv, descuento)
-    validar_adelanto(total, data.adelanto_pago, cliente.es_corporativo)
+    # La exención de RN-01 solo aplica cuando el cliente fue seleccionado
+    # explícitamente por id, no cuando se resolvió por coincidencia de nombre.
+    validar_adelanto(total, data.adelanto_pago, bool(data.cliente_id) and cliente.es_corporativo)
 
     orden = Orden(
         tipo_documento=data.tipo_documento,
@@ -531,7 +533,7 @@ async def crear_venta_rapida(
         await sesion.flush()
 
     monto = _redondear(_decimal(data.monto_total))
-    hoy = ahora_utc().date()
+    hoy = fecha_hoy_peru()
     ahora = ahora_utc()
 
     orden = Orden(
@@ -612,7 +614,9 @@ async def actualizar(sesion: AsyncSession, id_orden: int, data: OrdenCreateData,
     subtotal = _calcular_subtotal(data)
     descuento = _redondear(_decimal(data.descuento))
     igv, total = calcular_totales(subtotal, data.incluye_igv, descuento)
-    validar_adelanto(total, data.adelanto_pago, cliente.es_corporativo)
+    # La exención de RN-01 solo aplica cuando el cliente fue seleccionado
+    # explícitamente por id, no cuando se resolvió por coincidencia de nombre.
+    validar_adelanto(total, data.adelanto_pago, bool(data.cliente_id) and cliente.es_corporativo)
 
     anteriores = {
         linea.material_id: float(linea.cantidad_estimada) for linea in orden.materiales
@@ -857,6 +861,12 @@ async def completar(
     El estimado ya se descontó al crear la orden, así que aquí solo se ajusta
     la diferencia: lo que se usó de más se descuenta (merma) y lo que sobró
     vuelve al inventario (devolución).
+
+    No exige que la orden haya pasado por diseño/aprobación/producción: se
+    puede completar directo desde 'pendiente'. Es intencional (trabajos
+    simples de mostrador no siempre necesitan esas etapas) y no un hueco de
+    `validar_transicion` — cambiarlo rompería los flujos existentes que
+    completan sin pasar por el pipeline completo.
     """
     orden = await _obtener_para_escritura(sesion, id_orden)
     exigir_gestion(orden, usuario)
@@ -892,10 +902,10 @@ async def completar(
     devoluciones: list[dict] = []
 
     for material_id, linea in lineas_por_id.items():
-        if material_id not in reales_por_id:
-            continue
-
-        real = reales_por_id[material_id]
+        # Un material estimado que no viene en el reporte no significa que no
+        # se usó: la reserva ya se descontó al crear la orden, así que se
+        # liquida como consumido tal cual se estimó (sin merma ni devolución).
+        real = reales_por_id.get(material_id, _decimal(linea.cantidad_estimada))
         linea.cantidad_real = real
         exceso = real - _decimal(linea.cantidad_estimada)
         if exceso == 0:
