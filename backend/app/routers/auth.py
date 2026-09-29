@@ -60,6 +60,31 @@ async def mi_perfil(usuario: Annotated[Usuario, Depends(usuario_actual)]):
     return {"status": "success", "data": serializar_usuario(usuario)}
 
 
+@router.post("/logout")
+async def cerrar_sesion(
+    usuario: Annotated[Usuario, Depends(usuario_actual)],
+    sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
+):
+    """
+    Revoca el token actual (y cualquier otro emitido antes para esta cuenta).
+
+    Antes solo se borraba el localStorage del navegador: el token seguía
+    siendo válido en la API hasta su expiración (720 minutos). Reutiliza
+    `sesion_version`, el mismo mecanismo que ya usa `cambiar_password`.
+    """
+    usuario.sesion_version += 1
+
+    registrar(
+        sesion,
+        usuario.id,
+        TipoEventoAuditoria.SESION,
+        tabla_afectada="usuarios",
+        registro_id=usuario.id,
+        detalle="Cierre de sesión",
+    )
+    return {"status": "success"}
+
+
 @router.post("/password")
 async def cambiar_password(
     data: CambiarPasswordData,
