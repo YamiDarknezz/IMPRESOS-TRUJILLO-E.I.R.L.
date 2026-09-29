@@ -1,18 +1,41 @@
 """Endpoints de autenticación."""
-from typing import Annotated
+from datetime import timedelta
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auditoria import registrar
+from app.core.contexto import ip_cliente
 from app.core.database import obtener_sesion
-from app.core.security import crear_token, hash_password, usuario_actual, verificar_password
-from app.models import TipoEventoAuditoria, Usuario
+from app.core.fechas import ahora_utc
+from app.core.security import HASH_SENUELO, crear_token, hash_password, usuario_actual, verificar_password
+from app.models import Auditoria, TipoEventoAuditoria, Usuario
 from app.schemas import CambiarPasswordData, LoginData
 from app.services.serializadores import serializar_usuario
 
 router = APIRouter(prefix="/api/auth", tags=["Autenticación"])
+
+# issue #43: sin esto, el login se podía forzar sin límite y sin dejar rastro.
+MAX_INTENTOS_POR_CORREO = 5
+MAX_INTENTOS_POR_IP = 20
+VENTANA_BLOQUEO = timedelta(minutes=15)
+
+
+async def _intentos_fallidos_recientes(
+    sesion: AsyncSession, *, registro_id: Optional[str] = None, ip: Optional[str] = None
+) -> int:
+    desde = ahora_utc() - VENTANA_BLOQUEO
+    consulta = select(func.count()).select_from(Auditoria).where(
+        Auditoria.accion == TipoEventoAuditoria.SESION_FALLIDA,
+        Auditoria.fecha >= desde,
+    )
+    if registro_id is not None:
+        consulta = consulta.where(Auditoria.registro_id == registro_id)
+    if ip is not None:
+        consulta = consulta.where(Auditoria.ip == ip)
+    return (await sesion.execute(consulta)).scalar_one()
 
 
 @router.post("/login")
@@ -21,17 +44,42 @@ async def iniciar_sesion(
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
 ):
     """Valida credenciales y devuelve el token JWT de la sesión."""
-    usuario = (
-        await sesion.execute(
-            select(Usuario).where(func.lower(Usuario.email) == data.email.lower())
+    correo = data.email.lower()
+    correo_registro = correo[:40]  # Auditoria.registro_id es String(40)
+    ip = ip_cliente.get()
+
+    intentos_correo = await _intentos_fallidos_recientes(sesion, registro_id=correo_registro)
+    intentos_ip = await _intentos_fallidos_recientes(sesion, ip=ip) if ip else 0
+    if intentos_correo >= MAX_INTENTOS_POR_CORREO or intentos_ip >= MAX_INTENTOS_POR_IP:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Demasiados intentos fallidos. Espera unos minutos y vuelve a intentarlo.",
         )
+
+    usuario = (
+        await sesion.execute(select(Usuario).where(func.lower(Usuario.email) == correo))
     ).scalar_one_or_none()
 
-    if (
-        usuario is None
-        or not usuario.activo
-        or not verificar_password(data.password, usuario.password_hash)
-    ):
+    # Se compara SIEMPRE, exista o no la cuenta: bcrypt (costo 12) contra el
+    # hash real o contra el señuelo tarda lo mismo, así que el tiempo de
+    # respuesta deja de delatar qué correos están registrados (issue #43).
+    hash_a_comparar = usuario.password_hash if usuario is not None else HASH_SENUELO
+    password_valida = verificar_password(data.password, hash_a_comparar)
+
+    if usuario is None or not usuario.activo or not password_valida:
+        registrar(
+            sesion,
+            usuario.id if usuario is not None else None,
+            TipoEventoAuditoria.SESION_FALLIDA,
+            tabla_afectada="usuarios",
+            registro_id=correo_registro,
+            detalle="Intento de inicio de sesión fallido",
+        )
+        # `obtener_sesion` revierte TODA la transacción si la petición termina
+        # en excepción (database.py) -- y el 401 de abajo es justo eso. Sin
+        # este commit explícito, el intento fallido nunca llegaba a quedar
+        # escrito: se auditaba y se borraba en el mismo request.
+        await sesion.commit()
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED, "Correo o contraseña incorrectos."
         )

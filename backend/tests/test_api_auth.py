@@ -1,4 +1,7 @@
 """Pruebas de humo de la API: salud, login y perfil autenticado."""
+from sqlalchemy import select
+
+from app.models import Auditoria, TipoEventoAuditoria
 from tests.apoyo import cabecera_token
 
 
@@ -80,3 +83,60 @@ async def test_logout_revoca_el_token(cliente_api, admin):
 async def test_logout_sin_token_es_rechazado(cliente_api):
     respuesta = await cliente_api.post("/api/auth/logout")
     assert respuesta.status_code == 401
+
+
+# ══ Issue #43: límite de intentos de login y auditoría de los fallidos ═════
+
+async def test_login_fallido_queda_auditado(cliente_api, sesion, admin):
+    respuesta = await cliente_api.post(
+        "/api/auth/login",
+        json={"email": admin.email, "password": "incorrecta"},
+    )
+    assert respuesta.status_code == 401
+
+    entrada = (
+        await sesion.execute(
+            select(Auditoria).where(Auditoria.accion == TipoEventoAuditoria.SESION_FALLIDA)
+        )
+    ).scalars().first()
+    assert entrada is not None
+    assert entrada.registro_id == admin.email.lower()
+    assert entrada.usuario_id == admin.id
+
+
+async def test_login_fallido_con_correo_inexistente_tambien_queda_auditado(cliente_api, sesion):
+    """
+    Antes del fix, `verificar_password` (y por lo tanto el registro) nunca
+    se ejecutaba cuando el correo no existía: el cortocircuito del `or`
+    saltaba directo al 401 sin dejar rastro.
+    """
+    respuesta = await cliente_api.post(
+        "/api/auth/login",
+        json={"email": "no-existe@impresos.test", "password": "lo-que-sea"},
+    )
+    assert respuesta.status_code == 401
+
+    entrada = (
+        await sesion.execute(
+            select(Auditoria).where(Auditoria.accion == TipoEventoAuditoria.SESION_FALLIDA)
+        )
+    ).scalars().first()
+    assert entrada is not None
+    assert entrada.registro_id == "no-existe@impresos.test"
+    assert entrada.usuario_id is None
+
+
+async def test_login_se_bloquea_tras_repetidos_intentos_fallidos(cliente_api, admin):
+    for _ in range(5):  # MAX_INTENTOS_POR_CORREO
+        respuesta = await cliente_api.post(
+            "/api/auth/login",
+            json={"email": admin.email, "password": "incorrecta"},
+        )
+        assert respuesta.status_code == 401
+
+    # El sexto intento se bloquea aunque esta vez la contraseña sí sea correcta.
+    respuesta = await cliente_api.post(
+        "/api/auth/login",
+        json={"email": admin.email, "password": "secreto123"},
+    )
+    assert respuesta.status_code == 429

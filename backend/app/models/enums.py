@@ -124,6 +124,7 @@ class TipoEventoAuditoria(StrEnum):
     PAGO = "pago"
     AJUSTE_STOCK = "ajuste_stock"
     SESION = "sesion"
+    SESION_FALLIDA = "sesion_fallida"
     CIERRE_CAJA = "cierre_caja"
     OBSERVACION_PAGO = "observacion_pago"
 
