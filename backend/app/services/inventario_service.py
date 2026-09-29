@@ -17,6 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auditoria import registrar
 from app.core.errores import Conflicto, ErrorDeNegocio, NoEncontrado
 from app.core.fechas import ahora_utc
 from app.models import (
@@ -26,6 +27,7 @@ from app.models import (
     MotivoMovimiento,
     MovimientoStock,
     PiezaLoteMaterial,
+    TipoEventoAuditoria,
     Usuario,
 )
 from app.schemas.inventario import ConsumoPiezaCreateData, PiezaLoteCreateData
@@ -208,6 +210,35 @@ async def registrar_pieza(
         # gana el INSERT y la otra cae aquí en vez de romperse con un 500.
         await sesion.rollback()
         raise Conflicto(f"Ya existe una pieza o rollo con el código '{data.codigo_identificador}'.") from error
+
+    # El rollo/plancha es un desglose del material, no un inventario aparte:
+    # su capacidad entra al stock del material para que ambos números cuadren.
+    await aplicar_ajustes(
+        sesion,
+        [
+            AjusteStock(
+                material_id=material.id,
+                delta=float(capacidad),
+                nombre=material.nombre,
+                motivo=MotivoMovimiento.AJUSTE_MANUAL,
+                nota=f"Alta de rollo/plancha {pieza.codigo_identificador}",
+            )
+        ],
+        usuario_id=usuario.id,
+    )
+
+    registrar(
+        sesion,
+        usuario.id,
+        TipoEventoAuditoria.CREAR,
+        tabla_afectada="piezas_lote_material",
+        registro_id=pieza.codigo_identificador,
+        detalle=(
+            f"Rollo/plancha {pieza.codigo_identificador} de material {material.nombre}, "
+            f"capacidad {capacidad} {data.unidad_medida}"
+        ),
+        valores_nuevos={"capacidad_inicial": float(capacidad)},
+    )
     return pieza
 
 
@@ -246,7 +277,13 @@ async def registrar_consumo_pieza(
     Registra un corte o uso de rollo/plancha (como en CONTROL ROLLOS A+B).
     Deduce el saldo restante y recalcula el estado y la ganancia.
     """
-    pieza = await sesion.get(PiezaLoteMaterial, pieza_id)
+    pieza = (
+        await sesion.execute(
+            select(PiezaLoteMaterial)
+            .where(PiezaLoteMaterial.id == pieza_id)
+            .with_for_update(of=PiezaLoteMaterial)
+        )
+    ).scalar_one_or_none()
     if pieza is None:
         raise NoEncontrado("Pieza o rollo no encontrado.")
 
@@ -290,13 +327,40 @@ async def registrar_consumo_pieza(
     try:
         await sesion.flush()
     except IntegrityError as error:
-        # Sin `SELECT ... FOR UPDATE` (issue aparte) dos consumos a la vez
-        # pueden leer el mismo saldo y validar los dos contra él; el CHECK de
-        # la base es el único que de verdad lo impide. Si eso pasa, se
+        # El `SELECT ... FOR UPDATE` de arriba serializa los consumos de esta
+        # misma pieza; el CHECK de la base queda como respaldo final ante
+        # cualquier otra vía de escritura. Si de todos modos revienta, se
         # traduce al mismo error de negocio en vez de un 500 crudo.
         await sesion.rollback()
         raise ErrorDeNegocio(
             "No se pudo registrar el consumo: el saldo de la pieza cambió por una "
             "operación concurrente. Vuelve a intentarlo."
         ) from error
+
+    # El corte también descuenta del material: la pieza es su desglose, no un
+    # inventario aparte (issue #56).
+    await aplicar_ajustes(
+        sesion,
+        [
+            AjusteStock(
+                material_id=pieza.material_id,
+                delta=float(-cantidad),
+                nombre=pieza.material.nombre if pieza.material else "",
+                motivo=MotivoMovimiento.MERMA,
+                nota=f"Corte de {pieza.codigo_identificador}: {data.trabajo_descripcion}",
+            )
+        ],
+        usuario_id=usuario.id,
+    )
+
+    registrar(
+        sesion,
+        usuario.id,
+        TipoEventoAuditoria.CREAR,
+        tabla_afectada="consumos_pieza",
+        registro_id=pieza.codigo_identificador,
+        detalle=f"Consumo de {cantidad} {pieza.unidad_medida} en {pieza.codigo_identificador}: {data.trabajo_descripcion}",
+        valores_anteriores={"saldo_restante": float(saldo_anterior)},
+        valores_nuevos={"saldo_restante": float(saldo_nuevo)},
+    )
     return consumo
