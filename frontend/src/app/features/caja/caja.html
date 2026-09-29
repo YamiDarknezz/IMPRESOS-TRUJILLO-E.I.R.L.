@@ -318,8 +318,8 @@
 
 <!-- ═══ Modal: Observar Cobro Fraudulento / Erróneo ════════════════════════ -->
 @if (pagoAObservar(); as pago) {
-  <div class="modal-backdrop">
-    <div class="modal-card">
+  <div class="modal-overlay">
+    <div class="modal-content">
       <div class="modal-header">
         <h3 class="modal-title" style="color:#b91c1c;">Auditar / Observar Cobro</h3>
         <button class="btn-icon" (click)="cerrarModalObservar()">✕</button>
@@ -360,8 +360,8 @@
 
 <!-- ═══ Modal: Venta Rápida / Mostrador ═════════════════════════════════════ -->
 @if (modalVentaRapida()) {
-  <div class="modal-backdrop">
-    <div class="modal-card">
+  <div class="modal-overlay">
+    <div class="modal-content">
       <div class="modal-header">
         <h3 class="modal-title" style="color:#16a34a;">⚡ Venta Rápida en Mostrador</h3>
         <button class="btn-icon" (click)="cerrarModalVentaRapida()">✕</button>
