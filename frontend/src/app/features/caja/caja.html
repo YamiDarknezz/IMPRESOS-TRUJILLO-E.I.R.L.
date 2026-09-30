@@ -360,7 +360,7 @@
   <div class="modal-overlay">
     <div class="modal-content">
       <div class="modal-header">
-        <h3 class="modal-title" style="color:#16a34a;">⚡ Venta Rápida en Mostrador</h3>
+        <h3 class="modal-title text-success">⚡ Venta Rápida en Mostrador</h3>
         <button class="btn-icon" (click)="cerrarModalVentaRapida()">✕</button>
       </div>
       <div class="modal-body">
@@ -410,9 +410,9 @@
       </div>
       <div class="modal-footer">
         <button class="btn-secondary" (click)="cerrarModalVentaRapida()" [disabled]="guardando()">Cancelar</button>
-        <button class="btn-primary" (click)="guardarVentaRapida()" [disabled]="guardando()" style="background:#16a34a; border-color:#16a34a;">
-          {{ guardando() ? 'Cobrando...' : 'Cobrar y Finalizar Venta' }}
-        </button>
+        <button class="btn-primary btn-success" (click)="guardarVentaRapida()" [disabled]="guardando()">
+  {{ guardando() ? 'Cobrando...' : 'Cobrar y Finalizar Venta' }}
+</button>
       </div>
     </div>
   </div>

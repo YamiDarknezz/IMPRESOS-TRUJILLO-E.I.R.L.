@@ -90,12 +90,11 @@
   }
 
   @if (sesion.puedeGestionarOrdenes()) {
-    <a class="btn-primary" routerLink="/caja" [queryParams]="{ venta_rapida: 1 }"
-       style="background:var(--success); border-color:var(--success);">
+    <a class="btn-primary btn-success" routerLink="/caja" [queryParams]="{ venta_rapida: 1 }">
       <app-icon name="plus" [size]="16" /> Venta Rápida / Mostrador
     </a>
   }
-</div>                               
+</div>                            
 
 <!-- ═══ Tabla ═════════════════════════════════════════════════════════════ -->
 <div class="table-card card">

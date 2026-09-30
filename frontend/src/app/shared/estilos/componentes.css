@@ -757,6 +757,20 @@ div.actions-cell {
   font-weight: 600;
 }
 
+.btn-primary.btn-success {
+  background: var(--success);
+  border-color: var(--success);
+  color: #fff;
+}
+
+.btn-primary.btn-success:hover {
+  filter: brightness(0.92);
+}
+
+.text-success {
+  color: var(--success);
+}
+
 .btn-pago:hover {
   filter: brightness(0.92);
 }

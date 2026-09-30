@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { signal } from '@angular/core';
 import { CajaService } from '../../core/services/caja.service';
 import { OrdenesService } from '../../core/services/ordenes.service';
@@ -53,6 +54,7 @@ describe('CajaComponent', () => {
     TestBed.configureTestingModule({
       imports: [CajaComponent],
       providers: [
+        provideRouter([]),
         { provide: CajaService, useValue: cajaFalso },
         { provide: OrdenesService, useValue: ordenesFalso },
         { provide: SesionService, useValue: { esSupervisor: signal(true) } },
