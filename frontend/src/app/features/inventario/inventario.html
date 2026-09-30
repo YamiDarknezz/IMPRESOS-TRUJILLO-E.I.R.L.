@@ -365,9 +365,9 @@
                 </td>
                 <td>
                   <strong>{{ p.saldo_restante }}</strong> / {{ p.capacidad_inicial }} {{ p.unidad_medida }}
-                  <div style="background:#e5e7eb; border-radius:4px; height:6px; width:100%; margin-top:4px; overflow:hidden;">
+                  <div style="background:var(--surface-3); border-radius:4px; height:6px; width:100%; margin-top:4px; overflow:hidden;">
                     <div [style.width.%]="(p.saldo_restante / p.capacidad_inicial) * 100"
-                         [style.background]="p.saldo_restante > 20 ? '#16a34a' : (p.saldo_restante > 0 ? '#eab308' : '#9ca3af')"
+                         [style.background]="(p.saldo_restante / p.capacidad_inicial) < 0.1 ? 'var(--danger)' : ((p.saldo_restante / p.capacidad_inicial) <= 0.3 ? 'var(--warning)' : 'var(--success)')"
                          style="height:100%;"></div>
                   </div>
                 </td>
