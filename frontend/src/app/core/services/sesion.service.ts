@@ -1,20 +1,23 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { ApiService } from './api.service';
-import { guardarUsuario, leerUsuarioGuardado } from './sesion-almacen';
 import { RespuestaItem, RespuestaLista, UsuarioSistema } from '../models';
 
 /**
  * Quién está usando el sistema y qué puede hacer.
  *
- * Lo consultan casi todas las pantallas, así que se carga una sola vez al
- * entrar. Las comprobaciones de rol de aquí son para MOSTRAR u ocultar
- * controles: el permiso real lo aplica el backend en cada petición.
+ * El perfil —y con él el rol— sale SIEMPRE del servidor (`/api/auth/me`). Antes
+ * el rol se leía de un JSON guardado en el navegador, así que editarlo a mano
+ * en la consola abría las pantallas de administración (#48). Ahora no hay nada
+ * que editar: el navegador solo tiene una cookie HttpOnly que no puede leer.
+ *
+ * Las comprobaciones de rol de aquí son para MOSTRAR u ocultar controles: el
+ * permiso real lo aplica el backend en cada petición.
  */
 @Injectable({ providedIn: 'root' })
 export class SesionService {
   private api = inject(ApiService);
 
-  readonly usuario = signal<UsuarioSistema | null>(leerUsuarioGuardado());
+  readonly usuario = signal<UsuarioSistema | null>(null);
   /** Lista de usuarios; la pueden leer administrador y subgerencia. */
   readonly usuarios = signal<UsuarioSistema[]>([]);
 
@@ -32,28 +35,49 @@ export class SesionService {
   );
 
   private cargado = false;
+  private enVuelo: Promise<void> | null = null;
 
-  async cargar(): Promise<void> {
-    if (this.cargado) return;
-    this.cargado = true;
+  constructor() {
+    // Si el servidor rechaza la sesión, el perfil en memoria deja de valer:
+    // se limpia para que el próximo guard vuelva a preguntar.
+    this.api.alExpirarSesion(() => this.reiniciar());
+  }
 
+  /**
+   * Perfil del servidor. Es la única fuente del rol, así que los guards la
+   * esperan antes de decidir. Varias llamadas simultáneas comparten la misma
+   * petición.
+   */
+  cargar(): Promise<void> {
+    if (this.cargado) return Promise.resolve();
+    if (this.enVuelo) return this.enVuelo;
+
+    this.enVuelo = this.pedirPerfil().finally(() => {
+      this.enVuelo = null;
+    });
+    return this.enVuelo;
+  }
+
+  private async pedirPerfil(): Promise<void> {
     try {
       const res = await this.api.get<RespuestaItem<UsuarioSistema>>('/api/auth/me');
       this.usuario.set(res.data);
-      guardarUsuario(res.data);
+      this.cargado = true;
     } catch {
-      // Sin perfil válido la interfaz queda deshabilitada; al siguiente 401
-      // el ApiService limpia la sesión y vuelve al login.
+      // Sin perfil válido no hay sesión: el guard manda al login.
+      this.usuario.set(null);
+      this.cargado = false;
       return;
     }
 
     if (this.esSupervisor()) await this.cargarUsuarios();
   }
 
-  /** Tras iniciar o cerrar sesión, se vuelve a pedir todo. */
+  /** Tras iniciar o cerrar sesión, se vuelve a pedir el perfil. */
   reiniciar(): void {
     this.cargado = false;
-    this.usuario.set(leerUsuarioGuardado());
+    this.enVuelo = null;
+    this.usuario.set(null);
     this.usuarios.set([]);
   }
 

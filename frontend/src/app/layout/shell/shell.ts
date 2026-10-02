@@ -83,6 +83,7 @@ export class ShellComponent {
   }
 
   cerrarSesion(): void {
-    this.authService.cerrarSesion();
+    // Cierra la sesión en el servidor (revoca el token y borra la cookie).
+    void this.authService.cerrarSesion();
   }
 }

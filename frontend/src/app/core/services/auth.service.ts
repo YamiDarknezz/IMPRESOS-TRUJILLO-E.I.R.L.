@@ -3,10 +3,14 @@ import { Router } from '@angular/router';
 
 import { ApiService } from './api.service';
 import { SesionService } from './sesion.service';
-import { guardarSesion, limpiarSesion } from './sesion-almacen';
 import { RespuestaItem, SesionIniciada } from '../models';
 
-/** Inicio y cierre de sesión contra el backend (JWT). */
+/**
+ * Inicio y cierre de sesión.
+ *
+ * El backend deja el token en una cookie HttpOnly (#48), así que aquí no se
+ * guarda nada: solo se pide el perfil para que la interfaz sepa quién entró.
+ */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private api = inject(ApiService);
@@ -14,17 +18,26 @@ export class AuthService {
   private sesion = inject(SesionService);
 
   async login(email: string, password: string): Promise<void> {
-    const res = await this.api.post<RespuestaItem<SesionIniciada>>('/api/auth/login', {
+    await this.api.post<RespuestaItem<SesionIniciada>>('/api/auth/login', {
       email,
       password,
     });
-    guardarSesion(res.data.access_token, res.data.usuario);
-    // El shell vuelve a cargar el perfil con el token nuevo.
+
     this.sesion.reiniciar();
+    await this.sesion.cargar();
   }
 
-  cerrarSesion(): void {
-    limpiarSesion();
+  /**
+   * Cierra la sesión en el servidor: revoca el token y borra la cookie. Es
+   * obligatorio pasar por aquí, porque el navegador no puede borrar una cookie
+   * HttpOnly por su cuenta.
+   */
+  async cerrarSesion(): Promise<void> {
+    try {
+      await this.api.post('/api/auth/logout');
+    } catch {
+      // Aunque el servidor no responda, la interfaz no puede quedarse abierta.
+    }
     this.sesion.reiniciar();
     this.router.navigate(['/login']);
   }

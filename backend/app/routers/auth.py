@@ -2,7 +2,7 @@
 from datetime import timedelta
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,7 +10,15 @@ from app.core.auditoria import registrar
 from app.core.contexto import ip_cliente
 from app.core.database import obtener_sesion
 from app.core.fechas import ahora_utc
-from app.core.security import HASH_SENUELO, crear_token, hash_password, usuario_actual, verificar_password
+from app.core.config import settings
+from app.core.security import (
+    COOKIE_SESION,
+    HASH_SENUELO,
+    crear_token,
+    hash_password,
+    usuario_actual,
+    verificar_password,
+)
 from app.models import Auditoria, TipoEventoAuditoria, Usuario
 from app.schemas import CambiarPasswordData, LoginData
 from app.services.serializadores import serializar_usuario
@@ -38,12 +46,38 @@ async def _intentos_fallidos_recientes(
     return (await sesion.execute(consulta)).scalar_one()
 
 
+
+def _poner_cookie_sesion(response: Response, token: str) -> None:
+    """
+    Deja el token en una cookie HttpOnly, que es la vía del navegador (#48).
+
+    HttpOnly la esconde de cualquier script (un XSS ya no puede exfiltrar el
+    token), Secure evita que viaje por http y SameSite=strict impide que un
+    sitio externo la use en una petición cruzada. En desarrollo y pruebas el
+    navegador es http, así que Secure se activa solo en producción.
+    """
+    response.set_cookie(
+        COOKIE_SESION,
+        token,
+        max_age=settings.jwt_expiracion_minutos * 60,
+        httponly=True,
+        secure=settings.entorno == "produccion",
+        samesite="strict",
+        path="/",
+    )
+
+
+def _borrar_cookie_sesion(response: Response) -> None:
+    response.delete_cookie(COOKIE_SESION, path="/")
+
+
 @router.post("/login")
 async def iniciar_sesion(
     data: LoginData,
+    response: Response,
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
 ):
-    """Valida credenciales y devuelve el token JWT de la sesión."""
+    """Valida credenciales y abre la sesión (cookie HttpOnly + token)."""
     correo = data.email.lower()
     correo_registro = correo[:40]  # Auditoria.registro_id es String(40)
     ip = ip_cliente.get()
@@ -93,10 +127,13 @@ async def iniciar_sesion(
         detalle="Inicio de sesión",
     )
 
+    token = crear_token(usuario)
+    _poner_cookie_sesion(response, token)
+
     return {
         "status": "success",
         "data": {
-            "access_token": crear_token(usuario),
+            "access_token": token,
             "token_type": "bearer",
             "usuario": serializar_usuario(usuario),
         },
@@ -110,6 +147,7 @@ async def mi_perfil(usuario: Annotated[Usuario, Depends(usuario_actual)]):
 
 @router.post("/logout")
 async def cerrar_sesion(
+    response: Response,
     usuario: Annotated[Usuario, Depends(usuario_actual)],
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
 ):
@@ -130,12 +168,14 @@ async def cerrar_sesion(
         registro_id=usuario.id,
         detalle="Cierre de sesión",
     )
+    _borrar_cookie_sesion(response)
     return {"status": "success"}
 
 
 @router.post("/password")
 async def cambiar_password(
     data: CambiarPasswordData,
+    response: Response,
     usuario: Annotated[Usuario, Depends(usuario_actual)],
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
 ):
@@ -157,4 +197,6 @@ async def cambiar_password(
         registro_id=usuario.id,
         detalle="Cambio de contraseña",
     )
-    return {"status": "success", "data": {"access_token": crear_token(usuario)}}
+    token = crear_token(usuario)
+    _poner_cookie_sesion(response, token)
+    return {"status": "success", "data": {"access_token": token}}

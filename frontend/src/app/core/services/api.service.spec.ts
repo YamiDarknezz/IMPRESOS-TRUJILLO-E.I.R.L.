@@ -1,20 +1,9 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { Router } from '@angular/router';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { environment } from '../../../environments/environment';
 import { ApiService } from './api.service';
-import { guardarSesion, leerToken } from './sesion-almacen';
-import { UsuarioSistema } from '../models';
-
-const usuario: UsuarioSistema = {
-  id: 1,
-  nombre: 'Ana Torres',
-  email: 'ana@impresostrujillo.pe',
-  rol: 'admin',
-  activo: true,
-};
 
 describe('ApiService', () => {
   let api: ApiService;
@@ -22,7 +11,6 @@ describe('ApiService', () => {
   let router: Router;
 
   beforeEach(() => {
-    localStorage.clear();
     TestBed.configureTestingModule({
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     });
@@ -33,21 +21,14 @@ describe('ApiService', () => {
 
   afterEach(() => httpMock.verify());
 
-  it('hace GET sin cabecera de autorización si no hay sesión', async () => {
+  // #48: la sesión viaja en una cookie HttpOnly que pone el backend. Si el
+  // cliente mandara un token desde el navegador, volveríamos al problema.
+  it('no adjunta ninguna cabecera de autorización', async () => {
     const promesa = api.get('/api/unidades');
     const req = httpMock.expectOne(`${environment.apiUrl}/api/unidades`);
     expect(req.request.method).toBe('GET');
     expect(req.request.headers.has('Authorization')).toBe(false);
     req.flush({ status: 'success', data: [] });
-    await promesa;
-  });
-
-  it('agrega el token como Bearer cuando hay sesión iniciada', async () => {
-    guardarSesion('token-xyz', usuario);
-    const promesa = api.get('/api/auth/me');
-    const req = httpMock.expectOne(`${environment.apiUrl}/api/auth/me`);
-    expect(req.request.headers.get('Authorization')).toBe('Bearer token-xyz');
-    req.flush({ status: 'success', data: usuario });
     await promesa;
   });
 
@@ -76,29 +57,45 @@ describe('ApiService', () => {
     await promesa;
   });
 
-  it('ante un 401, limpia la sesión y navega a /login', async () => {
-    guardarSesion('token-vencido', usuario);
+  it('ante un 401, avisa a quien lleva la sesión y navega a /login', async () => {
     const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    const aviso = vi.fn();
+    api.alExpirarSesion(aviso);
 
     const promesa = api.get('/api/auth/me');
     const req = httpMock.expectOne(`${environment.apiUrl}/api/auth/me`);
-    req.flush({ detail: 'Token vencido' }, { status: 401, statusText: 'Unauthorized' });
+    req.flush({ detail: 'Sesión vencida' }, { status: 401, statusText: 'Unauthorized' });
 
     await expect(promesa).rejects.toBeTruthy();
-    expect(leerToken()).toBe('');
+    expect(aviso).toHaveBeenCalledTimes(1);
     expect(navigateSpy).toHaveBeenCalledWith(['/login']);
   });
 
-  it('ante un error que no es 401, propaga sin tocar la sesión', async () => {
-    guardarSesion('token-valido', usuario);
+  it('el 401 del login son credenciales incorrectas, no una sesión caída', async () => {
     const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    const aviso = vi.fn();
+    api.alExpirarSesion(aviso);
+
+    const promesa = api.post('/api/auth/login', { email: 'x@y.pe', password: 'mala' });
+    const req = httpMock.expectOne(`${environment.apiUrl}/api/auth/login`);
+    req.flush({ detail: 'Correo o contraseña incorrectos.' }, { status: 401, statusText: 'Unauthorized' });
+
+    await expect(promesa).rejects.toBeTruthy();
+    expect(aviso).not.toHaveBeenCalled();
+    expect(navigateSpy).not.toHaveBeenCalled();
+  });
+
+  it('ante un error que no es 401, propaga sin avisar de sesión', async () => {
+    const navigateSpy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    const aviso = vi.fn();
+    api.alExpirarSesion(aviso);
 
     const promesa = api.get('/api/unidades');
     const req = httpMock.expectOne(`${environment.apiUrl}/api/unidades`);
     req.flush({ detail: 'Error interno' }, { status: 500, statusText: 'Server Error' });
 
     await expect(promesa).rejects.toBeTruthy();
-    expect(leerToken()).toBe('token-valido');
+    expect(aviso).not.toHaveBeenCalled();
     expect(navigateSpy).not.toHaveBeenCalled();
   });
 });
