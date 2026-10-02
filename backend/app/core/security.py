@@ -22,6 +22,10 @@ from app.models import Rol, Usuario
 
 seguridad = HTTPBearer(auto_error=False)
 
+# Nombre de la cookie que lleva el token de sesión del navegador (#48). Es
+# HttpOnly: ningún script puede leerla, así que un XSS no se lleva el token.
+COOKIE_SESION = "it_sesion"
+
 CREDENCIALES_INVALIDAS = "Sesión no válida. Vuelve a iniciar sesión."
 
 # issue #51: con una contraseña pendiente de cambio, solo estas rutas quedan
@@ -100,15 +104,22 @@ async def usuario_actual(
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
 ) -> Usuario:
     """
-    Resuelve el usuario autenticado desde el encabezado Authorization.
+    Resuelve el usuario autenticado desde la cookie de sesión o, si no viene,
+    desde el encabezado Authorization.
+
+    La cookie es la vía del navegador y es HttpOnly (#48): el token queda fuera
+    del alcance de cualquier script, así que un XSS no puede exfiltrarlo. El
+    encabezado se mantiene para los clientes que no manejan cookies (pruebas e
+    integraciones).
 
     Además de validar la firma del token, verifica contra la base que la
     cuenta siga activa y que su versión de sesión no haya cambiado.
     """
-    if credenciales is None:
+    token = credenciales.credentials if credenciales is not None else request.cookies.get(COOKIE_SESION)
+    if not token:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Falta el token de acceso.")
 
-    datos = decodificar_token(credenciales.credentials)
+    datos = decodificar_token(token)
     usuario_id = int(datos.get("sub", 0))
 
     usuario = (
