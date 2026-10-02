@@ -85,7 +85,7 @@
     }
   </div>
 
-  @if (sesion.esAdmin()) {
+  @if (sesion.puedeGestionarOrdenes()) {
     <a class="btn-primary" routerLink="/ordenes/nueva">+ Nueva Orden</a>
   }
 
@@ -116,7 +116,7 @@
   </button>
 } @else {
         <p>{{ filtroEstado() === 'todos' ? 'Aún no hay órdenes registradas.' : 'No hay órdenes con este estado.' }}</p>
-        @if (filtroEstado() === 'todos' && sesion.esAdmin()) {
+        @if (filtroEstado() === 'todos' && sesion.puedeGestionarOrdenes()) {
           <a class="btn-primary" routerLink="/ordenes/nueva">+ Crear primera orden</a>
         }
       }

@@ -23,13 +23,15 @@
 
   <button class="btn-secondary btn-sm" (click)="cargar()">↻ Actualizar</button>
 
-  <div class="actions-cell">
-    @for (u of unidades; track u) {
-      <button class="btn-secondary btn-sm" (click)="cerrarCaja(u)" [disabled]="guardando()">
-        Cerrar mi caja · {{ etiquetaUnidad[u] }}
-      </button>
-    }
-  </div>
+  @if (sesion.puedeVender()) {
+    <div class="actions-cell">
+      @for (u of unidades; track u) {
+        <button class="btn-secondary btn-sm" (click)="cerrarCaja(u)" [disabled]="guardando()">
+          Cerrar mi caja · {{ etiquetaUnidad[u] }}
+        </button>
+      }
+    </div>
+  }
 </div>
 
 @if (cargando()) {
