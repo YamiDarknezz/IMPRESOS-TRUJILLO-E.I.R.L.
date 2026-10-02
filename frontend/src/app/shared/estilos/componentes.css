@@ -488,6 +488,8 @@
   font-weight: 700;
 }
 
+.modal-title.text-danger { color: var(--danger); }
+
 .modal-orden-id {
   font-family: monospace;
   font-size: 0.75rem;
