@@ -48,16 +48,52 @@
         </thead>
         <tbody>
           @for (u of unidades(); track u.id) {
-            <tr>
-              <td><strong>{{ u.nombre }}</strong></td>
-              <td>{{ u.abreviatura || '—' }}</td>
-              <td class="actions-cell">
-                <div class="actions-wrapper">
-                  <button class="btn-icon btn-icon-cancel" title="Eliminar unidad de medida" aria-label="Eliminar unidad" (click)="eliminar(u)">
-                    <app-icon name="trash" [size]="14" />
-                  </button>
-                </div>
-              </td>
+            <tr [class.row-inactiva]="!u.activo">
+              @if (editando()?.id === u.id) {
+                <td>
+                  <input type="text" class="input-mini" [ngModel]="nombreEdicion()" name="nombreEdicion"
+                         (ngModelChange)="nombreEdicion.set($event); errorEdicion.set('')"
+                         [class.input-error]="errorEdicion()"
+                         aria-label="Nombre de la unidad">
+                  @if (errorEdicion()) { <span class="field-error">{{ errorEdicion() }}</span> }
+                </td>
+                <td>
+                  <input type="text" class="input-mini" [ngModel]="abreviaturaEdicion()" name="abreviaturaEdicion"
+                         (ngModelChange)="abreviaturaEdicion.set($event)"
+                         aria-label="Abreviatura de la unidad">
+                </td>
+                <td class="actions-cell">
+                  <div class="actions-wrapper">
+                    <button class="btn-primary btn-sm" (click)="guardarEdicion()" [disabled]="guardando()">
+                      {{ guardando() ? 'Guardando...' : 'Guardar' }}
+                    </button>
+                    <button class="btn-secondary btn-sm" (click)="cancelarEdicion()" [disabled]="guardando()">
+                      Cancelar
+                    </button>
+                  </div>
+                </td>
+              } @else {
+                <td>
+                  <strong>{{ u.nombre }}</strong>
+                  @if (!u.activo) {
+                    <span class="badge badge-neutral">inactiva</span>
+                  }
+                </td>
+                <td>{{ u.abreviatura || '—' }}</td>
+                <td class="actions-cell">
+                  <div class="actions-wrapper">
+                    <button class="btn-icon" title="Editar unidad de medida" aria-label="Editar unidad" (click)="editar(u)">
+                      <app-icon name="pencil" [size]="14" />
+                    </button>
+                    @if (u.activo) {
+                      <button class="btn-icon btn-icon-cancel" title="Desactivar unidad de medida"
+                              aria-label="Desactivar unidad" (click)="eliminar(u)">
+                        <app-icon name="trash" [size]="14" />
+                      </button>
+                    }
+                  </div>
+                </td>
+              }
             </tr>
           }
         </tbody>
