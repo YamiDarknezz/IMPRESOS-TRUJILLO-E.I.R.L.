@@ -157,49 +157,44 @@
 
 <!-- ═══ Modal: ficha del cliente ══════════════════════════════════════════ -->
 @if (detalle(); as cliente) {
-  <div class="modal-overlay" (click)="cerrarDetalle()">
-    <div class="modal-content" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h3>{{ cliente.nombre }}</h3>
-        <span class="badge badge-neutral">{{ cliente.tipo }}</span>
-      </div>
+  <app-modal titulo="{{ cliente.nombre }}" (cerrar)="cerrarDetalle()">
+    <span modal-cabecera class="badge badge-neutral">{{ cliente.tipo }}</span>
 
-      <div class="cliente-datos">
-        @if (cliente.documento) { <div><span>Documento</span>{{ cliente.documento }}</div> }
-        @if (cliente.telefono)  { <div><span>Teléfono</span>{{ cliente.telefono }}</div> }
-        @if (cliente.email)     { <div><span>Email</span>{{ cliente.email }}</div> }
-        @if (cliente.direccion) { <div><span>Dirección</span>{{ cliente.direccion }}</div> }
-      </div>
-
-      @if (resumen(); as datos) {
-        <div class="cliente-stats">
-          <div class="cliente-stat">
-            <span class="cliente-stat-value">{{ datos.total_ordenes }}</span>
-            <span class="cliente-stat-label">Órdenes</span>
-          </div>
-          <div class="cliente-stat">
-            <span class="cliente-stat-value">S/ {{ datos.facturado | number:'1.2-2' }}</span>
-            <span class="cliente-stat-label">Facturado</span>
-          </div>
-          <div class="cliente-stat">
-            <span class="cliente-stat-value" [class.saldo-pendiente]="datos.por_cobrar > 0">
-              S/ {{ datos.por_cobrar | number:'1.2-2' }}
-            </span>
-            <span class="cliente-stat-label">Por cobrar</span>
-          </div>
-        </div>
-      }
-
-      @if (cliente.notas) {
-        <p class="modal-subtitle" style="margin-top:1rem; display:flex; align-items:center; gap:0.4rem">
-          <app-icon name="file-text" [size]="14" />
-          <span>{{ cliente.notas }}</span>
-        </p>
-      }
-
-      <div class="form-actions">
-        <button type="button" class="btn-secondary" (click)="cerrarDetalle()">Cerrar</button>
-      </div>
+    <div class="cliente-datos">
+      @if (cliente.documento) { <div><span>Documento</span>{{ cliente.documento }}</div> }
+      @if (cliente.telefono)  { <div><span>Teléfono</span>{{ cliente.telefono }}</div> }
+      @if (cliente.email)     { <div><span>Email</span>{{ cliente.email }}</div> }
+      @if (cliente.direccion) { <div><span>Dirección</span>{{ cliente.direccion }}</div> }
     </div>
-  </div>
+
+    @if (resumen(); as datos) {
+      <div class="cliente-stats">
+        <div class="cliente-stat">
+          <span class="cliente-stat-value">{{ datos.total_ordenes }}</span>
+          <span class="cliente-stat-label">Órdenes</span>
+        </div>
+        <div class="cliente-stat">
+          <span class="cliente-stat-value">S/ {{ datos.facturado | number:'1.2-2' }}</span>
+          <span class="cliente-stat-label">Facturado</span>
+        </div>
+        <div class="cliente-stat">
+          <span class="cliente-stat-value" [class.saldo-pendiente]="datos.por_cobrar > 0">
+            S/ {{ datos.por_cobrar | number:'1.2-2' }}
+          </span>
+          <span class="cliente-stat-label">Por cobrar</span>
+        </div>
+      </div>
+    }
+
+    @if (cliente.notas) {
+      <p class="modal-subtitle" style="margin-top:1rem; display:flex; align-items:center; gap:0.4rem">
+        <app-icon name="file-text" [size]="14" />
+        <span>{{ cliente.notas }}</span>
+      </p>
+    }
+
+    <div class="form-actions">
+      <button type="button" class="btn-secondary" (click)="cerrarDetalle()">Cerrar</button>
+    </div>
+  </app-modal>
 }

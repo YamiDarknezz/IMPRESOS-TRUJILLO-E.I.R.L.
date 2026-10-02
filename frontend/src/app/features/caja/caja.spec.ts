@@ -157,4 +157,22 @@ describe('CajaComponent', () => {
       expect(componente.pagoAObservar()).toBeNull();
     });
   });
+
+  // Issue #38: el modal de observación es un diálogo accesible y Escape lo cierra.
+  it('observar cobro: es un diálogo y Escape lo cierra', async () => {
+    cajaFalso.listarCierres.mockResolvedValue([]); // solo interesa el modal, no la tabla de cierres
+    const fixture = TestBed.createComponent(CajaComponent);
+    await fixture.whenStable(); // espera el resumen: la plantilla lo da por cargado
+    fixture.componentInstance.abrirModalObservar({
+      pago_id: 9, orden: 'C-0001', orden_id: 1, cliente: 'Juan Pérez', unidad_negocio: 'imprenta',
+      metodo: 'yape', tipo: 'adelanto', monto: 100, fecha: '2026-09-18', usuario_id: 2,
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="dialog"]')).not.toBeNull();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.pagoAObservar()).toBeNull();
+  });
 });

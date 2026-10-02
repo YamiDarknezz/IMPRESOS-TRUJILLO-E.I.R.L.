@@ -317,42 +317,36 @@
 
 <!-- ═══ Modal: Observar Cobro Fraudulento / Erróneo ════════════════════════ -->
 @if (pagoAObservar(); as pago) {
-  <div class="modal-overlay">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 class="modal-title text-danger">Auditar / Observar Cobro</h3>
-        <button class="btn-icon" (click)="cerrarModalObservar()">✕</button>
-      </div>
-      <div class="modal-body">
-        <p style="font-size:0.9rem; margin-bottom:1rem;">
-          Se observará el pago de <strong>S/ {{ pago.monto | number:'1.2-2' }}</strong>
-          ({{ etiquetaDeMetodo(pago.metodo) }}) de la orden <code>{{ pago.orden }}</code>.
-          <br>
-          <em class="text-danger">Este monto se restará del arqueo de caja y se reabrirá la deuda al cliente (bloqueando la entrega).</em>
-        </p>
+  <app-modal titulo="Auditar / Observar Cobro" claseTitulo="modal-title text-danger" [conBotonCerrar]="true" [cerrarAlClicFuera]="false" (cerrar)="cerrarModalObservar()">
+    <div class="modal-body">
+      <p style="font-size:0.9rem; margin-bottom:1rem;">
+        Se observará el pago de <strong>S/ {{ pago.monto | number:'1.2-2' }}</strong>
+        ({{ etiquetaDeMetodo(pago.metodo) }}) de la orden <code>{{ pago.orden }}</code>.
+        <br>
+        <em class="text-danger">Este monto se restará del arqueo de caja y se reabrirá la deuda al cliente (bloqueando la entrega).</em>
+      </p>
 
-        <div class="form-group" style="margin-bottom:1rem;">
-          <label class="form-label">Motivo de observación</label>
-          <select [ngModel]="motivoObservacion()" (ngModelChange)="motivoObservacion.set($event)" class="form-input">
-            @for (m of motivosObservacion(); track m.id) {
-              <option [value]="m.id">{{ m.nombre }}</option>
-            }
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Justificación / Evidencia</label>
-          <textarea [ngModel]="notaObservacion()" (ngModelChange)="notaObservacion.set($event)"
-                    rows="3" class="form-input"
-                    placeholder="Ej: Captura falsa enviada por WhatsApp sin abono en banca móvil..."></textarea>
-        </div>
+      <div class="form-group" style="margin-bottom:1rem;">
+        <label class="form-label">Motivo de observación</label>
+        <select [ngModel]="motivoObservacion()" (ngModelChange)="motivoObservacion.set($event)" class="form-input">
+          @for (m of motivosObservacion(); track m.id) {
+            <option [value]="m.id">{{ m.nombre }}</option>
+          }
+        </select>
       </div>
-      <div class="modal-footer">
-        <button class="btn-secondary" (click)="cerrarModalObservar()" [disabled]="guardando()">Cancelar</button>
-        <button class="btn-danger" (click)="guardarObservacion()" [disabled]="guardando()">
-          {{ guardando() ? 'Observando...' : 'Confirmar y Deducir de Caja' }}
-        </button>
+
+      <div class="form-group">
+        <label class="form-label">Justificación / Evidencia</label>
+        <textarea [ngModel]="notaObservacion()" (ngModelChange)="notaObservacion.set($event)"
+                  rows="3" class="form-input"
+                  placeholder="Ej: Captura falsa enviada por WhatsApp sin abono en banca móvil..."></textarea>
       </div>
     </div>
-  </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="cerrarModalObservar()" [disabled]="guardando()">Cancelar</button>
+      <button class="btn-danger" (click)="guardarObservacion()" [disabled]="guardando()">
+        {{ guardando() ? 'Observando...' : 'Confirmar y Deducir de Caja' }}
+      </button>
+    </div>
+  </app-modal>
 }
