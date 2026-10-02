@@ -164,6 +164,37 @@ describe('OrdenFormComponent', () => {
       componente.actualizar('clienteId', 2);
       expect(componente.adelantoMinimo()).toBe(0);
     });
+
+    // #53: la interfaz y el backend tienen que dar el mismo céntimo. Con
+    // 38,25 de subtotal el IGV cae justo en medio centavo (6,885), y antes la
+    // UI mostraba y confirmaba 6,89 mientras se guardaba 6,88.
+    it('el medio centavo del IGV se redondea hacia arriba, como el backend', () => {
+      const componente = TestBed.createComponent(OrdenFormComponent).componentInstance;
+      componente.agregarLinea();
+      componente.actualizarLinea(0, 'cantidad', 2);
+      componente.actualizarLinea(0, 'precioUnitario', 15.5);
+      componente.agregarLinea();
+      componente.actualizarLinea(1, 'cantidad', 1);
+      componente.actualizarLinea(1, 'precioUnitario', 7.25);
+      componente.actualizar('incluyeIgv', true);
+
+      expect(componente.subtotal()).toBe(38.25);
+      expect(componente.igv()).toBe(6.89);
+      expect(componente.total()).toBe(45.14);
+    });
+
+    it('cada línea se redondea a centavos antes de sumar, como el backend', () => {
+      const componente = TestBed.createComponent(OrdenFormComponent).componentInstance;
+      for (let i = 0; i < 4; i++) {
+        componente.agregarLinea();
+        componente.actualizarLinea(i, 'cantidad', 1);
+        componente.actualizarLinea(i, 'precioUnitario', 2.4975);
+      }
+
+      // Sumando en crudo da 9,99; el backend redondea cada línea (2,50) y
+      // guarda 10,00.
+      expect(componente.subtotal()).toBe(10);
+    });
   });
 
   describe('producto del catálogo', () => {

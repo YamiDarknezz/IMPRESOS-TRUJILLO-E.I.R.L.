@@ -120,13 +120,20 @@ export class OrdenFormComponent {
     this.clientes().find(c => c.id === this.form().clienteId) ?? null
   );
 
-  /** Subtotal: sale de las líneas si las hay; si no, del total directo. */
+  /**
+   * Subtotal: sale de las líneas si las hay; si no, del total directo.
+   *
+   * Cada línea se redondea a centavos antes de sumar, igual que
+   * `_calcular_subtotal()` del backend: sumando en crudo, una línea con
+   * fracción de centavo (cantidad decimal × precio) daba un subtotal distinto
+   * al que queda guardado (#53).
+   */
   readonly subtotal = computed(() => {
     const f = this.form();
     if (f.lineas.length > 0) {
       return redondear(
         f.lineas.reduce(
-          (suma, linea) => suma + linea.cantidad * linea.precioUnitario,
+          (suma, linea) => suma + redondear(linea.cantidad * linea.precioUnitario),
           0
         )
       );

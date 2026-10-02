@@ -11,7 +11,7 @@ Concentra las decisiones que definen el sistema (SRS, Reglas de Negocio):
    reportando el consumo real.
 """
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Optional
 
 from sqlalchemy import or_, select
@@ -62,7 +62,15 @@ def _decimal(valor: float | Decimal) -> Decimal:
 
 
 def _redondear(valor: Decimal) -> Decimal:
-    return valor.quantize(Decimal("0.01"))
+    """
+    Redondea a centavos con el criterio comercial: el medio centavo va arriba.
+
+    Sin `rounding` explícito, `quantize` usa medio-par, así que un IGV de
+    6.885 quedaba en 6.88 mientras la interfaz —que usa Math.round— mostraba y
+    confirmaba 6.89: el operador veía un total y se guardaba otro. El criterio
+    es el mismo en las dos capas a propósito (#53).
+    """
+    return valor.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 # ══ Reglas puras (sin acceso a datos: fáciles de probar) ══════════════════
