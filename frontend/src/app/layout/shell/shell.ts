@@ -4,6 +4,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import { AuthService } from '../../core/services/auth.service';
 import { SesionService } from '../../core/services/sesion.service';
+import { ConfiguracionService } from '../../core/services/configuracion.service';
 import { ThemeService } from '../../core/services/theme.service';
 import { guardarPreferencia, leerPreferencia } from '../../shared/utilidades/almacenamiento';
 import { IconComponent, IconName } from '../../shared/componentes/icon/icon.component';
@@ -34,6 +35,7 @@ export class ShellComponent {
   private authService = inject(AuthService);
 
   sesion = inject(SesionService);
+  private configuracion = inject(ConfiguracionService);
   theme = inject(ThemeService);
 
   /** Menú reducido a iconos, para ganar ancho de pantalla. */
@@ -70,6 +72,8 @@ export class ShellComponent {
 
   constructor() {
     this.sesion.cargar();
+    // Los parámetros y catálogos del negocio vienen del servidor (#54).
+    this.configuracion.cargar();
   }
 
   alternarColapsado(): void {

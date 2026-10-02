@@ -3,7 +3,11 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
 import { AuditoriaService } from '../../core/services/auditoria.service';
-import { ETIQUETA_ACCION } from '../../core/models';
+import {
+  etiquetaDe,
+  etiquetasAccion,
+  opcionesAccion as opcionesDelServidor,
+} from '../../core/estado/catalogos';
 import { formatearFecha } from '../../shared/utilidades/fechas';
 import { IconComponent } from '../../shared/componentes/icon/icon.component';
 
@@ -29,13 +33,10 @@ export class AuditoriaComponent {
   readonly filtros = this.auditoriaService.filtros;
 
   readonly formatearFecha = formatearFecha;
-  readonly etiquetaAccion = ETIQUETA_ACCION;
 
-  /** Acciones disponibles en el filtro, con su etiqueta legible. */
-  readonly opcionesAccion = Object.entries(ETIQUETA_ACCION).map(([valor, etiqueta]) => ({
-    valor,
-    etiqueta,
-  }));
+  /** Acciones y sus nombres, tal como los publica el servidor. */
+  readonly etiquetaAccion = etiquetasAccion;
+  readonly opcionesAccion = opcionesDelServidor;
 
   constructor() {
     this.cargar();
@@ -66,8 +67,8 @@ export class AuditoriaComponent {
     void this.auditoriaService.limpiarFiltros();
   }
 
-  /** Etiqueta legible de la acción; si no está mapeada, se muestra tal cual. */
+  /** Etiqueta legible de la acción (incluidas las nuevas del servidor). */
   etiquetaDeAccion(accion: string): string {
-    return ETIQUETA_ACCION[accion] || accion;
+    return etiquetaDe('acciones_auditoria', accion);
   }
 }

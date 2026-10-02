@@ -19,6 +19,7 @@ import {
   TipoFormatoMaterial,
 } from '../../core/models';
 import { mensajeDeError } from '../../shared/utilidades/errores';
+import { etiquetaMovimiento } from '../../core/estado/catalogos';
 import { formatearFecha } from '../../shared/utilidades/fechas';
 import { IconComponent } from '../../shared/componentes/icon/icon.component';
 
@@ -59,6 +60,7 @@ function formularioVacio(): FormularioMaterial {
   templateUrl: './inventario.html',
 })
 export class InventarioComponent {
+  readonly etiquetaMovimiento = etiquetaMovimiento;
   private inventarioService = inject(InventarioService);
   unidadesService = inject(UnidadesService);
   sesion = inject(SesionService);

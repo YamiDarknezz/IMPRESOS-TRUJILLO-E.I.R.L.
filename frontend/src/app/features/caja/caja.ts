@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -19,6 +19,12 @@ import {
 } from '../../core/models';
 import { ayerISO, formatearFecha, hoyISO } from '../../shared/utilidades/fechas';
 import { mensajeDeError } from '../../shared/utilidades/errores';
+import {
+  etiquetaDe,
+  etiquetasMetodo,
+  metodosPago,
+  motivosObservacion,
+} from '../../core/estado/catalogos';
 import { IconComponent } from '../../shared/componentes/icon/icon.component';
 
 /**
@@ -65,18 +71,15 @@ export class CajaComponent {
 
   readonly unidades = UNIDADES_NEGOCIO;
   readonly etiquetaUnidad = ETIQUETA_UNIDAD;
-  readonly etiquetaMetodo = ETIQUETA_METODO;
-  readonly metodos: MetodoPago[] = ['efectivo', 'yape', 'transferencia'];
+  readonly etiquetaMetodo = etiquetasMetodo;
+  // Del servidor: antes estaba aquí copiada y había que mantenerla a mano.
+  readonly metodos = metodosPago;
   readonly formatearFecha = formatearFecha;
 
-  readonly motivosObservacion = [
-    { id: 'yape_falso', nombre: 'Yape falso / Captura trucada' },
-    { id: 'billete_falso', nombre: 'Billete falso' },
-    { id: 'voucher_no_ubicado', nombre: 'Voucher no encontrado en cuenta' },
-    { id: 'cobro_duplicado', nombre: 'Cobro duplicado' },
-    { id: 'error_digitacion', nombre: 'Error de digitación' },
-    { id: 'otro', nombre: 'Otro motivo' },
-  ];
+  /** Los motivos de observación, con su nombre legible, vienen del catálogo. */
+  readonly motivosObservacion = computed(() =>
+    motivosObservacion().map(opcion => ({ id: opcion.valor, nombre: opcion.etiqueta }))
+  );
 
     constructor() {
     this.cargar();
@@ -172,13 +175,22 @@ export class CajaComponent {
     }
   }
 
-  montoDe(acumulado: AcumuladoCaja, metodo: MetodoPago): number {
-    return acumulado[metodo] ?? 0;
+  /**
+   * Monto de un método en el acumulado del día.
+   *
+   * El método llega como texto desde el catálogo del servidor, así que se lee
+   * de forma dinámica: si mañana se agrega uno (por ejemplo Plin), la columna
+   * aparece en el arqueo y suma sola, sin tocar esta función ni la plantilla.
+   */
+  montoDe(acumulado: AcumuladoCaja, metodo: string): number {
+    return (acumulado as unknown as Record<string, number>)[metodo] ?? 0;
   }
 
   /** Etiqueta legible del método; si viene uno desconocido, se muestra tal cual. */
   etiquetaDeMetodo(metodo: string): string {
-    return ETIQUETA_METODO[metodo as MetodoPago] || metodo;
+    // La etiqueta sale del catálogo del servidor: si algún día se agrega un
+    // método de pago, ya viene con su nombre.
+    return etiquetaDe('metodos_pago', metodo);
   }
 
   // ── Acciones de Auditoría y Observación de Cobros ──────────────────────────

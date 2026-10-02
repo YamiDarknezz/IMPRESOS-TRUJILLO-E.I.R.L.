@@ -438,7 +438,7 @@
               @for (mov of movimientos(); track mov.id) {
                 <tr>
                   <td class="fecha-cell">{{ formatearFecha(mov.fecha, true) }}</td>
-                  <td><span class="badge badge-neutral">{{ mov.motivo }}</span></td>
+                  <td><span class="badge badge-neutral">{{ etiquetaMovimiento(mov.motivo) }}</span></td>
                   <td [class.saldo-pendiente]="mov.delta < 0" [class.saldo-ok]="mov.delta > 0">
                     {{ mov.delta > 0 ? '+' : '' }}{{ mov.delta }}
                   </td>
