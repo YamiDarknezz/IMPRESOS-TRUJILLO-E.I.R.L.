@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { ClientesService } from '../../core/services/clientes.service';
+import { ComprobantesService } from '../../core/services/comprobantes.service';
 import { InventarioService } from '../../core/services/inventario.service';
 import { DatosOrden, OrdenesService } from '../../core/services/ordenes.service';
 import { ProductosService } from '../../core/services/productos.service';
@@ -21,6 +22,12 @@ import {
   UnidadNegocio,
 } from '../../core/models';
 import { mensajeDeError } from '../../shared/utilidades/errores';
+import {
+  CapturaElegida,
+  capturasDesdeArchivos,
+  liberarCaptura,
+  pesoLegible,
+} from '../../shared/utilidades/imagenes';
 
 /** Línea del contrato en el formulario. */
 interface LineaFormulario {
@@ -81,6 +88,7 @@ import { IconComponent } from '../../shared/componentes/icon/icon.component';
 })
 export class OrdenFormComponent {
   private ordenesService = inject(OrdenesService);
+  private comprobantes = inject(ComprobantesService);
   private router = inject(Router);
   private ruta = inject(ActivatedRoute);
 
@@ -358,6 +366,31 @@ export class OrdenFormComponent {
     return errores;
   }
 
+  // ── Capturas del adelanto (RF-11) ───────────────────────────────────────
+  // Se adjuntan al guardar, no antes: la orden todavía no existe. Son
+  // opcionales; el trabajo se puede registrar sin la captura a mano.
+
+  readonly adjuntos = signal<CapturaElegida[]>([]);
+
+  agregarAdjuntos(evento: Event): void {
+    const entrada = evento.target as HTMLInputElement;
+    const { aceptadas, rechazadas } = capturasDesdeArchivos(entrada.files);
+    entrada.value = ''; // permite volver a elegir el mismo archivo
+
+    if (rechazadas > 0) {
+      alert('Solo se aceptan capturas en JPG, PNG o WebP, o un PDF.');
+    }
+    this.adjuntos.update(actuales => [...actuales, ...aceptadas]);
+  }
+
+  quitarAdjunto(indice: number): void {
+    const adjunto = this.adjuntos()[indice];
+    if (adjunto) liberarCaptura(adjunto);
+    this.adjuntos.update(actuales => actuales.filter((_, posicion) => posicion !== indice));
+  }
+
+  readonly pesoLegible = pesoLegible;
+
   async guardar(): Promise<void> {
     const form = { ...this.form() };
 
@@ -408,10 +441,32 @@ export class OrdenFormComponent {
 
     this.guardando.set(true);
     try {
+      let idOrden: number;
       if (editando) {
         await this.ordenesService.actualizar(editando.id, datos);
+        idOrden = editando.id;
       } else {
-        await this.ordenesService.crear(datos);
+        // La orden se crea primero: la captura necesita a quién pertenecer.
+        idOrden = (await this.ordenesService.crear(datos)).id;
+      }
+
+      const pendientes = this.adjuntos();
+      if (pendientes.length > 0) {
+        const { subidos, fallidos } = await this.comprobantes.subirVarias(
+          idOrden,
+          pendientes.map(adjunto => adjunto.archivo)
+        );
+        pendientes.filter(adjunto => subidos.length > 0).forEach(liberarCaptura);
+        this.adjuntos.set(subidos.length > 0 ? [] : pendientes);
+
+        if (fallidos.length > 0) {
+          // La orden ya está guardada: se avisa qué quedó pendiente en lugar de
+          // perder el formulario entero por una foto.
+          alert(
+            'La orden se guardó, pero estas capturas no subieron:\n' +
+              fallidos.map(fallo => `• ${fallo.nombre}: ${fallo.motivo}`).join('\n')
+          );
+        }
       }
       this.router.navigate(['/ordenes']);
     } catch (e) {

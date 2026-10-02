@@ -7,6 +7,7 @@ from app.models.base import Base
 from app.models.auditoria import Auditoria
 from app.models.caja import CierreCaja
 from app.models.cliente import Cliente
+from app.models.comprobante import Comprobante
 from app.models.enums import (
     EstadoCierre,
     EstadoOrden,
@@ -35,6 +36,7 @@ __all__ = [
     "Auditoria",
     "CierreCaja",
     "Cliente",
+    "Comprobante",
     "ConsumoPieza",
     "Material",
     "MovimientoStock",

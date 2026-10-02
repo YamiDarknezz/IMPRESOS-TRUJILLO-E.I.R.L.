@@ -274,6 +274,15 @@
                       <app-icon name="dollar-sign" [size]="14" />
                     </button>
                   }
+                  @if (orden.comprobantes?.length) {
+                    <button class="btn-capturas"
+                            [title]="orden.comprobantes?.length + ' captura(s) de pago adjunta(s)'"
+                            [attr.aria-label]="'Ver las capturas de pago de ' + orden.id_documento"
+                            (click)="abrirCapturas(orden)">
+                      <app-icon name="receipt-text" [size]="13" />
+                      <span>{{ orden.comprobantes?.length }}</span>
+                    </button>
+                  }
                   @if (!estaEnPipeline(orden) && (orden.estado === 'cancelada' || (orden.estado === 'entregada' && orden.finanzas?.pagado_totalmente))) {
                     <span class="text-muted">—</span>
                   }
@@ -368,11 +377,84 @@
                placeholder="Nro. de operación o voucher">
       </div>
 
+      <div class="input-group campo-completo">
+        <label for="adjuntos-cobro">Captura del pago (opcional)</label>
+        <input id="adjuntos-cobro" type="file" accept="image/*,application/pdf" multiple
+               (change)="agregarAdjuntosCobro($event)">
+        <span class="field-hint">
+          Captura del Yape o la transferencia que acabas de recibir. Se adjunta al pago
+          y queda como respaldo de la conciliación.
+        </span>
+
+        @if (adjuntosCobro().length > 0) {
+          <ul class="lista-adjuntos">
+            @for (adjunto of adjuntosCobro(); track adjunto.nombre; let i = $index) {
+              <li class="adjunto">
+                @if (adjunto.vista) {
+                  <img class="adjunto-vista" [src]="adjunto.vista" [alt]="adjunto.nombre">
+                } @else {
+                  <span class="adjunto-icono"><app-icon name="receipt-text" [size]="18" /></span>
+                }
+                <span class="adjunto-nombre">{{ adjunto.nombre }}</span>
+                <span class="adjunto-peso text-muted">{{ pesoLegible(adjunto.peso) }}</span>
+                <button type="button" class="btn-icon" title="Quitar"
+                        aria-label="Quitar la captura" (click)="quitarAdjuntoCobro(i)">
+                  <app-icon name="x" [size]="14" />
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+
       <div class="form-actions">
         <button type="button" class="btn-secondary" (click)="cerrarCobro()">Cancelar</button>
         <button type="button" class="btn-primary" (click)="confirmarPago()" [disabled]="guardando()">
           {{ guardando() ? 'Confirmando...' : 'Confirmar pago' }}
         </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ═══ Modal: capturas adjuntas (RF-11) ═══════════════════════════════════ -->
+@if (capturasVisibles(); as orden) {
+  <div class="modal-overlay" (click)="cerrarCapturas()">
+    <div class="modal-content modal-visor" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Capturas de pago</h3>
+        <span class="modal-orden-id">{{ orden.id_documento }}</span>
+      </div>
+      <p class="modal-subtitle">
+        {{ orden.cliente }} — adjuntadas como respaldo del adelanto y de los abonos.
+      </p>
+
+      <div class="visor-capturas">
+        @for (captura of orden.comprobantes ?? []; track captura.id) {
+          <figure class="captura-tarjeta">
+            @if (captura.tipo_mime === 'application/pdf') {
+              <a class="captura-pdf" [href]="urlDe(captura)" target="_blank" rel="noopener">
+                <app-icon name="file-text" [size]="28" />
+                <span>Abrir PDF</span>
+              </a>
+            } @else {
+              <a [href]="urlDe(captura)" target="_blank" rel="noopener">
+                <img [src]="urlDe(captura)" [alt]="'Captura de pago'">
+              </a>
+            }
+            <figcaption>
+              <span class="captura-titulo">{{ captura.nombre_original }}</span>
+              <span class="text-muted">
+                {{ captura.subido_en | date:'dd/MM/yyyy HH:mm' }} ·
+                {{ captura.subido_por_nombre }} · {{ resumenCaptura(captura) }}
+              </span>
+            </figcaption>
+          </figure>
+        }
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" (click)="cerrarCapturas()">Cerrar</button>
       </div>
     </div>
   </div>

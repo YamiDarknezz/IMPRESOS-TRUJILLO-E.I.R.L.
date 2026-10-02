@@ -175,7 +175,38 @@ def serializar_producto(producto) -> dict[str, Any]:
 
 # ── Órdenes ─────────────────────────────────────────────────────────────────
 
-def _serializar_pago(pago) -> dict[str, Any]:
+def serializar_comprobante(comprobante) -> dict[str, Any]:
+    """
+    Lo que la pantalla necesita para mostrar la captura.
+
+    La URL apunta a la API, no al almacén: el día que las imágenes se muden a
+    Cloudflare, esta misma URL seguirá funcionando.
+    """
+    return {
+        "id": comprobante.id,
+        "orden_id": comprobante.orden_id,
+        "pago_id": comprobante.pago_id,
+        "nombre_original": comprobante.nombre_original,
+        "tipo_mime": comprobante.tipo_mime,
+        "tamano_bytes": comprobante.tamano_bytes,
+        "subido_por": comprobante.subido_por,
+        "subido_por_nombre": comprobante.usuario.nombre if comprobante.usuario else "",
+        "subido_en": iso(comprobante.creado_en),
+        "url": f"/api/comprobantes/{comprobante.clave}",
+    }
+
+
+def _serializar_pago(pago, comprobantes_del_pago=None) -> dict[str, Any]:
+    """
+    Un pago y sus capturas.
+
+    `comprobantes_del_pago` llega ya resuelto desde `serializar_orden`: leer
+    `pago.comprobantes` de un pago recién creado dispara un SELECT implícito en
+    contexto async (MissingGreenlet, el mismo caso que el alta de rollos, #85).
+    Cuando se serializa un pago suelto (Caja, Finanzas) la relación viene
+    cargada de la consulta y se usa directamente.
+    """
+    capturas = pago.comprobantes if comprobantes_del_pago is None else comprobantes_del_pago
     return {
         "id": pago.id,
         "fecha": iso(pago.fecha),
@@ -189,6 +220,7 @@ def _serializar_pago(pago) -> dict[str, Any]:
         "nota_observacion": pago.nota_observacion or "",
         "observado_por": pago.observador.nombre if pago.observador else None,
         "observado_en": iso(pago.observado_en),
+        "comprobantes": [serializar_comprobante(c) for c in capturas],
     }
 
 
@@ -218,6 +250,14 @@ def _serializar_materiales(orden) -> dict[str, list[dict[str, Any]]]:
 
 def serializar_orden(orden) -> dict[str, Any]:
     """Forma de respuesta que consume la pantalla de órdenes."""
+    # Se lee la colección una sola vez y se reparte por pago: cada acceso a una
+    # relación sin cargar es una consulta implícita.
+    comprobantes = list(orden.comprobantes)
+    por_pago: dict[int, list] = {}
+    for captura in comprobantes:
+        if captura.pago_id is not None:
+            por_pago.setdefault(captura.pago_id, []).append(captura)
+
     return {
         "id": orden.id,
         "id_documento": orden.codigo,
@@ -263,9 +303,12 @@ def serializar_orden(orden) -> dict[str, Any]:
             "saldo_pendiente": num(orden.saldo_pendiente),
             "metodo_pago_adelanto": orden.metodo_pago_adelanto.value,
             "pagado_totalmente": orden.pagado_totalmente,
-            "pagos": [_serializar_pago(pago) for pago in orden.pagos],
+            "pagos": [_serializar_pago(pago, por_pago.get(pago.id, [])) for pago in orden.pagos],
         },
         "materiales": _serializar_materiales(orden),
+        # Capturas de Yape o transferencia adjuntas (RF-11). Las del adelanto
+        # vienen sin pago; las de cada abono, dentro de su pago.
+        "comprobantes": [serializar_comprobante(c) for c in comprobantes],
     }
 
 

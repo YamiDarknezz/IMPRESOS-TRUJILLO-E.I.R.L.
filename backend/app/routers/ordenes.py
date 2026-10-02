@@ -6,7 +6,7 @@ viven fuera de aquí.
 """
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import obtener_sesion
@@ -26,8 +26,8 @@ from app.schemas import (
     OrdenCreateData,
     VentaRapidaData,
 )
-from app.services import ordenes_service
-from app.services.serializadores import serializar_orden
+from app.services import comprobantes_service, ordenes_service
+from app.services.serializadores import serializar_comprobante, serializar_orden
 
 router = APIRouter(prefix="/api/ordenes", tags=["Órdenes"])
 
@@ -81,6 +81,33 @@ async def crear_orden(
 ):
     orden = await ordenes_service.crear_orden(sesion, data, usuario)
     return {"status": "success", "data": serializar_orden(orden)}
+
+
+@router.post("/{id_orden}/comprobantes")
+async def subir_comprobante(
+    id_orden: int,
+    archivo: Annotated[UploadFile, File()],
+    usuario: Annotated[Usuario, Depends(personal_produccion)],
+    sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
+    pago_id: Annotated[Optional[int], Form()] = None,
+):
+    """
+    Adjunta la captura de Yape o transferencia a la orden (RF-11).
+
+    El mismo endpoint sirve para el adelanto del alta (sin `pago_id`) y para
+    cada abono posterior (con el pago al que respalda).
+    """
+    contenido = await archivo.read()
+    comprobante = await comprobantes_service.subir(
+        sesion,
+        id_orden,
+        contenido,
+        archivo.filename or "captura",
+        archivo.content_type or "",
+        usuario,
+        pago_id=pago_id,
+    )
+    return {"status": "success", "data": serializar_comprobante(comprobante)}
 
 
 @router.post("/caja-rapida")

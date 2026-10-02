@@ -42,6 +42,16 @@ export class ApiService {
   }
 
   /**
+   * Sube un formulario con archivos.
+   *
+   * El Content-Type lo pone el navegador con su propio límite (`boundary`);
+   * fijarlo a mano rompe el envío.
+   */
+  subir<T>(path: string, formulario: FormData): Promise<T> {
+    return this.pedir<T>('post', path, formulario);
+  }
+
+  /**
    * Ejecuta la petición y, si el servidor responde 401 (sesión vencida o
    * revocada), avisa a quien lleve el perfil y vuelve al login.
    */

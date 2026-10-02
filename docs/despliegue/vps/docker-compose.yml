@@ -65,6 +65,13 @@ services:
       ENTORNO: produccion
       LOG_LEVEL: INFO
       PORT: "8080"
+    volumes:
+      # Capturas de Yape o transferencia (RF-11, issue #67). Viven en el disco
+      # de datos del VPS, no en el contenedor: cada despliegue reconstruye la
+      # API y las imágenes no pueden irse con ella. El directorio del host debe
+      # pertenecer al usuario `app` de la imagen (uid 100):
+      #   install -d -o 100 -g 101 /home/yami/data/volumes/impresos/comprobantes
+      - /home/yami/data/volumes/impresos/comprobantes:/var/lib/impresos/comprobantes
     depends_on:
       db:
         condition: service_healthy

@@ -49,6 +49,32 @@ class Settings(BaseSettings):
     # Tasa de IGV usada cuando el contrato marca "incluye IGV".
     igv_porcentaje: float = 18.0
 
+    # ── Comprobantes de pago (RF-11) ────────────────────────────────────────
+    # Capturas de Yape o transferencia adjuntas a una orden o a uno de sus
+    # pagos. Se guardan fuera del contenedor: la API puede reconstruirse en
+    # cada despliegue sin perderlas.
+    #
+    # `almacenamiento` decide DÓNDE viven. Hoy `local` (el disco de datos del
+    # VPS); el día que se mude a Cloudflare R2 o Backblaze B2 es `s3` y se
+    # completan las claves: no hay que tocar código.
+    almacenamiento: str = "local"
+    directorio_comprobantes: str = "/var/lib/impresos/comprobantes"
+    # Límite de subida; por encima se rechaza en el propio endpoint.
+    comprobante_tamano_maximo_mb: int = 5
+    # Lado mayor tras optimizar. Una captura de celular baja de ~3 MB a ~150 KB.
+    comprobante_lado_maximo_px: int = 1600
+    comprobante_calidad: int = 82
+
+    # ── Almacén S3 (solo si almacenamiento=s3) ──────────────────────────────
+    # Compatible con Cloudflare R2, Backblaze B2 y MinIO: solo cambian estos
+    # valores. Para R2, `s3_endpoint` es https://<cuenta>.r2.cloudflarestorage.com
+    # y la región es "auto".
+    s3_endpoint: str = ""
+    s3_bucket: str = ""
+    s3_access_key: str = ""
+    s3_secret_key: str = ""
+    s3_region: str = "auto"
+
     @property
     def origenes_permitidos(self) -> list[str]:
         return [origen.strip() for origen in self.allowed_origins.split(",") if origen.strip()]
@@ -61,6 +87,31 @@ def obtener_settings() -> Settings:
 
 
 settings = obtener_settings()
+
+
+def validar_almacenamiento(almacenamiento: str, endpoint: str, bucket: str,
+                           access_key: str, secret_key: str) -> None:
+    """
+    Con `almacenamiento=s3` pero sin credenciales, la aplicación arrancaría y
+    fallaría al primer comprobante subido. Mejor negarse a arrancar y decirlo.
+    """
+    if almacenamiento != "s3":
+        return
+    faltan = [
+        nombre
+        for nombre, valor in (
+            ("S3_ENDPOINT", endpoint),
+            ("S3_BUCKET", bucket),
+            ("S3_ACCESS_KEY", access_key),
+            ("S3_SECRET_KEY", secret_key),
+        )
+        if not valor.strip()
+    ]
+    if faltan:
+        raise RuntimeError(
+            f"ALMACENAMIENTO=s3 necesita estas variables: {', '.join(faltan)}. "
+            "Complétalas o vuelve a ALMACENAMIENTO=local."
+        )
 
 
 def validar_jwt_secret(entorno: str, jwt_secret: str) -> None:

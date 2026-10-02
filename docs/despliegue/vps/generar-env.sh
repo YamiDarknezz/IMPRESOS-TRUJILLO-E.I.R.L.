@@ -36,9 +36,17 @@ ADELANTO_MINIMO_PORCENTAJE=50
 IGV_PORCENTAJE=18
 PERU_UTC_OFFSET_HORAS=-5
 JWT_EXPIRACION_MINUTOS=720
+# Capturas de Yape/transferencia (RF-11): en el disco de datos del VPS.
+ALMACENAMIENTO=local
+DIRECTORIO_COMPROBANTES=/var/lib/impresos/comprobantes
 EOF
 
 chmod 600 "$DESTINO"
+
+# La API corre como el usuario `app` de la imagen (uid 100) y escribe aquí.
+# Sin este permiso, la primera captura falla con "Permission denied".
+install -d -o 100 -g 101 "$HOME/data/volumes/impresos/comprobantes"
+
 echo "Creado: $DESTINO (permisos 600)"
 echo
 echo "Contraseña de la base (guárdala en tu gestor):"

@@ -105,9 +105,11 @@ export class OrdenesService {
 
   // ── Operaciones ──────────────────────────────────────────────────────────
 
-  async crear(datos: DatosOrden): Promise<void> {
-    await this.api.post<RespuestaItem<Orden>>('/api/ordenes', datos);
+  /** Crea la orden y devuelve la creada: el formulario la necesita para adjuntar. */
+  async crear(datos: DatosOrden): Promise<Orden> {
+    const res = await this.api.post<RespuestaItem<Orden>>('/api/ordenes', datos);
     await this.recargarConInventario();
+    return res.data;
   }
 
   async actualizar(idOrden: number, datos: DatosOrden): Promise<void> {
@@ -128,12 +130,14 @@ export class OrdenesService {
     await this.recargarConInventario();
   }
 
-  async confirmarPago(idOrden: number, metodo: MetodoPago, referencia = ''): Promise<void> {
-    await this.api.post(`/api/ordenes/${idOrden}/confirmar-pago`, {
-      metodo_pago: metodo,
-      referencia,
-    });
+  /** Registra el cobro y devuelve la orden: de ahí sale el pago al que se adjunta. */
+  async confirmarPago(idOrden: number, metodo: MetodoPago, referencia = ''): Promise<Orden> {
+    const res = await this.api.post<RespuestaItem<Orden>>(
+      `/api/ordenes/${idOrden}/confirmar-pago`,
+      { metodo_pago: metodo, referencia }
+    );
     await this.lista.recargar();
+    return res.data;
   }
 
   async crearVentaRapida(data: VentaRapidaData): Promise<Orden> {

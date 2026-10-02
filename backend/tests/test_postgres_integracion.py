@@ -264,3 +264,84 @@ async def test_saldo_restante_fuera_de_capacidad_lo_rechaza_la_base(sesion_pg, e
                 )
             )
             await sesion_pg.flush()
+
+
+async def test_la_orden_recien_creada_se_puede_responder(sesion_pg, entorno_pg):
+    """
+    POST /api/ordenes responde con `serializar_orden(orden)`.
+
+    Esa función lee `orden.comprobantes` y las de cada pago. En un objeto recién
+    creado y ya persistido esas colecciones no están inicializadas: el acceso
+    dispara un SELECT implícito y la petición muere con MissingGreenlet (500) en
+    Postgres. En SQLite la carga implícita pasa desapercibida, así que este
+    caso solo se ve contra el motor real (issue #67).
+    """
+    from app.models import Comprobante
+    from app.services.serializadores import serializar_orden
+
+    admin = entorno_pg["admin"]
+    material = entorno_pg["material"]
+    cliente = entorno_pg["cliente"]
+
+    orden = await ordenes_service.crear_orden(
+        sesion_pg, datos_orden(material.id, cliente_id=cliente.id), admin
+    )
+
+    # El alta devuelve la orden: aquí es donde fallaba, con el pago del adelanto.
+    respuesta = serializar_orden(orden)
+
+    assert respuesta["comprobantes"] == []
+    assert len(respuesta["finanzas"]["pagos"]) == 1
+    assert respuesta["finanzas"]["pagos"][0]["comprobantes"] == []
+
+    # Y con una captura adjunta al adelanto, también.
+    sesion_pg.add(
+        Comprobante(
+            orden_id=orden.id,
+            clave="pruebaDeClaveAleatoria12345678.webp",
+            nombre_original="yape.webp",
+            tipo_mime="image/webp",
+            tamano_bytes=1024,
+            subido_por=admin.id,
+        )
+    )
+    await sesion_pg.flush()
+
+    await sesion_pg.refresh(orden, ["comprobantes"])
+    assert len(serializar_orden(orden)["comprobantes"]) == 1
+
+
+async def test_borrar_un_comprobante_en_postgres(sesion_pg, entorno_pg):
+    """
+    DELETE /api/comprobantes/{id}: quita la fila y el archivo.
+
+    El servicio leía `comprobante.orden` (relación lazy) para el detalle de la
+    auditoría: en Postgres eso es un SELECT implícito y la petición moría con
+    500 después de haber borrado el archivo, dejando la fila viva (issue #67).
+    """
+    from app.models import Comprobante
+    from app.services import comprobantes_service
+
+    admin = entorno_pg["admin"]
+    material = entorno_pg["material"]
+    cliente = entorno_pg["cliente"]
+
+    orden = await ordenes_service.crear_orden(
+        sesion_pg, datos_orden(material.id, cliente_id=cliente.id), admin
+    )
+    comprobante = Comprobante(
+        orden_id=orden.id,
+        clave="otraClaveAleatoriaParaBorrar1234.webp",
+        nombre_original="yape.webp",
+        tipo_mime="image/webp",
+        tamano_bytes=2048,
+        subido_por=admin.id,
+    )
+    sesion_pg.add(comprobante)
+    await sesion_pg.flush()
+    id_comprobante = comprobante.id
+
+    await comprobantes_service.borrar(sesion_pg, id_comprobante, admin)
+
+    queda = await sesion_pg.get(Comprobante, id_comprobante)
+    assert queda is None
