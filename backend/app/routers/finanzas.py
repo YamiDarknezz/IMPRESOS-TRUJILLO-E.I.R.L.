@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import obtener_sesion
 from app.core.fechas import parsear_fecha
 from app.core.security import usuario_actual
-from app.models import UnidadNegocio, Usuario
+from app.models import CanalIngreso, UnidadNegocio, Usuario
 from app.services import finanzas_service
 
 router = APIRouter(prefix="/api/finanzas", tags=["Finanzas"])
@@ -21,6 +21,7 @@ async def resumen_finanzas(
     hasta: Optional[str] = None,
     trabajador: Optional[int] = None,
     unidad_negocio: Optional[UnidadNegocio] = None,
+    canal_ingreso: Optional[CanalIngreso] = None,
 ):
     """
     Resumen de ingresos y contratos del rango pedido.
@@ -37,5 +38,6 @@ async def resumen_finanzas(
             hasta=parsear_fecha(hasta),
             trabajador_id=trabajador,
             unidad_negocio=unidad_negocio,
+            canal_ingreso=canal_ingreso,
         ),
     }

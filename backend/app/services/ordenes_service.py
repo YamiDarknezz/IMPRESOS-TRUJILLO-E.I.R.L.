@@ -22,6 +22,7 @@ from app.core.config import settings
 from app.core.errores import Conflicto, ErrorDeNegocio, NoEncontrado, PermisoDenegado
 from app.core.fechas import a_fecha_peru, ahora_utc
 from app.models import (
+    CanalIngreso,
     CierreCaja,
     Cliente,
     EstadoCierre,
@@ -251,10 +252,13 @@ async def listar(
     estado: Optional[EstadoOrden] = None,
     limite: int = 200,
     desplazamiento: int = 0,
+    canal_ingreso: Optional[CanalIngreso] = None,
 ) -> list[Orden]:
     consulta = select(Orden).order_by(Orden.creado_en.desc())
     if estado is not None:
         consulta = consulta.where(Orden.estado == estado)
+    if canal_ingreso is not None:
+        consulta = consulta.where(Orden.canal_ingreso == canal_ingreso)
     consulta = _aplicar_alcance(consulta, usuario).limit(limite).offset(desplazamiento)
 
     return list((await sesion.execute(consulta)).scalars())
@@ -264,11 +268,14 @@ async def contar(
     sesion: AsyncSession,
     usuario: Usuario,
     estado: Optional[EstadoOrden] = None,
+    canal_ingreso: Optional[CanalIngreso] = None,
 ) -> int:
     """Cuántas órdenes cumplen el filtro (para 'mostrando N de M' y el panel)."""
     consulta = select(func.count()).select_from(Orden)
     if estado is not None:
         consulta = consulta.where(Orden.estado == estado)
+    if canal_ingreso is not None:
+        consulta = consulta.where(Orden.canal_ingreso == canal_ingreso)
     consulta = _aplicar_alcance(consulta, usuario)
     return int((await sesion.execute(consulta)).scalar_one())
 
@@ -512,6 +519,7 @@ async def crear_orden(sesion: AsyncSession, data: OrdenCreateData, usuario: Usua
 
     orden = Orden(
         tipo_documento=data.tipo_documento,
+        canal_ingreso=data.canal_ingreso,
         # Se asigna la relación (no solo el id) para que la respuesta pueda
         # serializar el nombre sin provocar una carga perezosa en async.
         cliente=cliente,
@@ -611,6 +619,8 @@ async def crear_venta_rapida(
 
     orden = Orden(
         tipo_documento=TipoDocumento.CONTRATO,
+        # Se vende en el mostrador: el cliente está ahí.
+        canal_ingreso=CanalIngreso.PRESENCIAL,
         cliente=cliente,
         direccion="",
         telefono="",
@@ -718,6 +728,10 @@ async def actualizar(sesion: AsyncSession, id_orden: int, data: OrdenCreateData,
     # con cada edición.
     orden.descripcion = data.descripcion
     orden.tipo_documento = data.tipo_documento
+    # Solo si el cliente de la API lo mandó: un PATCH de antes de #69 no debe
+    # pisar el canal ya registrado con el valor por defecto.
+    if "canal_ingreso" in data.model_fields_set:
+        orden.canal_ingreso = data.canal_ingreso
     orden.unidad_negocio = data.unidad_negocio
     orden.fecha_entrega = data.fecha_entrega
     orden.incluye_igv = data.incluye_igv

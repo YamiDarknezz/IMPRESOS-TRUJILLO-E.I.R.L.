@@ -26,5 +26,7 @@ export interface ResumenFinanzas {
   por_metodo: Record<string, number>;
   /** Caja dual: Imprenta vs. Gigantografías. */
   por_unidad_negocio: Record<string, ResumenUnidad>;
+  /** Por vía de ingreso del pedido (#69). */
+  por_canal_ingreso?: Record<string, ResumenUnidad>;
   por_trabajador: FilaTrabajador[];
 }

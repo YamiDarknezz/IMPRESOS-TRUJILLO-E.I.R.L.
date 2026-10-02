@@ -26,7 +26,12 @@ import {
 } from '../../core/models';
 import { formatearFecha } from '../../shared/utilidades/fechas';
 import { mensajeDeError } from '../../shared/utilidades/errores';
-import { etiquetasMetodo, metodosPago as metodosDelServidor } from '../../core/estado/catalogos';
+import {
+  canalesIngreso,
+  etiquetasCanal,
+  etiquetasMetodo,
+  metodosPago as metodosDelServidor,
+} from '../../core/estado/catalogos';
 import {
   CapturaElegida,
   capturasDesdeArchivos,
@@ -71,6 +76,8 @@ export class OrdenesComponent {
   // ── Filtros ──────────────────────────────────────────────────────────────
   readonly filtroEstado = signal<FiltroEstado>('todos');
   readonly busqueda = signal('');
+  /** Vía de ingreso a la que se limita la lista; vacío = todas (#69). */
+  readonly filtroCanal = signal('');
   readonly desde = signal('');
   readonly hasta = signal('');
 
@@ -91,6 +98,7 @@ export class OrdenesComponent {
       texto: this.busqueda(),
       desde: this.desde(),
       hasta: this.hasta(),
+      canal: this.filtroCanal(),
     })
   );
 
@@ -112,6 +120,8 @@ export class OrdenesComponent {
   readonly referenciaPago = signal('');
 
   // Helpers reexpuestos para la plantilla
+  readonly canales = computed(() => canalesIngreso());
+  readonly etiquetaCanal = computed(() => etiquetasCanal());
   readonly etiquetaEstado = ETIQUETA_ESTADO;
   readonly etiquetaMetodo = etiquetasMetodo;
   readonly etiquetaUnidad = ETIQUETA_UNIDAD;

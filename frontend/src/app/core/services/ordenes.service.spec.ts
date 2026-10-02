@@ -19,6 +19,7 @@ function ordenBase(sobrescribe: Partial<Orden> = {}): Orden {
     id_documento: 'C-0001',
     codigo: 'C-0001',
     tipo_documento: 'contrato',
+    canal_ingreso: 'otro',
     unidad_negocio: 'imprenta',
     cliente_id: 1,
     cliente: 'Juan Pérez',
@@ -310,6 +311,16 @@ describe('funciones puras de órdenes', () => {
   });
 
   describe('filtrarOrdenes()', () => {
+    // Issue #69
+    it('filtra por canal de ingreso, y sin canal no filtra', () => {
+      const ordenes = [
+        ordenBase({ id: 1, canal_ingreso: 'whatsapp' }),
+        ordenBase({ id: 2, canal_ingreso: 'llamada' }),
+      ];
+      expect(filtrarOrdenes(ordenes, { canal: 'whatsapp' }).map(o => o.id)).toEqual([1]);
+      expect(filtrarOrdenes(ordenes, { canal: '' }).map(o => o.id)).toEqual([1, 2]);
+    });
+
     const ordenes: Orden[] = [
       ordenBase({ id: 1, estado: 'pendiente', cliente: 'Juan Pérez', id_documento: 'C-0001', fecha_creacion: '2026-09-01' }),
       ordenBase({ id: 2, estado: 'entregada', cliente: 'María López', id_documento: 'C-0002', fecha_creacion: '2026-09-15' }),

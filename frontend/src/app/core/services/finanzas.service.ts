@@ -18,6 +18,8 @@ export class FinanzasService {
   readonly desde = signal(leerPreferencia(CLAVE_DESDE) || primerDiaDelMesISO());
   readonly hasta = signal(leerPreferencia(CLAVE_HASTA) || hoyISO());
   readonly trabajador = signal<number | null>(null);
+  /** Vía de ingreso a la que se limita el reporte; vacío = todas (#69). */
+  readonly canal = signal('');
 
   /** Desglose por método de pago, con etiquetas legibles. */
   readonly porMetodo = computed(() => {
@@ -66,6 +68,7 @@ export class FinanzasService {
     if (this.desde()) params.set('desde', this.desde());
     if (this.hasta()) params.set('hasta', this.hasta());
     if (this.trabajador()) params.set('trabajador', String(this.trabajador()));
+    if (this.canal()) params.set('canal_ingreso', this.canal());
 
     const texto = params.toString();
     return texto ? `?${texto}` : '';

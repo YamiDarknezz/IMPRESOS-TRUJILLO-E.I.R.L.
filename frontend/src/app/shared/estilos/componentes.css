@@ -1494,3 +1494,22 @@ select.date-filter-input:focus {
   font-size: 0.8rem;
   text-decoration: none;
 }
+
+/* ─── Utilidades de maquetación (sustituyen estilos escritos en el HTML) ──── */
+
+.bloque {
+  display: block;
+}
+
+.filtro-canal {
+  max-width: 200px;
+}
+
+.card-seccion {
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.section-title-primero {
+  margin-top: 0;
+}

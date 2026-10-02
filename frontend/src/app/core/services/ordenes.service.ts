@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { ApiService } from './api.service';
 import { InventarioService } from './inventario.service';
 import {
+  CanalIngreso,
   ESTADOS_CERRADOS,
   ESTADOS_PIPELINE,
   EstadoOrden,
@@ -41,6 +42,7 @@ export interface DatosOrden {
   asignado_a: number | null;
   descripcion: string;
   tipo_documento: TipoDocumento;
+  canal_ingreso: CanalIngreso;
   unidad_negocio: UnidadNegocio;
   fecha_entrega: string;
   incluye_igv: boolean;
@@ -211,12 +213,16 @@ export function claseEstado(estado: EstadoOrden): string {
 /** Filtra la lista por etapa, texto libre y rango de fechas de creación. */
 export function filtrarOrdenes(
   ordenes: Orden[],
-  opciones: { estado?: string; texto?: string; desde?: string; hasta?: string },
+  opciones: { estado?: string; texto?: string; desde?: string; hasta?: string; canal?: string },
 ): Orden[] {
   const texto = (opciones.texto ?? '').toLowerCase().trim();
 
   return ordenes.filter(orden => {
     if (opciones.estado && opciones.estado !== 'todos' && orden.estado !== opciones.estado) {
+      return false;
+    }
+
+    if (opciones.canal && orden.canal_ingreso !== opciones.canal) {
       return false;
     }
 

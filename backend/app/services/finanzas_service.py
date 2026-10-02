@@ -17,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.fechas import dentro_del_rango
-from app.models import EstadoOrden, Orden, Rol, TipoPago, UnidadNegocio, Usuario
+from app.models import CanalIngreso, EstadoOrden, Orden, Rol, TipoPago, UnidadNegocio, Usuario
 
 METODO_SIN_ESPECIFICAR = "—"
 NOMBRE_SIN_ASIGNAR = "Sin asignar"
@@ -50,6 +50,7 @@ async def resumen(
     hasta: Optional[date] = None,
     trabajador_id: Optional[int] = None,
     unidad_negocio: Optional[UnidadNegocio] = None,
+    canal_ingreso: Optional[CanalIngreso] = None,
 ) -> dict:
     """
     Arma el resumen financiero del rango pedido.
@@ -77,6 +78,7 @@ async def resumen(
 
     por_trabajador: dict = {}
     por_unidad = {unidad.value: _unidad_vacia() for unidad in UnidadNegocio}
+    por_canal = {canal.value: _unidad_vacia() for canal in CanalIngreso}
     por_metodo: dict[str, float] = {}
 
     total_contratos = total_por_cobrar = total_adelantos = total_ingresos = 0.0
@@ -86,6 +88,8 @@ async def resumen(
         if trabajador_id is not None and orden.asignado_a != trabajador_id:
             continue
         if unidad_negocio is not None and orden.unidad_negocio != unidad_negocio:
+            continue
+        if canal_ingreso is not None and orden.canal_ingreso != canal_ingreso:
             continue
 
         clave = orden.asignado_a or CLAVE_SIN_ASIGNAR
@@ -99,6 +103,7 @@ async def resumen(
             ),
         )
         unidad = por_unidad[orden.unidad_negocio.value]
+        canal = por_canal[orden.canal_ingreso.value]
 
         # ── Lo vendido: se mide por la fecha en que se creó la orden ───────
         if dentro_del_rango(orden.creado_en, desde, hasta):
@@ -108,12 +113,14 @@ async def resumen(
             fila["contratos"] += neto
             fila["ordenes"] += 1
             unidad["contratos"] += neto
+            canal["contratos"] += neto
 
             if not orden.pagado_totalmente:
                 saldo = float(orden.saldo_pendiente)
                 total_por_cobrar += saldo
                 fila["por_cobrar"] += saldo
                 unidad["por_cobrar"] += saldo
+                canal["por_cobrar"] += saldo
 
         # ── Lo cobrado: se mide por la fecha real de cada pago ─────────────
         for pago in orden.pagos:
@@ -134,12 +141,15 @@ async def resumen(
             por_metodo[metodo] = por_metodo.get(metodo, 0.0) + monto
             fila["ingresos"] += monto
             unidad["ingresos"] += monto
+            canal["ingresos"] += monto
 
     total_canceladas = 0
     for orden in ordenes_canceladas:
         if trabajador_id is not None and orden.asignado_a != trabajador_id:
             continue
         if unidad_negocio is not None and orden.unidad_negocio != unidad_negocio:
+            continue
+        if canal_ingreso is not None and orden.canal_ingreso != canal_ingreso:
             continue
         if dentro_del_rango(orden.creado_en, desde, hasta):
             total_canceladas += 1
@@ -156,6 +166,10 @@ async def resumen(
         "por_unidad_negocio": {
             clave: {k: _redondear(v) for k, v in valores.items()}
             for clave, valores in por_unidad.items()
+        },
+        "por_canal_ingreso": {
+            clave: {k: _redondear(v) for k, v in valores.items()}
+            for clave, valores in por_canal.items()
         },
         "por_trabajador": sorted(
             (

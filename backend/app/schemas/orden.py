@@ -4,7 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 
-from app.models import EstadoOrden, MetodoPago, TipoDocumento, UnidadNegocio
+from app.models import CanalIngreso, EstadoOrden, MetodoPago, TipoDocumento, UnidadNegocio
 from app.schemas.comunes import exigir_no_negativo, exigir_positivo, exigir_texto, limpiar
 
 
@@ -66,6 +66,7 @@ class OrdenCreateData(BaseModel):
     descripcion: str
 
     tipo_documento: TipoDocumento = TipoDocumento.CONTRATO
+    canal_ingreso: CanalIngreso = CanalIngreso.OTRO
     unidad_negocio: UnidadNegocio = UnidadNegocio.IMPRENTA
     fecha_entrega: date
     incluye_igv: bool = False

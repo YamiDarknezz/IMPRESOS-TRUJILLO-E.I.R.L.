@@ -36,6 +36,12 @@ export const ETIQUETA_TIPO_DOCUMENTO: Record<TipoDocumento, string> = {
   proforma: 'Proforma',
 };
 
+/**
+ * Vía por la que llegó el pedido (#69). Es solo el tipo: los nombres legibles
+ * los publica el servidor (`catalogos.canales_ingreso`).
+ */
+export type CanalIngreso = 'whatsapp' | 'llamada' | 'presencial' | 'correo' | 'otro';
+
 /** Las dos líneas de negocio con caja separada (RN-05). */
 export type UnidadNegocio = 'imprenta' | 'gigantografias';
 
@@ -117,6 +123,7 @@ export interface Orden {
   id_documento: string;
   codigo: string;
   tipo_documento: TipoDocumento;
+  canal_ingreso: CanalIngreso;
   unidad_negocio: UnidadNegocio;
   cliente_id: number;
   cliente: string;

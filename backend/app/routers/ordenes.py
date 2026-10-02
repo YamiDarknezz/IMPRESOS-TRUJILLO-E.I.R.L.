@@ -17,7 +17,7 @@ from app.core.security import (
     supervision,
     usuario_actual,
 )
-from app.models import EstadoOrden, Usuario
+from app.models import CanalIngreso, EstadoOrden, Usuario
 from app.schemas import (
     AsignarData,
     CambiarEstadoData,
@@ -40,6 +40,7 @@ async def listar_ordenes(
     usuario: Annotated[Usuario, Depends(usuario_actual)],
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
     estado: Optional[EstadoOrden] = Query(default=None),
+    canal_ingreso: Optional[CanalIngreso] = Query(default=None),
     limit: int = Query(default=LIMITE_POR_DEFECTO, le=LIMITE_MAXIMO),
     offset: int = Query(default=0, ge=0),
 ):
@@ -49,8 +50,10 @@ async def listar_ordenes(
     El `total` va aparte del bloque: sin él, la pantalla no puede decir si la
     lista viene recortada (#27).
     """
-    ordenes = await ordenes_service.listar(sesion, usuario, estado, limit, offset)
-    total = await ordenes_service.contar(sesion, usuario, estado)
+    ordenes = await ordenes_service.listar(
+        sesion, usuario, estado, limit, offset, canal_ingreso=canal_ingreso
+    )
+    total = await ordenes_service.contar(sesion, usuario, estado, canal_ingreso=canal_ingreso)
     return {"status": "success", "data": [serializar_orden(o) for o in ordenes], "total": total}
 
 

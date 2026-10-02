@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from app.models.comprobante import Comprobante
 
 from app.models.enums import (
+    CanalIngreso,
     EstadoOrden,
     EstadoPago,
     MetodoPago,
@@ -46,6 +47,14 @@ class Orden(Base, TemporalMixin):
     tipo_documento: Mapped[TipoDocumento] = mapped_column(
         enum_columna(TipoDocumento, "tipo_documento", 10),
         default=TipoDocumento.CONTRATO,
+        nullable=False,
+    )
+    # Vía por la que llegó el pedido (#69). Las órdenes anteriores a este campo
+    # quedaron como "otro": no se sabe, y es preferible a inventar un canal.
+    canal_ingreso: Mapped[CanalIngreso] = mapped_column(
+        enum_columna(CanalIngreso, "canal_ingreso", 15),
+        default=CanalIngreso.OTRO,
+        server_default=CanalIngreso.OTRO.value,
         nullable=False,
     )
     cliente_id: Mapped[int] = mapped_column(ForeignKey("clientes.id"), nullable=False)

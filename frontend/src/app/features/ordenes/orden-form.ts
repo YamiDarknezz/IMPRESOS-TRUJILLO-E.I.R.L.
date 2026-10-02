@@ -10,6 +10,7 @@ import { DatosOrden, OrdenesService } from '../../core/services/ordenes.service'
 import { ProductosService } from '../../core/services/productos.service';
 import { SesionService, nombreVisible } from '../../core/services/sesion.service';
 import {
+  CanalIngreso,
   ETIQUETA_METODO,
   ETIQUETA_TIPO_DOCUMENTO,
   ETIQUETA_UNIDAD,
@@ -24,6 +25,7 @@ import {
 import { mensajeDeError } from '../../shared/utilidades/errores';
 import {
   adelantoMinimoPorcentaje,
+  canalesIngreso,
   etiquetasMetodo,
   igvPorcentaje,
   metodosPago as metodosDelServidor,
@@ -52,6 +54,8 @@ interface FormularioOrden {
   productoId: number | null;
   descripcion: string;
   tipoDocumento: TipoDocumento;
+  /** Vacío hasta que se elige: es un dato que después no se puede reconstruir (#69). */
+  canalIngreso: CanalIngreso | '';
   unidadNegocio: UnidadNegocio;
   fechaEntrega: string;
   incluyeIgv: boolean;
@@ -75,7 +79,7 @@ function lineaVacia(): LineaFormulario {
 function formularioVacio(): FormularioOrden {
   return {
     clienteId: null, cliente: '', asignadoA: null, productoId: null,
-    descripcion: '', tipoDocumento: 'contrato', unidadNegocio: 'imprenta',
+    descripcion: '', tipoDocumento: 'contrato', canalIngreso: '', unidadNegocio: 'imprenta',
     fechaEntrega: '', incluyeIgv: false, metodoPago: 'efectivo',
     precioTotal: 0, adelanto: 0, descuento: 0, motivoDescuento: '',
     materiales: [], lineas: [],
@@ -120,6 +124,7 @@ export class OrdenFormComponent {
 
   // Catálogos para la plantilla
   readonly metodosPago = metodosDelServidor;
+  readonly canales = computed(() => canalesIngreso());
   readonly igvPorcentaje = igvPorcentaje;
   readonly adelantoPorcentaje = adelantoMinimoPorcentaje;
   readonly unidadesNegocio = UNIDADES_NEGOCIO;
@@ -207,6 +212,7 @@ export class OrdenFormComponent {
       productoId: null,
       descripcion: orden.descripcion,
       tipoDocumento: orden.tipo_documento,
+      canalIngreso: orden.canal_ingreso,
       unidadNegocio: orden.unidad_negocio,
       fechaEntrega: orden.fecha_entrega,
       incluyeIgv: orden.incluye_igv,
@@ -347,6 +353,9 @@ export class OrdenFormComponent {
     if (!form.descripcion.trim()) {
       errores['descripcion'] = 'La descripción es requerida.';
     }
+    if (!form.canalIngreso) {
+      errores['canalIngreso'] = 'Indica por qué vía llegó el pedido.';
+    }
     if (!form.fechaEntrega) {
       errores['fechaEntrega'] = 'La fecha de entrega es requerida.';
     }
@@ -424,6 +433,7 @@ export class OrdenFormComponent {
       asignado_a: this.sesion.esSupervisor() ? form.asignadoA : null,
       descripcion: form.descripcion,
       tipo_documento: form.tipoDocumento,
+      canal_ingreso: form.canalIngreso as CanalIngreso,
       unidad_negocio: form.unidadNegocio,
       fecha_entrega: form.fechaEntrega,
       incluye_igv: form.incluyeIgv,

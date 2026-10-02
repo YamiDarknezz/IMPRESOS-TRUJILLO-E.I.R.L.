@@ -28,6 +28,14 @@
     </select>
   }
 
+  <select [ngModel]="canal()" name="finCanal" class="search-input filtro-canal"
+          aria-label="Filtrar por canal de ingreso" (ngModelChange)="cambiarCanal($event)">
+    <option value="">Todos los canales</option>
+    @for (c of canales(); track c.valor) {
+      <option [value]="c.valor">{{ c.etiqueta }}</option>
+    }
+  </select>
+
   <button class="btn-secondary btn-sm" (click)="cargar()">↻ Actualizar</button>
 
   @if (resumen()) {
@@ -145,6 +153,25 @@
       }
     </div>
   </div>
+
+  <!-- ═══ Por canal de ingreso (#69) ═══════════════════════════════════════ -->
+  @if (datos.por_canal_ingreso) {
+    <div class="card card-seccion">
+      <h4 class="section-title section-title-primero">Desglose por canal de ingreso</h4>
+      <div class="metodo-grid">
+        @for (c of canales(); track c.valor) {
+          <div class="metodo-box">
+            <span class="metodo-box-label">{{ c.etiqueta }}</span>
+            <span class="metodo-box-value">S/ {{ datos.por_canal_ingreso[c.valor]?.ingresos ?? 0 | number:'1.2-2' }}</span>
+            <span class="metodo-label">
+              Contratos: S/ {{ datos.por_canal_ingreso[c.valor]?.contratos ?? 0 | number:'1.2-2' }}
+              · Por cobrar: S/ {{ datos.por_canal_ingreso[c.valor]?.por_cobrar ?? 0 | number:'1.2-2' }}
+            </span>
+          </div>
+        }
+      </div>
+    </div>
+  }
 
   <!-- ═══ Por trabajador (supervisión) ═════════════════════════════════════ -->
   @if (datos.es_supervisor) {

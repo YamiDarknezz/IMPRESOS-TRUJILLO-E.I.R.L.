@@ -263,6 +263,7 @@ def serializar_orden(orden) -> dict[str, Any]:
         "id_documento": orden.codigo,
         "codigo": orden.codigo,
         "tipo_documento": orden.tipo_documento.value,
+        "canal_ingreso": orden.canal_ingreso.value,
         "cliente_id": orden.cliente_id,
         "cliente": orden.cliente.nombre if orden.cliente else "",
         "direccion": orden.direccion,

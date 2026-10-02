@@ -9,6 +9,7 @@ from app.models.caja import CierreCaja
 from app.models.cliente import Cliente
 from app.models.comprobante import Comprobante
 from app.models.enums import (
+    CanalIngreso,
     EstadoCierre,
     EstadoOrden,
     EstadoPago,
@@ -56,6 +57,7 @@ __all__ = [
     "MetodoPago",
     "MotivoMovimiento",
     "MotivoObservacionPago",
+    "CanalIngreso",
     "Rol",
     "TipoCliente",
     "TipoDocumento",

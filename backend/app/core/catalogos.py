@@ -10,6 +10,7 @@ texto crudo porque la copia del frontend nadie la actualizó.
 """
 from app.core.config import settings
 from app.models.enums import (
+    CanalIngreso,
     EstadoPago,
     MetodoPago,
     MotivoMovimiento,
@@ -24,6 +25,14 @@ ETIQUETA_METODO_PAGO = {
     MetodoPago.EFECTIVO: "Efectivo",
     MetodoPago.YAPE: "Yape",
     MetodoPago.TRANSFERENCIA: "Transferencia",
+}
+
+ETIQUETA_CANAL_INGRESO = {
+    CanalIngreso.WHATSAPP: "WhatsApp",
+    CanalIngreso.LLAMADA: "Llamada",
+    CanalIngreso.PRESENCIAL: "Presencial",
+    CanalIngreso.CORREO: "Correo",
+    CanalIngreso.OTRO: "Otro",
 }
 
 ETIQUETA_TIPO_PAGO = {
@@ -96,6 +105,7 @@ def catalogos() -> dict[str, list[dict[str, str]]]:
     """Listas de valores con su nombre legible, para los desplegables y las tablas."""
     return {
         "metodos_pago": _como_lista(MetodoPago, ETIQUETA_METODO_PAGO),
+        "canales_ingreso": _como_lista(CanalIngreso, ETIQUETA_CANAL_INGRESO),
         "tipos_pago": _como_lista(TipoPago, ETIQUETA_TIPO_PAGO),
         "estados_pago": _como_lista(EstadoPago, ETIQUETA_ESTADO_PAGO),
         "motivos_observacion": _como_lista(MotivoObservacionPago, ETIQUETA_MOTIVO_OBSERVACION),

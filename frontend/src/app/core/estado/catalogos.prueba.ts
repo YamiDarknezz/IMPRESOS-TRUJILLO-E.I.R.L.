@@ -12,6 +12,13 @@ export const PARAMETROS_DE_PRUEBA: ParametrosNegocio = {
 };
 
 export const CATALOGOS_DE_PRUEBA: Catalogos = {
+  canales_ingreso: [
+    { valor: 'whatsapp', etiqueta: 'WhatsApp' },
+    { valor: 'llamada', etiqueta: 'Llamada' },
+    { valor: 'presencial', etiqueta: 'Presencial' },
+    { valor: 'correo', etiqueta: 'Correo' },
+    { valor: 'otro', etiqueta: 'Otro' },
+  ],
   metodos_pago: [
     { valor: 'efectivo', etiqueta: 'Efectivo' },
     { valor: 'yape', etiqueta: 'Yape' },

@@ -23,6 +23,7 @@ export interface ParametrosNegocio {
 }
 
 export interface Catalogos {
+  canales_ingreso: OpcionCatalogo[];
   metodos_pago: OpcionCatalogo[];
   tipos_pago: OpcionCatalogo[];
   estados_pago: OpcionCatalogo[];
@@ -34,6 +35,7 @@ export interface Catalogos {
 export type NombreCatalogo = keyof Catalogos;
 
 const VACIO: Catalogos = {
+  canales_ingreso: [],
   metodos_pago: [],
   tipos_pago: [],
   estados_pago: [],
@@ -101,6 +103,8 @@ export function etiquetaDe(nombre: NombreCatalogo, valor: string): string {
 // Atajos para las plantillas, que es donde más se usan.
 export const metodosPago = computed(() => valoresDe('metodos_pago'));
 export const etiquetasMetodo = computed(() => etiquetasDe('metodos_pago'));
+export const canalesIngreso = computed(() => catalogos().canales_ingreso);
+export const etiquetasCanal = computed(() => etiquetasDe('canales_ingreso'));
 export const opcionesAccion = computed(() => catalogos().acciones_auditoria);
 export const etiquetasAccion = computed(() => etiquetasDe('acciones_auditoria'));
 export const motivosObservacion = computed(() => catalogos().motivos_observacion);

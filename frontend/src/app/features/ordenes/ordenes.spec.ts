@@ -13,6 +13,7 @@ function ordenBase(sobrescribe: Partial<Orden> = {}): Orden {
     id_documento: 'C-0001',
     codigo: 'C-0001',
     tipo_documento: 'contrato',
+    canal_ingreso: 'otro',
     unidad_negocio: 'imprenta',
     cliente_id: 1,
     cliente: 'Juan Pérez',

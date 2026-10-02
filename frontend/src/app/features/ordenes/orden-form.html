@@ -61,6 +61,21 @@
       </div>
 
       <div class="input-group">
+        <label>Canal por el que entró el pedido *</label>
+        <select [ngModel]="form().canalIngreso" name="canalIngreso"
+                (ngModelChange)="actualizar('canalIngreso', $event)"
+                [class.input-error]="errores()['canalIngreso']">
+          <option value="">— Selecciona —</option>
+          @for (c of canales(); track c.valor) {
+            <option [value]="c.valor">{{ c.etiqueta }}</option>
+          }
+        </select>
+        @if (errores()['canalIngreso']) {
+          <span class="field-error">{{ errores()['canalIngreso'] }}</span>
+        }
+      </div>
+
+      <div class="input-group">
         <label>Unidad de negocio</label>
         <select [ngModel]="form().unidadNegocio" name="unidadNegocio"
                 (ngModelChange)="actualizar('unidadNegocio', $event)">

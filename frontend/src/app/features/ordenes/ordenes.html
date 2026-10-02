@@ -67,6 +67,14 @@
     }
   </div>
 
+  <select class="search-input filtro-canal" [ngModel]="filtroCanal()" (ngModelChange)="filtroCanal.set($event)"
+          name="filtroCanal" aria-label="Filtrar por canal de ingreso">
+    <option value="">Todos los canales</option>
+    @for (c of canales(); track c.valor) {
+      <option [value]="c.valor">{{ c.etiqueta }}</option>
+    }
+  </select>
+
   <div class="date-filter-group">
     <div class="date-filter-item">
       <label class="date-filter-label">Desde</label>
@@ -160,7 +168,10 @@
                 [class.row-cancelada]="orden.estado === 'cancelada'">
 
               <td><code class="id-chip">{{ orden.id_documento }}</code></td>
-              <td>{{ orden.cliente }}</td>
+              <td>
+                {{ orden.cliente }}
+                <small class="text-muted bloque">vía {{ etiquetaCanal()[orden.canal_ingreso] ?? orden.canal_ingreso }}</small>
+              </td>
 
               @if (sesion.esSupervisor()) {
                 <td>

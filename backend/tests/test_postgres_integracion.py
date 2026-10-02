@@ -345,3 +345,30 @@ async def test_borrar_un_comprobante_en_postgres(sesion_pg, entorno_pg):
 
     queda = await sesion_pg.get(Comprobante, id_comprobante)
     assert queda is None
+
+
+async def test_canal_de_ingreso_con_check_y_valor_por_defecto_en_postgres(sesion_pg, entorno_pg):
+    """
+    #69: la columna nueva entra a una tabla con filas gracias al
+    `server_default` ("otro"), y su CHECK rechaza un canal fuera del dominio.
+    """
+    admin, material, cliente = entorno_pg["admin"], entorno_pg["material"], entorno_pg["cliente"]
+    orden = await ordenes_service.crear_orden(
+        sesion_pg, datos_orden(material.id, cliente_id=cliente.id), admin
+    )
+    assert orden.canal_ingreso.value == "otro"
+
+    # Una fila escrita sin el campo (como las anteriores a la migración) lo recibe de la base.
+    guardado = (
+        await sesion_pg.execute(
+            text("SELECT canal_ingreso FROM ordenes WHERE id = :id"), {"id": orden.id}
+        )
+    ).scalar_one()
+    assert guardado == "otro"
+
+    with pytest.raises(IntegrityError):
+        async with sesion_pg.begin_nested():
+            await sesion_pg.execute(
+                text("UPDATE ordenes SET canal_ingreso = 'paloma' WHERE id = :id"), {"id": orden.id}
+            )
+

@@ -50,6 +50,17 @@ describe('FinanzasService', () => {
     expect(localStorage.getItem('it-fin-hasta')).toBe('2026-08-31');
   });
 
+  it('cargar() incluye el canal de ingreso en la query si está elegido (#69)', async () => {
+    servicio.canal.set('whatsapp');
+    await servicio.cargar();
+    expect(apiFalsa.get).toHaveBeenCalledWith(expect.stringContaining('canal_ingreso=whatsapp'));
+  });
+
+  it('cargar() sin canal no manda el parámetro (#69)', async () => {
+    await servicio.cargar();
+    expect(apiFalsa.get).not.toHaveBeenCalledWith(expect.stringContaining('canal_ingreso'));
+  });
+
   it('cargar() incluye el trabajador en la query si está seleccionado', async () => {
     servicio.trabajador.set(7);
     await servicio.cargar();
