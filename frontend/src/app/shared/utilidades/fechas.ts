@@ -2,9 +2,24 @@
  * Utilidades de fecha.
  *
  * Las fechas llegan en dos formas: como texto 'AAAA-MM-DD' (fecha de entrega,
- * que el usuario elige) o como timestamp de Firestore `{ seconds }` (fecha de
- * creación). Estas funciones tratan ambas por igual.
+ * que el usuario elige, o un día ya de calendario) o como timestamp con hora
+ * e instante (fecha de creación, siempre en UTC porque así lo guarda el
+ * backend). Estas funciones tratan ambas por igual.
  */
+
+/**
+ * Huso del negocio. La base guarda todo en UTC y el día de calendario que
+ * importa —filtros, reportes, arqueos— es el peruano: convertir un instante a
+ * "su día" tomando el texto en UTC le pone la fecha del día siguiente a todo
+ * lo creado de noche.
+ */
+const ZONA_PERU = 'America/Lima';
+
+/** Día de calendario peruano ('AAAA-MM-DD') de un instante. No depende del huso del equipo. */
+export function diaPeruISO(instante: Date): string {
+  // 'en-CA' formatea como AAAA-MM-DD, que es lo que se compara en los filtros.
+  return new Intl.DateTimeFormat('en-CA', { timeZone: ZONA_PERU }).format(instante);
+}
 
 /** Fecha de hoy en formato local 'AAAA-MM-DD' (evita desfases por UTC en husos horarios como Perú UTC-5). */
 export function hoyISO(): string {
@@ -33,13 +48,26 @@ export function primerDiaDelMesISO(): string {
   return `${anio}-${mes}-01`;
 }
 
-/** Lleva cualquiera de las dos formas a 'AAAA-MM-DD', para poder comparar. */
+/**
+ * Lleva cualquiera de las dos formas a 'AAAA-MM-DD', para poder comparar.
+ *
+ * Un texto 'AAAA-MM-DD' ya es un día de calendario y se devuelve tal cual; un
+ * instante (ISO con hora o timestamp `{ seconds }`) se convierte al día
+ * peruano. Tomar el día del texto UTC —lo que hacía antes— fechaba al día
+ * siguiente todo lo creado después de las 19:00 hora de Perú.
+ */
 export function aFechaISO(fecha: unknown): string {
   if (!fecha) return '';
-  if (typeof fecha === 'string') return fecha.split('T')[0];
+
+  if (typeof fecha === 'string') {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return fecha;
+
+    const instante = new Date(fecha);
+    return isNaN(instante.getTime()) ? fecha.split('T')[0] : diaPeruISO(instante);
+  }
 
   const segundos = (fecha as { seconds?: number })?.seconds;
-  return segundos ? new Date(segundos * 1000).toISOString().split('T')[0] : '';
+  return segundos ? diaPeruISO(new Date(segundos * 1000)) : '';
 }
 
 /**

@@ -238,6 +238,21 @@ describe('funciones puras de órdenes', () => {
       expect(filtrarOrdenes(ordenes, { desde: '2026-09-10', hasta: '2026-09-16' })).toEqual([ordenes[1]]);
     });
 
+    // #26: una orden creada a las 23:32 hora de Perú es de ese día, aunque en
+    // UTC ya sea el siguiente (04:32). Antes el filtro la ubicaba al día
+    // siguiente y desaparecía del rango que el usuario eligió.
+    it('ubica la orden creada de noche en el día peruano', () => {
+      const deNoche = ordenBase({
+        id: 9,
+        estado: 'pendiente',
+        id_documento: 'C-0009',
+        fecha_creacion: '2026-09-26T04:32:16+00:00',
+      });
+
+      expect(filtrarOrdenes([deNoche], { desde: '2026-09-25', hasta: '2026-09-25' })).toEqual([deNoche]);
+      expect(filtrarOrdenes([deNoche], { desde: '2026-09-26', hasta: '2026-09-26' })).toEqual([]);
+    });
+
     it('combina estado y texto', () => {
       expect(filtrarOrdenes(ordenes, { estado: 'pendiente', texto: 'juan' })).toEqual([ordenes[0]]);
       expect(filtrarOrdenes(ordenes, { estado: 'pendiente', texto: 'maría' })).toEqual([]);

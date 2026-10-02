@@ -41,6 +41,24 @@ describe('aFechaISO', () => {
     expect(aFechaISO('2026-09-18T15:30:00.000Z')).toBe('2026-09-18');
   });
 
+  // #26: la base guarda en UTC, pero el día que importa es el peruano.
+  it('ubica un instante de la noche peruana en su día, no en el siguiente', () => {
+    // 25/09 23:32 en Perú = 26/09 04:32 UTC.
+    expect(aFechaISO('2026-09-26T04:32:16+00:00')).toBe('2026-09-25');
+    expect(aFechaISO('2026-09-26T04:32:16.000Z')).toBe('2026-09-25');
+    expect(aFechaISO('2026-09-25T23:45:05+00:00')).toBe('2026-09-25');
+  });
+
+  it('no mueve de día lo creado de madrugada', () => {
+    // 08:26 en Perú del mismo 26/09.
+    expect(aFechaISO('2026-09-26T13:26:14+00:00')).toBe('2026-09-26');
+  });
+
+  it('aplica el mismo criterio a un timestamp { seconds }', () => {
+    const segundos = Math.floor(Date.UTC(2026, 8, 26, 4, 32, 16) / 1000);
+    expect(aFechaISO({ seconds: segundos })).toBe('2026-09-25');
+  });
+
   it('deja pasar un texto AAAA-MM-DD tal cual', () => {
     expect(aFechaISO('2026-09-18')).toBe('2026-09-18');
   });

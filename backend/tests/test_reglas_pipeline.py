@@ -108,6 +108,22 @@ def test_descuento_no_puede_superar_el_subtotal():
         calcular_totales(100, incluye_igv=False, descuento=120)
 
 
+# #53: la interfaz usa Math.round (medio centavo hacia arriba) y `quantize` sin
+# `rounding` usa medio-par, así que un IGV de 6,885 se mostraba como 6,89 y se
+# guardaba como 6,88. El criterio comercial ahora es explícito y es el mismo.
+def test_calcular_totales_redondea_el_medio_centavo_hacia_arriba():
+    igv, total = calcular_totales(38.25, incluye_igv=True)
+    assert float(igv) == 6.89  # 38.25 * 18% = 6.885
+    assert float(total) == 45.14
+
+
+def test_calcular_totales_redondea_el_medio_centavo_en_subtotales_pares():
+    # 57.25 * 18% = 10.305: con medio-par habría quedado en 10.30.
+    igv, total = calcular_totales(57.25, incluye_igv=True)
+    assert float(igv) == 10.31
+    assert float(total) == 67.56
+
+
 # ══ RN-01: adelanto obligatorio ═════════════════════════════════════════════
 
 def test_adelanto_obligatorio():

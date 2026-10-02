@@ -164,6 +164,37 @@ describe('OrdenFormComponent', () => {
       componente.actualizar('clienteId', 2);
       expect(componente.adelantoMinimo()).toBe(0);
     });
+
+    // #53: la interfaz y el backend tienen que dar el mismo céntimo. Con
+    // 38,25 de subtotal el IGV cae justo en medio centavo (6,885), y antes la
+    // UI mostraba y confirmaba 6,89 mientras se guardaba 6,88.
+    it('el medio centavo del IGV se redondea hacia arriba, como el backend', () => {
+      const componente = TestBed.createComponent(OrdenFormComponent).componentInstance;
+      componente.agregarLinea();
+      componente.actualizarLinea(0, 'cantidad', 2);
+      componente.actualizarLinea(0, 'precioUnitario', 15.5);
+      componente.agregarLinea();
+      componente.actualizarLinea(1, 'cantidad', 1);
+      componente.actualizarLinea(1, 'precioUnitario', 7.25);
+      componente.actualizar('incluyeIgv', true);
+
+      expect(componente.subtotal()).toBe(38.25);
+      expect(componente.igv()).toBe(6.89);
+      expect(componente.total()).toBe(45.14);
+    });
+
+    it('cada línea se redondea a centavos antes de sumar, como el backend', () => {
+      const componente = TestBed.createComponent(OrdenFormComponent).componentInstance;
+      for (let i = 0; i < 4; i++) {
+        componente.agregarLinea();
+        componente.actualizarLinea(i, 'cantidad', 1);
+        componente.actualizarLinea(i, 'precioUnitario', 2.4975);
+      }
+
+      // Sumando en crudo da 9,99; el backend redondea cada línea (2,50) y
+      // guarda 10,00.
+      expect(componente.subtotal()).toBe(10);
+    });
   });
 
   describe('producto del catálogo', () => {
@@ -240,6 +271,44 @@ describe('OrdenFormComponent', () => {
       expect(errores['fechaEntrega']).toBeTruthy();
       expect(errores['precioTotal']).toBeTruthy();
       expect(ordenesFalso.crear).not.toHaveBeenCalled();
+    });
+
+    // #30: el backend rechaza un descuento mayor al subtotal; la interfaz ahora
+    // lo dice antes, en vez de mostrar el total negativo y fallar al guardar.
+    it('un descuento mayor al subtotal se marca en el formulario', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const fixture = TestBed.createComponent(OrdenFormComponent);
+      const componente = fixture.componentInstance;
+      componente.actualizar('clienteId', 1);
+      componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('fechaEntrega', '2026-12-31');
+      componente.actualizar('precioTotal', 100);
+      componente.actualizar('adelanto', 50);
+      componente.actualizar('descuento', 150);
+
+      await componente.guardar();
+
+      expect(componente.errores()['descuento']).toBe('El descuento no puede superar el subtotal.');
+      // No se llega a confirmar un total negativo ni a llamar al backend.
+      expect(confirmSpy).not.toHaveBeenCalled();
+      expect(ordenesFalso.crear).not.toHaveBeenCalled();
+    });
+
+    it('un descuento igual al subtotal se permite (solo queda el IGV)', async () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const fixture = TestBed.createComponent(OrdenFormComponent);
+      const componente = fixture.componentInstance;
+      componente.actualizar('clienteId', 1);
+      componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('fechaEntrega', '2026-12-31');
+      componente.actualizar('precioTotal', 100);
+      componente.actualizar('adelanto', 50);
+      componente.actualizar('descuento', 100);
+
+      await componente.guardar();
+
+      expect(componente.errores()['descuento']).toBeUndefined();
+      expect(ordenesFalso.crear).toHaveBeenCalled();
     });
 
     it('RN-01: sin adelanto, lo exige para clientes no corporativos (con el mínimo del 50%)', async () => {
