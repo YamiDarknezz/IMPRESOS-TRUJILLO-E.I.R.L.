@@ -144,6 +144,7 @@ async def cambiar_password(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "La contraseña actual no coincide.")
 
     usuario.password_hash = hash_password(data.password_nueva)
+    usuario.debe_cambiar_password = False
     # Fuerza a iniciar sesión de nuevo en cualquier otro dispositivo; el
     # token que se devuelve abajo mantiene viva esta sesión.
     usuario.sesion_version += 1

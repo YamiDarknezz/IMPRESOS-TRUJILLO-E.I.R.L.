@@ -47,6 +47,22 @@ def exigir_positivo(valor: float, mensaje: str = "El valor debe ser mayor a 0") 
     return valor
 
 
+def exigir_password_compleja(valor: str, longitud_maxima: int) -> str:
+    """
+    RNF de seguridad (issue #51): "12345678" o "contraseña" por sí solos ya
+    no alcanzan, hace falta mezclar letra y número.
+    """
+    if len(valor) < 8:
+        raise ValueError("La contraseña debe tener al menos 8 caracteres")
+    if len(valor.encode("utf-8")) > longitud_maxima:
+        raise ValueError("La contraseña es demasiado larga")
+    if not any(c.isalpha() for c in valor):
+        raise ValueError("La contraseña debe incluir al menos una letra")
+    if not any(c.isdigit() for c in valor):
+        raise ValueError("La contraseña debe incluir al menos un número")
+    return valor
+
+
 # ── Envoltura de respuestas (misma forma que ya consume el frontend) ────────
 
 class RespuestaExitosa(BaseModel):

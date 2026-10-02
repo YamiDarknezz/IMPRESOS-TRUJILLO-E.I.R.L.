@@ -22,5 +22,10 @@ class Usuario(Base, TemporalMixin):
     # este contador; los JWT emitidos antes dejan de ser válidos.
     sesion_version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
+    # issue #51: la contraseña que eligió el administrador al crear la cuenta
+    # (o la temporal de un restablecimiento) se fuerza a cambiar en el
+    # siguiente ingreso; no queda sobreviviendo indefinidamente.
+    debe_cambiar_password: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
     def __repr__(self) -> str:  # pragma: no cover - solo depuración
         return f"<Usuario {self.id} {self.email} ({self.rol})>"

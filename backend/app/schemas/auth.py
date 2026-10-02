@@ -1,7 +1,7 @@
 """Esquemas de autenticación."""
 from pydantic import BaseModel, field_validator
 
-from app.schemas.comunes import exigir_texto
+from app.schemas.comunes import exigir_password_compleja, exigir_texto
 
 LONGITUD_MAXIMA_CONTRASENA = 72  # límite de bcrypt
 
@@ -27,9 +27,5 @@ class CambiarPasswordData(BaseModel):
 
     @field_validator("password_nueva")
     @classmethod
-    def _longitud(cls, v: str) -> str:
-        if len(v) < 8:
-            raise ValueError("La contraseña debe tener al menos 8 caracteres")
-        if len(v.encode("utf-8")) > LONGITUD_MAXIMA_CONTRASENA:
-            raise ValueError("La contraseña es demasiado larga")
-        return v
+    def _complejidad(cls, v: str) -> str:
+        return exigir_password_compleja(v, LONGITUD_MAXIMA_CONTRASENA)

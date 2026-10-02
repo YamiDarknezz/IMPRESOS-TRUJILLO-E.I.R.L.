@@ -306,3 +306,69 @@ async def test_un_admin_si_puede_desactivar_a_otro_admin(cliente_api, sesion, ad
     )
     assert respuesta.status_code == 200
     assert respuesta.json()["data"]["activo"] is False
+
+
+# ══ Issue #51: forzar cambio de contraseña (alta y restablecimiento) ═══════
+
+async def test_cuenta_nueva_debe_cambiar_su_password_antes_de_usar_la_api(cliente_api, admin):
+    """
+    La contraseña la eligió el administrador al crear la cuenta: se fuerza a
+    cambiarla antes de dejar hacer cualquier otra cosa.
+    """
+    creado = await cliente_api.post(
+        "/api/usuarios",
+        json={
+            "nombre": "Operario Nuevo",
+            "email": "operario-nuevo@impresos.test",
+            "password": "temporal123",
+            "rol": "operario",
+        },
+        headers=cabecera_token(admin),
+    )
+    assert creado.status_code == 200
+    assert creado.json()["data"]["debe_cambiar_password"] is True
+
+    login = await cliente_api.post(
+        "/api/auth/login",
+        json={"email": "operario-nuevo@impresos.test", "password": "temporal123"},
+    )
+    token_nuevo = {"Authorization": f"Bearer {login.json()['data']['access_token']}"}
+
+    # Bloqueado: cualquier otra ruta.
+    assert (await cliente_api.get("/api/ordenes", headers=token_nuevo)).status_code == 403
+    # Permitido: consultar su perfil, cambiar la contraseña, o salir.
+    assert (await cliente_api.get("/api/auth/me", headers=token_nuevo)).status_code == 200
+
+    cambio = await cliente_api.post(
+        "/api/auth/password",
+        json={"password_actual": "temporal123", "password_nueva": "claveNueva456"},
+        headers=token_nuevo,
+    )
+    assert cambio.status_code == 200
+    token_nuevo = {"Authorization": f"Bearer {cambio.json()['data']['access_token']}"}
+
+    # Ya cambió la contraseña: ahora sí puede usar el resto de la API.
+    assert (await cliente_api.get("/api/ordenes", headers=token_nuevo)).status_code == 200
+
+
+async def test_admin_restablece_password_de_otro_usuario(cliente_api, sesion, admin, operario):
+    # La sesión que el operario ya tenía abierta antes del restablecimiento.
+    token_viejo = cabecera_token(operario)
+
+    respuesta = await cliente_api.post(
+        f"/api/usuarios/{operario.id}/password",
+        headers=cabecera_token(admin),
+    )
+    assert respuesta.status_code == 200
+    temporal = respuesta.json()["data"]["password_temporal"]
+    assert len(temporal) >= 8
+
+    # Esa sesión vieja queda revocada por el restablecimiento.
+    assert (await cliente_api.get("/api/auth/me", headers=token_viejo)).status_code == 401
+
+    login = await cliente_api.post(
+        "/api/auth/login", json={"email": operario.email, "password": temporal}
+    )
+    assert login.status_code == 200
+    token_temporal = {"Authorization": f"Bearer {login.json()['data']['access_token']}"}
+    assert (await cliente_api.get("/api/ordenes", headers=token_temporal)).status_code == 403
