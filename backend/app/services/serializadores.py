@@ -31,6 +31,7 @@ def serializar_usuario(usuario) -> dict[str, Any]:
         "email": usuario.email,
         "rol": usuario.rol.value,
         "activo": usuario.activo,
+        "debe_cambiar_password": usuario.debe_cambiar_password,
     }
 
 

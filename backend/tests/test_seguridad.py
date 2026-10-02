@@ -9,10 +9,12 @@ from app.core.config import JWT_SECRET_POR_DEFECTO, validar_jwt_secret
 from app.core.security import (
     crear_token,
     decodificar_token,
+    generar_password_temporal,
     hash_password,
     verificar_password,
 )
 from app.models import Auditoria, Rol, TipoEventoAuditoria
+from app.schemas.comunes import exigir_password_compleja
 
 
 def test_hash_no_guarda_la_contrasena_en_claro():
@@ -85,3 +87,24 @@ async def test_auditoria_usa_x_real_ip_no_el_primer_x_forwarded_for(cliente_api,
         )
     ).scalars().first()
     assert entrada.ip == "9.9.9.9"
+
+
+# ══ Issue #51: política mínima de contraseñas ══════════════════════════════
+
+@pytest.mark.parametrize(
+    "password",
+    ["1234567", "abcdefgh", "12345678", "contraseña"],
+)
+def test_rechaza_contrasenas_sin_la_complejidad_minima(password):
+    with pytest.raises(ValueError):
+        exigir_password_compleja(password, 72)
+
+
+def test_acepta_una_contrasena_con_letra_y_numero():
+    assert exigir_password_compleja("clave1234", 72) == "clave1234"
+
+
+def test_password_temporal_siempre_cumple_la_complejidad_minima():
+    for _ in range(20):
+        temporal = generar_password_temporal()
+        assert exigir_password_compleja(temporal, 72) == temporal
