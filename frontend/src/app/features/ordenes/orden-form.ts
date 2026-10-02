@@ -342,6 +342,11 @@ export class OrdenFormComponent {
     if (form.lineas.length === 0 && !(form.precioTotal > 0)) {
       errores['precioTotal'] = 'Ingresa el total o agrega líneas al contrato.';
     }
+    // #30: la misma regla que aplica el backend (`calcular_totales`), para no
+    // llegar a confirmar un total negativo que después se rechaza al guardar.
+    if (form.descuento > this.subtotal()) {
+      errores['descuento'] = 'El descuento no puede superar el subtotal.';
+    }
     // RN-01: sin adelanto no se arranca el trabajo.
     if (!(form.adelanto > 0) && !this.clienteSeleccionado()?.es_corporativo) {
       errores['adelanto'] = 'Se requiere un adelanto para iniciar el trabajo.';

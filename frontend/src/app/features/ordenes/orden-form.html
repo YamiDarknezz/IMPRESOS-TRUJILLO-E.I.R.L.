@@ -257,7 +257,11 @@
       <div class="input-group">
         <label>Descuento (S/)</label>
         <input type="number" [ngModel]="form().descuento" name="descuento"
-               (ngModelChange)="actualizar('descuento', $event)" min="0" step="0.01" placeholder="0.00">
+               (ngModelChange)="actualizar('descuento', $event)" min="0" step="0.01" placeholder="0.00"
+               [class.input-error]="errores()['descuento']">
+        @if (errores()['descuento']) {
+          <span class="field-error">{{ errores()['descuento'] }}</span>
+        }
       </div>
 
       <div class="input-group">
