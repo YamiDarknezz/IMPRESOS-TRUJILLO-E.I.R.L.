@@ -212,7 +212,7 @@
                     {{ orden.finanzas?.pagado_totalmente ? 'Pagado' : 'Pendiente' }}
                   </span>
                   @if (orden.finanzas; as finanzas) {
-                    <span class="metodo-label">{{ etiquetaMetodo[finanzas.metodo_pago_adelanto] }}</span>
+                    <span class="metodo-label">{{ etiquetaMetodo()[finanzas.metodo_pago_adelanto] }}</span>
                   }
                 } @else {
                   <span class="badge badge-neutral">—</span>
@@ -364,8 +364,8 @@
       <div class="input-group">
         <label>Método de pago recibido</label>
         <select [ngModel]="metodoPago()" (ngModelChange)="metodoPago.set($event)" name="metodoPago">
-          @for (m of metodosPago; track m) {
-            <option [value]="m">{{ etiquetaMetodo[m] }}</option>
+          @for (m of metodosPago(); track m) {
+            <option [value]="m">{{ etiquetaMetodo()[m] }}</option>
           }
         </select>
       </div>

@@ -23,6 +23,12 @@ import {
 } from '../../core/models';
 import { mensajeDeError } from '../../shared/utilidades/errores';
 import {
+  adelantoMinimoPorcentaje,
+  etiquetasMetodo,
+  igvPorcentaje,
+  metodosPago as metodosDelServidor,
+} from '../../core/estado/catalogos';
+import {
   CapturaElegida,
   capturasDesdeArchivos,
   liberarCaptura,
@@ -57,8 +63,6 @@ interface FormularioOrden {
   materiales: MaterialItem[];
   lineas: LineaFormulario[];
 }
-
-const IGV = 0.18;
 
 function redondear(valor: number): number {
   return Math.round((valor + Number.EPSILON) * 100) / 100;
@@ -115,10 +119,12 @@ export class OrdenFormComponent {
   readonly nuevoCliente = signal({ nombre: '', telefono: '' });
 
   // Catálogos para la plantilla
-  readonly metodosPago = METODOS_PAGO;
+  readonly metodosPago = metodosDelServidor;
+  readonly igvPorcentaje = igvPorcentaje;
+  readonly adelantoPorcentaje = adelantoMinimoPorcentaje;
   readonly unidadesNegocio = UNIDADES_NEGOCIO;
   readonly tiposDocumento: TipoDocumento[] = ['contrato', 'proforma'];
-  readonly etiquetaMetodo = ETIQUETA_METODO;
+  readonly etiquetaMetodo = etiquetasMetodo;
   readonly etiquetaUnidad = ETIQUETA_UNIDAD;
   readonly etiquetaTipoDocumento = ETIQUETA_TIPO_DOCUMENTO;
   readonly nombreVisible = nombreVisible;
@@ -150,7 +156,7 @@ export class OrdenFormComponent {
   });
 
   readonly igv = computed(() =>
-    this.form().incluyeIgv ? redondear(this.subtotal() * IGV) : 0
+    this.form().incluyeIgv ? redondear(this.subtotal() * igvPorcentaje() / 100) : 0
   );
 
   readonly total = computed(() =>
@@ -164,7 +170,7 @@ export class OrdenFormComponent {
   /** Adelanto mínimo exigido para clientes no corporativos. */
   readonly adelantoMinimo = computed(() => {
     if (this.clienteSeleccionado()?.es_corporativo) return 0;
-    return redondear(this.total() * 0.5);
+    return redondear(this.total() * adelantoMinimoPorcentaje() / 100);
   });
 
   constructor() {
