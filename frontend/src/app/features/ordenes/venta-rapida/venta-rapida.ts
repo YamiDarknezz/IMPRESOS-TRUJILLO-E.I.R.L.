@@ -5,6 +5,7 @@ import { OrdenesService } from '../../../core/services/ordenes.service';
 import { ETIQUETA_UNIDAD, MetodoPago, UNIDADES_NEGOCIO, UnidadNegocio } from '../../../core/models';
 import { etiquetasMetodo, metodosPago } from '../../../core/estado/catalogos';
 import { mensajeDeError } from '../../../shared/utilidades/errores';
+import { ModalComponent } from '../../../shared/componentes/modal/modal.component';
 
 /**
  * Venta de mostrador: cobra al contado un servicio o producto que no lleva
@@ -15,7 +16,7 @@ import { mensajeDeError } from '../../../shared/utilidades/errores';
 @Component({
   selector: 'app-venta-rapida',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, ModalComponent],
   templateUrl: './venta-rapida.html',
 })
 export class VentaRapidaComponent {

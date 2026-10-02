@@ -300,167 +300,152 @@
 
 <!-- ═══ Modal: reportar uso de materiales ═════════════════════════════════ -->
 @if (ordenACompletar(); as orden) {
-  <div class="modal-overlay" (click)="cerrarCompletar()">
-    <div class="modal-content" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h3>Reportar uso de materiales</h3>
-        <span class="modal-orden-id">{{ orden.id_documento }}</span>
-      </div>
-      <p class="modal-subtitle">
-        Ingresá la cantidad realmente consumida. Al confirmar, la orden pasa a
-        <strong>Finalizada</strong> y el inventario se ajusta por la diferencia.
-      </p>
+  <app-modal titulo="Reportar uso de materiales" (cerrar)="cerrarCompletar()">
+    <span modal-cabecera class="modal-orden-id">{{ orden.id_documento }}</span>
+    <p class="modal-subtitle">
+      Ingresá la cantidad realmente consumida. Al confirmar, la orden pasa a
+      <strong>Finalizada</strong> y el inventario se ajusta por la diferencia.
+    </p>
 
-      <div class="modal-materials">
-        @for (mat of materialesComplecion(); track mat.id_material) {
-          <div class="modal-mat-row">
-            <div class="modal-mat-info">
-              <strong>{{ mat.nombre }}</strong>
-              <span class="mat-estimado">Estimado: {{ mat.cantidad_estimada }}</span>
-              @if (mat.cantidad_real < mat.cantidad_estimada) {
-                <span class="mat-devuelve">
-                  ↩ devuelve {{ mat.cantidad_estimada - mat.cantidad_real }} al inventario
-                </span>
-              } @else if (mat.cantidad_real > mat.cantidad_estimada) {
-                <span class="mat-exceso">
-                  ↓ descuenta {{ mat.cantidad_real - mat.cantidad_estimada }} extra del stock
-                </span>
-              }
-            </div>
-            <div class="input-group modal-mat-input">
-              <label>Cantidad real</label>
-              <input type="number" [ngModel]="mat.cantidad_real"
-                     (ngModelChange)="cambiarCantidadReal(mat.id_material, $event)"
-                     [name]="'real-' + mat.id_material" min="0" step="0.01">
-            </div>
+    <div class="modal-materials">
+      @for (mat of materialesComplecion(); track mat.id_material) {
+        <div class="modal-mat-row">
+          <div class="modal-mat-info">
+            <strong>{{ mat.nombre }}</strong>
+            <span class="mat-estimado">Estimado: {{ mat.cantidad_estimada }}</span>
+            @if (mat.cantidad_real < mat.cantidad_estimada) {
+              <span class="mat-devuelve">
+                ↩ devuelve {{ mat.cantidad_estimada - mat.cantidad_real }} al inventario
+              </span>
+            } @else if (mat.cantidad_real > mat.cantidad_estimada) {
+              <span class="mat-exceso">
+                ↓ descuenta {{ mat.cantidad_real - mat.cantidad_estimada }} extra del stock
+              </span>
+            }
           </div>
-        }
-        @if (materialesComplecion().length === 0) {
-          <p class="text-muted">Esta orden no tiene materiales estimados registrados.</p>
-        }
-      </div>
-
-      <div class="form-actions">
-        <button type="button" class="btn-secondary" (click)="cerrarCompletar()">Cancelar</button>
-        <button type="button" class="btn-primary" (click)="confirmarProduccion()" [disabled]="guardando()">
-          {{ guardando() ? 'Procesando...' : 'Confirmar producción' }}
-        </button>
-      </div>
+          <div class="input-group modal-mat-input">
+            <label>Cantidad real</label>
+            <input type="number" [ngModel]="mat.cantidad_real"
+                   (ngModelChange)="cambiarCantidadReal(mat.id_material, $event)"
+                   [name]="'real-' + mat.id_material" min="0" step="0.01">
+          </div>
+        </div>
+      }
+      @if (materialesComplecion().length === 0) {
+        <p class="text-muted">Esta orden no tiene materiales estimados registrados.</p>
+      }
     </div>
-  </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn-secondary" (click)="cerrarCompletar()">Cancelar</button>
+      <button type="button" class="btn-primary" (click)="confirmarProduccion()" [disabled]="guardando()">
+        {{ guardando() ? 'Procesando...' : 'Confirmar producción' }}
+      </button>
+    </div>
+  </app-modal>
 }
 
 <!-- ═══ Modal: confirmar pago ═════════════════════════════════════════════ -->
 @if (ordenACobrar(); as orden) {
-  <div class="modal-overlay" (click)="cerrarCobro()">
-    <div class="modal-content" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h3>Confirmar pago</h3>
-        <span class="modal-orden-id">{{ orden.id_documento }}</span>
-      </div>
-      <p class="modal-subtitle">
-        Vas a registrar como recibido el saldo pendiente de "{{ orden.cliente }}":
-        <strong>S/ {{ orden.finanzas?.saldo_pendiente | number:'1.2-2' }}</strong>.
-        Esta acción no se puede deshacer.
-      </p>
+  <app-modal titulo="Confirmar pago" (cerrar)="cerrarCobro()">
+    <span modal-cabecera class="modal-orden-id">{{ orden.id_documento }}</span>
+    <p class="modal-subtitle">
+      Vas a registrar como recibido el saldo pendiente de "{{ orden.cliente }}":
+      <strong>S/ {{ orden.finanzas?.saldo_pendiente | number:'1.2-2' }}</strong>.
+      Esta acción no se puede deshacer.
+    </p>
 
-      <div class="input-group">
-        <label>Método de pago recibido</label>
-        <select [ngModel]="metodoPago()" (ngModelChange)="metodoPago.set($event)" name="metodoPago">
-          @for (m of metodosPago(); track m) {
-            <option [value]="m">{{ etiquetaMetodo()[m] }}</option>
-          }
-        </select>
-      </div>
-
-      <div class="input-group">
-        <label>Referencia (opcional)</label>
-        <input type="text" [ngModel]="referenciaPago()" name="referenciaPago"
-               (ngModelChange)="referenciaPago.set($event)"
-               placeholder="Nro. de operación o voucher">
-      </div>
-
-      <div class="input-group campo-completo">
-        <label for="adjuntos-cobro">Captura del pago (opcional)</label>
-        <input id="adjuntos-cobro" type="file" accept="image/*,application/pdf" multiple
-               (change)="agregarAdjuntosCobro($event)">
-        <span class="field-hint">
-          Captura del Yape o la transferencia que acabas de recibir. Se adjunta al pago
-          y queda como respaldo de la conciliación.
-        </span>
-
-        @if (adjuntosCobro().length > 0) {
-          <ul class="lista-adjuntos">
-            @for (adjunto of adjuntosCobro(); track adjunto.nombre; let i = $index) {
-              <li class="adjunto">
-                @if (adjunto.vista) {
-                  <img class="adjunto-vista" [src]="adjunto.vista" [alt]="adjunto.nombre">
-                } @else {
-                  <span class="adjunto-icono"><app-icon name="receipt-text" [size]="18" /></span>
-                }
-                <span class="adjunto-nombre">{{ adjunto.nombre }}</span>
-                <span class="adjunto-peso text-muted">{{ pesoLegible(adjunto.peso) }}</span>
-                <button type="button" class="btn-icon" title="Quitar"
-                        aria-label="Quitar la captura" (click)="quitarAdjuntoCobro(i)">
-                  <app-icon name="x" [size]="14" />
-                </button>
-              </li>
-            }
-          </ul>
+    <div class="input-group">
+      <label>Método de pago recibido</label>
+      <select [ngModel]="metodoPago()" (ngModelChange)="metodoPago.set($event)" name="metodoPago">
+        @for (m of metodosPago(); track m) {
+          <option [value]="m">{{ etiquetaMetodo()[m] }}</option>
         }
-      </div>
-
-      <div class="form-actions">
-        <button type="button" class="btn-secondary" (click)="cerrarCobro()">Cancelar</button>
-        <button type="button" class="btn-primary" (click)="confirmarPago()" [disabled]="guardando()">
-          {{ guardando() ? 'Confirmando...' : 'Confirmar pago' }}
-        </button>
-      </div>
+      </select>
     </div>
-  </div>
+
+    <div class="input-group">
+      <label>Referencia (opcional)</label>
+      <input type="text" [ngModel]="referenciaPago()" name="referenciaPago"
+             (ngModelChange)="referenciaPago.set($event)"
+             placeholder="Nro. de operación o voucher">
+    </div>
+
+    <div class="input-group campo-completo">
+      <label for="adjuntos-cobro">Captura del pago (opcional)</label>
+      <input id="adjuntos-cobro" type="file" accept="image/*,application/pdf" multiple
+             (change)="agregarAdjuntosCobro($event)">
+      <span class="field-hint">
+        Captura del Yape o la transferencia que acabas de recibir. Se adjunta al pago
+        y queda como respaldo de la conciliación.
+      </span>
+
+      @if (adjuntosCobro().length > 0) {
+        <ul class="lista-adjuntos">
+          @for (adjunto of adjuntosCobro(); track adjunto.nombre; let i = $index) {
+            <li class="adjunto">
+              @if (adjunto.vista) {
+                <img class="adjunto-vista" [src]="adjunto.vista" [alt]="adjunto.nombre">
+              } @else {
+                <span class="adjunto-icono"><app-icon name="receipt-text" [size]="18" /></span>
+              }
+              <span class="adjunto-nombre">{{ adjunto.nombre }}</span>
+              <span class="adjunto-peso text-muted">{{ pesoLegible(adjunto.peso) }}</span>
+              <button type="button" class="btn-icon" title="Quitar"
+                      aria-label="Quitar la captura" (click)="quitarAdjuntoCobro(i)">
+                <app-icon name="x" [size]="14" />
+              </button>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn-secondary" (click)="cerrarCobro()">Cancelar</button>
+      <button type="button" class="btn-primary" (click)="confirmarPago()" [disabled]="guardando()">
+        {{ guardando() ? 'Confirmando...' : 'Confirmar pago' }}
+      </button>
+    </div>
+  </app-modal>
 }
 
 <!-- ═══ Modal: capturas adjuntas (RF-11) ═══════════════════════════════════ -->
 @if (capturasVisibles(); as orden) {
-  <div class="modal-overlay" (click)="cerrarCapturas()">
-    <div class="modal-content modal-visor" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h3>Capturas de pago</h3>
-        <span class="modal-orden-id">{{ orden.id_documento }}</span>
-      </div>
-      <p class="modal-subtitle">
-        {{ orden.cliente }} — adjuntadas como respaldo del adelanto y de los abonos.
-      </p>
+  <app-modal titulo="Capturas de pago" claseContenido="modal-visor" (cerrar)="cerrarCapturas()">
+    <span modal-cabecera class="modal-orden-id">{{ orden.id_documento }}</span>
+    <p class="modal-subtitle">
+      {{ orden.cliente }} — adjuntadas como respaldo del adelanto y de los abonos.
+    </p>
 
-      <div class="visor-capturas">
-        @for (captura of orden.comprobantes ?? []; track captura.id) {
-          <figure class="captura-tarjeta">
-            @if (captura.tipo_mime === 'application/pdf') {
-              <a class="captura-pdf" [href]="urlDe(captura)" target="_blank" rel="noopener">
-                <app-icon name="file-text" [size]="28" />
-                <span>Abrir PDF</span>
-              </a>
-            } @else {
-              <a [href]="urlDe(captura)" target="_blank" rel="noopener">
-                <img [src]="urlDe(captura)" [alt]="'Captura de pago'">
-              </a>
-            }
-            <figcaption>
-              <span class="captura-titulo">{{ captura.nombre_original }}</span>
-              <span class="text-muted">
-                {{ captura.subido_en | date:'dd/MM/yyyy HH:mm' }} ·
-                {{ captura.subido_por_nombre }} · {{ resumenCaptura(captura) }}
-              </span>
-            </figcaption>
-          </figure>
-        }
-      </div>
-
-      <div class="form-actions">
-        <button type="button" class="btn-secondary" (click)="cerrarCapturas()">Cerrar</button>
-      </div>
+    <div class="visor-capturas">
+      @for (captura of orden.comprobantes ?? []; track captura.id) {
+        <figure class="captura-tarjeta">
+          @if (captura.tipo_mime === 'application/pdf') {
+            <a class="captura-pdf" [href]="urlDe(captura)" target="_blank" rel="noopener">
+              <app-icon name="file-text" [size]="28" />
+              <span>Abrir PDF</span>
+            </a>
+          } @else {
+            <a [href]="urlDe(captura)" target="_blank" rel="noopener">
+              <img [src]="urlDe(captura)" [alt]="'Captura de pago'">
+            </a>
+          }
+          <figcaption>
+            <span class="captura-titulo">{{ captura.nombre_original }}</span>
+            <span class="text-muted">
+              {{ captura.subido_en | date:'dd/MM/yyyy HH:mm' }} ·
+              {{ captura.subido_por_nombre }} · {{ resumenCaptura(captura) }}
+            </span>
+          </figcaption>
+        </figure>
+      }
     </div>
-  </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn-secondary" (click)="cerrarCapturas()">Cerrar</button>
+    </div>
+  </app-modal>
 }
 
 <!-- ═══ Modal: Venta Rápida / Mostrador ═════════════════════════════════════ -->

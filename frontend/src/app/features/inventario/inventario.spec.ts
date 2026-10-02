@@ -296,4 +296,34 @@ describe('InventarioComponent', () => {
       expect(componente.piezaDetalle()).toBeNull();
     });
   });
+
+  // Issue #38: los cinco modales son diálogos accesibles que se cierran con Escape.
+  describe('modales (#38)', () => {
+    function abrir(abre: (c: InventarioComponent) => void, cerrado: (c: InventarioComponent) => unknown) {
+      const fixture = TestBed.createComponent(InventarioComponent);
+      abre(fixture.componentInstance);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('[role="dialog"]')).not.toBeNull();
+
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+      fixture.detectChanges();
+
+      expect(cerrado(fixture.componentInstance)).toBeFalsy();
+    }
+
+    it('editar material: Escape lo cierra', () =>
+      abrir(c => c.abrirEdicion(lona), c => c.editando()));
+
+    it('movimientos de un material: Escape lo cierra', () =>
+      abrir(c => c.materialMovimientos.set(lona), c => c.materialMovimientos()));
+
+    it('alta de rollo o plancha: Escape lo cierra', () =>
+      abrir(c => c.abrirNuevaPieza(), c => c.modalNuevaPieza()));
+
+    it('registrar consumo: Escape lo cierra', () =>
+      abrir(c => c.abrirConsumo(piezaBase()), c => c.modalConsumo()));
+
+    it('historial de cortes de una pieza: Escape lo cierra', () =>
+      abrir(c => c.piezaDetalle.set(piezaBase({ consumos: [] })), c => c.piezaDetalle()));
+  });
 });

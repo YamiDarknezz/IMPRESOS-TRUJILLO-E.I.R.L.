@@ -87,4 +87,18 @@ describe('VentaRapidaComponent', () => {
     expect(cerrado).toHaveBeenCalledTimes(1);
     expect(ordenesFalso.crearVentaRapida).not.toHaveBeenCalled();
   });
+
+  // Issue #38: el formulario es un diálogo accesible; Escape lo cierra sin crear nada.
+  it('es un diálogo y Escape emite cerrado', () => {
+    const fixture = TestBed.createComponent(VentaRapidaComponent);
+    const cerrado = vi.fn();
+    fixture.componentInstance.cerrado.subscribe(cerrado);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="dialog"]')).not.toBeNull();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+
+    expect(cerrado).toHaveBeenCalledTimes(1);
+    expect(ordenesFalso.crearVentaRapida).not.toHaveBeenCalled();
+  });
 });
