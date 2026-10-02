@@ -334,7 +334,9 @@
     @if (piezas().length === 0) {
       <div class="empty-state">
         <p>No hay rollos o planchas individuales registrados.</p>
-        <button class="btn-primary btn-sm" (click)="abrirNuevaPieza()">+ Registrar primer rollo o plancha</button>
+        @if (sesion.esSupervisor()) {
+          <button class="btn-primary btn-sm" (click)="abrirNuevaPieza()">+ Registrar primer rollo o plancha</button>
+        }
       </div>
     } @else {
       <div class="table-wrapper">

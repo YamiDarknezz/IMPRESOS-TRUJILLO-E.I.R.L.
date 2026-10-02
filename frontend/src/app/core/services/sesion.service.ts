@@ -26,6 +26,10 @@ export class SesionService {
   readonly puedeGestionarOrdenes = computed(() =>
     ['admin', 'subgerente', 'secretaria'].includes(this.usuario()?.rol ?? '')
   );
+  /** Espejo de `personal_venta` del backend: cobrar y cerrar caja (issue #23). */
+  readonly puedeVender = computed(() =>
+    ['admin', 'subgerente', 'secretaria', 'operario'].includes(this.usuario()?.rol ?? '')
+  );
 
   private cargado = false;
 

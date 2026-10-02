@@ -81,7 +81,13 @@ export class CajaComponent {
     constructor() {
     this.cargar();
     if (this.route.snapshot.queryParamMap.has('venta_rapida')) {
-      this.abrirModalVentaRapida();
+      // El enlace en Órdenes ya está guardado (issue #23), pero esta ruta
+      // también se puede teclear a mano: el backend exige personal_venta
+      // (`/api/ordenes/caja-rapida`) y el formulario no debe ni abrirse
+      // para quien de todos modos lo va a rechazar al confirmar.
+      if (this.sesion.puedeVender()) {
+        this.abrirModalVentaRapida();
+      }
       this.router.navigate([], { queryParams: {}, replaceUrl: true }); // evita reabrir al refrescar
     }
   }
