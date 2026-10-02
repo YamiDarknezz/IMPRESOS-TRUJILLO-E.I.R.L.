@@ -1,10 +1,8 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
 import { CajaService } from '../../core/services/caja.service';
-import { OrdenesService } from '../../core/services/ordenes.service';
 import { SesionService } from '../../core/services/sesion.service';
 import {
   AcumuladoCaja,
@@ -12,7 +10,6 @@ import {
   DetalleCaja,
   ETIQUETA_METODO,
   ETIQUETA_UNIDAD,
-  MetodoPago,
   ResumenCaja,
   UNIDADES_NEGOCIO,
   UnidadNegocio,
@@ -42,9 +39,6 @@ import { IconComponent } from '../../shared/componentes/icon/icon.component';
 })
 export class CajaComponent {
   private cajaService = inject(CajaService);
-  private ordenesService = inject(OrdenesService);
-  private route = inject(ActivatedRoute);
-  private router = inject(Router);
   sesion = inject(SesionService);
 
   readonly fecha = signal(hoyISO());
@@ -60,15 +54,6 @@ export class CajaComponent {
   readonly motivoObservacion = signal<string>('yape_falso');
   readonly notaObservacion = signal<string>('');
 
-  // ── Modal Venta Rápida / Mostrador ──────────────────────────────────────
-  readonly modalVentaRapida = signal(false);
-  readonly vrDescripcion = signal('');
-  readonly vrMonto = signal<number | null>(null);
-  readonly vrMetodo = signal<MetodoPago>('efectivo');
-  readonly vrUnidad = signal<UnidadNegocio>('imprenta');
-  readonly vrCliente = signal('Cliente Mostrador');
-  readonly vrReferencia = signal('');
-
   readonly unidades = UNIDADES_NEGOCIO;
   readonly etiquetaUnidad = ETIQUETA_UNIDAD;
   readonly etiquetaMetodo = etiquetasMetodo;
@@ -81,18 +66,8 @@ export class CajaComponent {
     motivosObservacion().map(opcion => ({ id: opcion.valor, nombre: opcion.etiqueta }))
   );
 
-    constructor() {
+  constructor() {
     this.cargar();
-    if (this.route.snapshot.queryParamMap.has('venta_rapida')) {
-      // El enlace en Órdenes ya está guardado (issue #23), pero esta ruta
-      // también se puede teclear a mano: el backend exige personal_venta
-      // (`/api/ordenes/caja-rapida`) y el formulario no debe ni abrirse
-      // para quien de todos modos lo va a rechazar al confirmar.
-      if (this.sesion.puedeVender()) {
-        this.abrirModalVentaRapida();
-      }
-      this.router.navigate([], { queryParams: {}, replaceUrl: true }); // evita reabrir al refrescar
-    }
   }
 
   cambiarFecha(valor: string): void {
@@ -219,53 +194,6 @@ export class CajaComponent {
       await this.cargar();
     } catch (e) {
       alert(mensajeDeError(e, 'No se pudo registrar la observación del cobro.'));
-    } finally {
-      this.guardando.set(false);
-    }
-  }
-
-  // ── Acciones de Venta Rápida / Mostrador ───────────────────────────────────
-
-  abrirModalVentaRapida(): void {
-    this.vrDescripcion.set('');
-    this.vrMonto.set(null);
-    this.vrMetodo.set('efectivo');
-    this.vrUnidad.set('imprenta');
-    this.vrCliente.set('Cliente Mostrador');
-    this.vrReferencia.set('');
-    this.modalVentaRapida.set(true);
-  }
-
-  cerrarModalVentaRapida(): void {
-    this.modalVentaRapida.set(false);
-  }
-
-  async guardarVentaRapida(): Promise<void> {
-    const descripcion = this.vrDescripcion().trim();
-    const monto = Number(this.vrMonto());
-    if (!descripcion) {
-      alert('Ingresa la descripción del servicio o producto rápido.');
-      return;
-    }
-    if (!monto || monto <= 0) {
-      alert('Ingresa un monto válido mayor a 0.');
-      return;
-    }
-
-    this.guardando.set(true);
-    try {
-      await this.ordenesService.crearVentaRapida({
-        descripcion,
-        monto_total: monto,
-        metodo_pago: this.vrMetodo(),
-        unidad_negocio: this.vrUnidad(),
-        cliente_nombre: this.vrCliente().trim() || 'Cliente Mostrador',
-        referencia: this.vrReferencia().trim(),
-      });
-      this.cerrarModalVentaRapida();
-      await this.cargar();
-    } catch (e) {
-      alert(mensajeDeError(e, 'No se pudo registrar la venta rápida.'));
     } finally {
       this.guardando.set(false);
     }

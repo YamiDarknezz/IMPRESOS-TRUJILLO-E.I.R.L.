@@ -91,10 +91,10 @@
     <a class="btn-primary" routerLink="/ordenes/nueva">+ Nueva Orden</a>
   }
 
-  @if (sesion.puedeGestionarOrdenes()) {
-    <a class="btn-primary btn-success" routerLink="/caja" [queryParams]="{ venta_rapida: 1 }">
+  @if (sesion.puedeVender()) {
+    <button class="btn-primary btn-success" (click)="ventaRapidaAbierta.set(true)">
       <app-icon name="plus" [size]="16" /> Venta Rápida / Mostrador
-    </a>
+    </button>
   }
 </div>                            
 
@@ -461,4 +461,9 @@
       </div>
     </div>
   </div>
+}
+
+<!-- ═══ Modal: Venta Rápida / Mostrador ═════════════════════════════════════ -->
+@if (ventaRapidaAbierta()) {
+  <app-venta-rapida (cerrado)="ventaRapidaAbierta.set(false)" />
 }

@@ -90,7 +90,7 @@ describe('OrdenesComponent', () => {
             resumen: () => '',
           },
         },
-        { provide: SesionService, useValue: { esSupervisor: signal(true), puedeGestionar: () => true, puedeAvanzarEtapa: () => true } },
+        { provide: SesionService, useValue: { esSupervisor: signal(true), puedeVender: signal(true), puedeGestionarOrdenes: signal(true), usuarios: signal([]), puedeGestionar: () => true, puedeAvanzarEtapa: () => true } },
       ],
     });
   });
@@ -129,6 +129,23 @@ describe('OrdenesComponent', () => {
     expect(componente.desde()).toBe('');
     expect(componente.hasta()).toBe('');
     expect(componente.hayFiltroFecha()).toBe(false);
+  });
+
+  describe('venta rápida / mostrador (#12)', () => {
+    it('el botón abre y el componente avisa cuando se cierra', () => {
+      ordenesFalso.ordenes.set([]); // solo interesa el modal, no las filas
+      const fixture = TestBed.createComponent(OrdenesComponent);
+      const componente = fixture.componentInstance;
+      expect(componente.ventaRapidaAbierta()).toBe(false);
+
+      componente.ventaRapidaAbierta.set(true);
+      fixture.detectChanges();
+      const modal = fixture.nativeElement.querySelector('app-venta-rapida') as HTMLElement;
+      expect(modal).not.toBeNull();
+
+      (modal.querySelector('.modal-footer .btn-secondary') as HTMLButtonElement).click();
+      expect(componente.ventaRapidaAbierta()).toBe(false);
+    });
   });
 
   describe('actualizar()', () => {

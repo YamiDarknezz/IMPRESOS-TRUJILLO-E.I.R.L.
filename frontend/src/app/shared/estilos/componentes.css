@@ -776,6 +776,30 @@ div.actions-cell {
   color: var(--success);
 }
 
+/* Aviso de error o dinero deducido: los colores siguen al tema */
+.text-danger {
+  color: var(--danger-fg);
+}
+
+.text-hint {
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.stat-card-danger,
+.card-alerta {
+  border-left: 4px solid var(--danger);
+}
+
+.card-alerta {
+  margin-bottom: 1.5rem;
+}
+
+.toolbar-alerta {
+  padding: 1rem 1.25rem 0;
+}
+
 .btn-pago:hover {
   filter: brightness(0.92);
 }
@@ -1198,10 +1222,17 @@ select.date-filter-input:focus {
 
 /* Dos columnas iguales; se apilan solas en pantallas angostas */
 .modal-content .form-row {
+  display: flex;
   flex-wrap: wrap;
+  gap: 1rem;
 }
 .modal-content .form-row > .form-group {
+  flex: 1;
   min-width: 200px;
+}
+.modal-content .form-row,
+.modal-content .modal-body > .form-group:not(:last-child) {
+  margin-bottom: 1rem;
 }
 
 /* Pie del modal: mismo patrón que .form-actions */

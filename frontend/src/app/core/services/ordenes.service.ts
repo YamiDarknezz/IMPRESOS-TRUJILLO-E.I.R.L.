@@ -142,7 +142,7 @@ export class OrdenesService {
 
   async crearVentaRapida(data: VentaRapidaData): Promise<Orden> {
     const res = await this.api.post<RespuestaItem<Orden>>('/api/ordenes/caja-rapida', data);
-    await this.lista.recargar();
+    await Promise.all([this.lista.recargar(), this.cargarMetricas()]);
     return res.data;
   }
 

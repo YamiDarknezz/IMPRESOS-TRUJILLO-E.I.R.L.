@@ -1,8 +1,7 @@
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { provideRouter } from '@angular/router';
 import { signal } from '@angular/core';
 import { CajaService } from '../../core/services/caja.service';
-import { OrdenesService } from '../../core/services/ordenes.service';
 import { SesionService } from '../../core/services/sesion.service';
 import { CajaComponent } from './caja';
 import { CierreCaja, DetalleCaja, ResumenCaja } from '../../core/models';
@@ -40,7 +39,6 @@ describe('CajaComponent', () => {
     congelar: ReturnType<typeof vi.fn>;
     observarPago: ReturnType<typeof vi.fn>;
   };
-  let ordenesFalso: { crearVentaRapida: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     cajaFalso = {
@@ -50,13 +48,11 @@ describe('CajaComponent', () => {
       congelar: vi.fn().mockResolvedValue(cierre),
       observarPago: vi.fn().mockResolvedValue({}),
     };
-    ordenesFalso = { crearVentaRapida: vi.fn().mockResolvedValue({}) };
     TestBed.configureTestingModule({
       imports: [CajaComponent],
       providers: [
         provideRouter([]),
         { provide: CajaService, useValue: cajaFalso },
-        { provide: OrdenesService, useValue: ordenesFalso },
         { provide: SesionService, useValue: { esSupervisor: signal(true), puedeVender: signal(true) } },
       ],
     });
@@ -159,75 +155,6 @@ describe('CajaComponent', () => {
         nota: 'No coincide la serie',
       });
       expect(componente.pagoAObservar()).toBeNull();
-    });
-  });
-
-  describe('venta rápida / mostrador', () => {
-    it('guardarVentaRapida(): exige descripción', async () => {
-      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-      const fixture = TestBed.createComponent(CajaComponent);
-      fixture.componentInstance.vrMonto.set(20);
-
-      await fixture.componentInstance.guardarVentaRapida();
-
-      expect(ordenesFalso.crearVentaRapida).not.toHaveBeenCalled();
-      expect(alertSpy).toHaveBeenCalledWith('Ingresa la descripción del servicio o producto rápido.');
-      alertSpy.mockRestore();
-    });
-
-    it('guardarVentaRapida(): exige un monto mayor a 0', async () => {
-      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-      const fixture = TestBed.createComponent(CajaComponent);
-      const componente = fixture.componentInstance;
-      componente.vrDescripcion.set('Copias');
-      componente.vrMonto.set(0);
-
-      await componente.guardarVentaRapida();
-
-      expect(ordenesFalso.crearVentaRapida).not.toHaveBeenCalled();
-      expect(alertSpy).toHaveBeenCalledWith('Ingresa un monto válido mayor a 0.');
-      alertSpy.mockRestore();
-    });
-
-    it('guardarVentaRapida(): con datos válidos, crea la venta y cierra el modal', async () => {
-      const fixture = TestBed.createComponent(CajaComponent);
-      const componente = fixture.componentInstance;
-      componente.abrirModalVentaRapida();
-      componente.vrDescripcion.set('Copias');
-      componente.vrMonto.set(15);
-
-      await componente.guardarVentaRapida();
-
-      expect(ordenesFalso.crearVentaRapida).toHaveBeenCalledWith(
-        expect.objectContaining({ descripcion: 'Copias', monto_total: 15 }),
-      );
-      expect(componente.modalVentaRapida()).toBe(false);
-    });
-
-    // Issue #23: el enlace en Órdenes ya está guardado, pero esta URL
-    // también se puede teclear a mano (el backend igual la rechaza, pero
-    // el formulario no debe ni abrirse para quien de todos modos no puede).
-    it('constructor(): con venta_rapida en la URL y permiso, abre el modal', () => {
-      TestBed.overrideProvider(ActivatedRoute, {
-        useValue: { snapshot: { queryParamMap: convertToParamMap({ venta_rapida: '1' }) } },
-      });
-
-      const fixture = TestBed.createComponent(CajaComponent);
-
-      expect(fixture.componentInstance.modalVentaRapida()).toBe(true);
-    });
-
-    it('constructor(): con venta_rapida en la URL pero sin permiso, no abre el modal', () => {
-      TestBed.overrideProvider(ActivatedRoute, {
-        useValue: { snapshot: { queryParamMap: convertToParamMap({ venta_rapida: '1' }) } },
-      });
-      TestBed.overrideProvider(SesionService, {
-        useValue: { esSupervisor: signal(true), puedeVender: signal(false) },
-      });
-
-      const fixture = TestBed.createComponent(CajaComponent);
-
-      expect(fixture.componentInstance.modalVentaRapida()).toBe(false);
     });
   });
 });
