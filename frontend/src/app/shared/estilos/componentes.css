@@ -1222,6 +1222,34 @@ select.date-filter-input:focus {
 
 /* ─── Responsivo ─────────────────────────────────────────────────────────── */
 
+/* ─── Caja: clases que reemplazan estilos inline (Issue #37) ─────────────── */
+
+.section-title.mt-0 { margin-top: 0; }
+.mt-xs { margin-top: 0.35rem; }
+.card.mb-seccion { margin-bottom: 1.5rem; }
+
+.card.card-compacta { padding: 1.25rem 1.5rem; }
+.toolbar.toolbar-compacta { padding: 1rem 1.25rem 0; }
+.card.borde-izq-danger,
+.stat-card.borde-izq-danger { border-left: 4px solid var(--danger); }
+
+.text-danger { color: var(--danger); }
+.toolbar-title.text-danger { color: var(--danger); }
+.text-muted.text-xs { font-size: 0.75rem; }
+.empty-state .empty-hint {
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.date-filter-group .filter-group { align-self: flex-end; margin-bottom: 2px; }
+
+.modal-body .modal-text { font-size: 0.9rem; margin-bottom: 1rem; }
+.modal-body .form-group { margin-bottom: 1rem; }
+.modal-body .form-group:last-child { margin-bottom: 0; }
+.modal-body .form-row { display: flex; gap: 1rem; margin-bottom: 1rem; }
+.modal-body .form-row .form-group { flex: 1; margin-bottom: 0; }
+
 /* ─── Pestañas (inventario) ──────────────────────────────────────────────── */
 .tabs-nav {
   display: flex;
