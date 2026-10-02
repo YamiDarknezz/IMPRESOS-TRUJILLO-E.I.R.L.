@@ -1,7 +1,7 @@
 """Endpoints de reportes financieros."""
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import obtener_sesion

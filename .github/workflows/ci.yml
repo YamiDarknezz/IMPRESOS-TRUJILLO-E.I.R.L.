@@ -98,6 +98,22 @@ jobs:
       - name: Pruebas
         run: python -m pytest -q
 
+      # Ruff con reglas mínimas (errores de sintaxis y nombres/imports sin
+      # resolver). No es una herramienta de estilo: eso generaría cientos de
+      # avisos el primer día y el equipo la acabaría desactivando.
+      - name: Lint (ruff)
+        run: python -m ruff check app scripts tests
+
+      # El Dockerfile se estrena en el VPS si no se construye aquí: un fallo en
+      # la imagen se descubría durante un despliegue a producción.
+      - name: Construir la imagen del backend
+        run: docker build -t impresos-api:ci .
+
+      # Y que la aplicación cargue dentro de la imagen, con la configuración de
+      # producción: valida imports y las comprobaciones de arranque.
+      - name: La aplicación arranca dentro de la imagen
+        run: docker run --rm -e ENTORNO=produccion -e JWT_SECRET=comprobacion-del-ci impresos-api:ci python -c "from app.main import app; print(f'{len(app.routes)} rutas cargadas')"
+
   # ────────────────────────────────────────────────────────────────────────
   frontend:
     name: Frontend (Angular)
@@ -126,6 +142,16 @@ jobs:
       - name: Build de producción
         run: npm run build
 
+      # El Dockerfile compila la SPA otra vez (multi-stage) y copia el
+      # nginx.conf: construir aquí comprueba las dos cosas antes del despliegue.
+      - name: Construir la imagen del frontend
+        run: docker build -t impresos-web:ci .
+
+      # Una línea inválida en nginx.conf tumbaba el despliegue entero. Aquí se
+      # valida la configuración que va empaquetada en la imagen.
+      - name: La configuración de nginx es válida
+        run: docker run --rm impresos-web:ci nginx -t
+
   # ────────────────────────────────────────────────────────────────────────
   desplegar:
     name: Desplegar en el VPS
@@ -143,63 +169,13 @@ jobs:
           key: ${{ secrets.DEPLOY_KEY }}
           command_timeout: 20m
           script: |
-            # set -e es OBLIGATORIO: sin él, un fallo de git o de compose deja
-            # el job en verde mientras los contenedores siguen con el código viejo.
             set -e
 
-            echo "── 1/6 fuente: sincronizar el código ──"
+            # El despliegue vive en scripts/desplegar.sh, versionado y probado:
+            # fija el commit, respalda antes de migrar y vuelve atrás si el
+            # smoke test falla. Aquí solo se trae ese script y se ejecuta.
             cd $HOME/data/repos/impresos-trujillo
-            git pull --ff-only origin main
+            git fetch --quiet origin
+            git reset --hard ${{ github.sha }}
 
-            echo "── 2/6 capturas de pago: preparar el volumen ──"
-            # Los comprobantes de Yape/transferencia viven fuera del contenedor
-            # (issue #67). La API corre como el usuario `app` de la imagen
-            # (uid 100) y el despliegue entra como el usuario del VPS, que no
-            # tiene sudo: el dueño se ajusta desde un contenedor, que sí puede.
-            mkdir -p $HOME/data/volumes/impresos/comprobantes
-            docker run --rm -v $HOME/data/volumes/impresos/comprobantes:/datos \
-              alpine:3 chown -R 100:101 /datos
-
-            echo "── 3/6 construir la imagen nueva ──"
-            # Se construye ANTES de migrar a proposito: las migraciones viven
-            # dentro de la imagen (el Dockerfile hace COPY . .), asi que un
-            # `run` sobre una imagen vieja aplicaria las migraciones viejas y el
-            # cambio nuevo quedaria sin aplicar en la base.
-            cd $HOME/data/deploy/impresos
-            docker compose build api
-
-            echo "── 4/6 migraciones: antes de arrancar el codigo nuevo ──"
-            docker compose run --rm api python -m alembic upgrade head
-
-            echo "── 5/6 levantar los tres servicios (esperando los healthchecks) ──"
-            # --wait no devuelve el control hasta que los tres pasen su
-            # healthcheck, en vez de dejarlos en "health: starting".
-            docker compose up -d --build --wait --wait-timeout 180
-            docker compose ps
-
-            echo "── 6/6 smoke test ──"
-            # Se reintenta a proposito. `up -d` deja el contenedor arriba en
-            # menos de un segundo, pero Traefik tarda unos segundos mas en leer
-            # las etiquetas del contenedor nuevo y crear el router. Una unica
-            # consulta inmediata devuelve 404 y tumba el despliegue con la
-            # aplicacion ya funcionando perfectamente.
-            #
-            # -k es obligatorio: se conecta a 127.0.0.1 mandando el Host del
-            # dominio, asi que el certificado no coincide con el nombre al que
-            # se conecta. Sin -k, curl falla la validacion TLS.
-            dominio=$(grep -E '^IMPRESOS_DOMAIN=' .env | cut -d= -f2)
-            codigo=000
-            for intento in $(seq 1 30); do
-              codigo=$(curl -sk -o /dev/null -w '%{http_code}' -H "Host: $dominio" https://127.0.0.1/health)
-              if [ "$codigo" = "200" ]; then
-                break
-              fi
-              echo "   intento $intento/30 -> $codigo (esperando a que Traefik registre el contenedor)"
-              sleep 4
-            done
-            echo "GET /health -> $codigo"
-            if [ "$codigo" != "200" ]; then
-              echo "El smoke test fallo: la aplicacion no responde por el dominio"
-              exit 1
-            fi
-            echo "DONE"
+            bash scripts/desplegar.sh ${{ github.sha }}
