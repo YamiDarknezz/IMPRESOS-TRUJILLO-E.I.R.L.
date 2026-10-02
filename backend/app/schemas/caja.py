@@ -1,6 +1,5 @@
 """Esquemas de cierre y arqueo de caja."""
 from datetime import date
-from typing import Optional
 
 from pydantic import BaseModel, field_validator
 

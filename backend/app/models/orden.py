@@ -7,7 +7,7 @@ ENTREGA e INCLUYE IGV.
 """
 from datetime import date, datetime
 from decimal import Decimal
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from sqlalchemy import (
     Boolean,
@@ -22,6 +22,12 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.fechas import ahora_utc
 from app.models.base import Base, TemporalMixin, enum_columna
+# `Comprobante` se usa en las anotaciones (Mapped[List["Comprobante"]]): sin
+# este import el análisis estático ve un nombre indefinido. Con TYPE_CHECKING
+# no llega al runtime y no hay ciclo entre los dos módulos.
+if TYPE_CHECKING:
+    from app.models.comprobante import Comprobante
+
 from app.models.enums import (
     EstadoOrden,
     EstadoPago,

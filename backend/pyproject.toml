@@ -1,0 +1,23 @@
+# Configuración de las herramientas de desarrollo del backend.
+#
+# Ruff se limita a lo que son errores de verdad —código que no compila o que
+# reventaría en tiempo de ejecución— y no a estilo: con reglas amplias el
+# primer `ruff check` escupe cientos de avisos y el equipo lo desactiva, que es
+# justo lo contrario de lo que se busca.
+
+[tool.ruff]
+# La imagen corre Python 3.13; el venv local puede ser algo menor.
+target-version = "py313"
+line-length = 100
+exclude = [".venv", "alembic/versions"]
+
+[tool.ruff.lint]
+select = [
+  "E9",  # errores de sintaxis
+  "F",   # pyflakes: nombres indefinidos, imports y variables sin usar
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Los scripts y las pruebas importan cosas que solo usan en aserciones y en
+# texto de ayuda.
+"scripts/*" = ["F401"]

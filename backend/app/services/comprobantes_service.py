@@ -19,7 +19,6 @@ from app.core.almacenamiento import clave_aleatoria, obtener_almacen, validar_cl
 from app.core.auditoria import registrar
 from app.core.config import settings
 from app.core.errores import (
-    Conflicto,
     ErrorDeNegocio,
     NoEncontrado,
     PermisoDenegado,
