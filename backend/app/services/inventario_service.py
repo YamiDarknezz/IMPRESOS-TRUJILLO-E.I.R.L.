@@ -239,6 +239,13 @@ async def registrar_pieza(
         ),
         valores_nuevos={"capacidad_inicial": float(capacidad)},
     )
+
+    # `PiezaLoteMaterial.material` es una relación lazy: al crear la pieza con
+    # solo `material_id` queda sin cargar, y `serializar_pieza()` la lee para
+    # armar la respuesta del POST. Sin esta carga explícita ese acceso es un
+    # SELECT implícito (IO en contexto async) y la petición muere con
+    # MissingGreenlet (500) en vez de dar de alta el rollo.
+    await sesion.refresh(pieza, ["material"])
     return pieza
 
 
