@@ -147,28 +147,40 @@ export class OrdenesService {
   }
 
   /**
+   * Reemplaza la orden por una copia con los cambios. Mutar el objeto dentro
+   * del arreglo no avisa al signal: la lista filtrada (un `computed`) seguía
+   * mostrando la orden bajo el filtro anterior (#29).
+   */
+  private parchear(idOrden: number, cambios: Partial<Orden>): void {
+    this.lista.items.update(lista =>
+      lista.map(o => (o.id === idOrden ? { ...o, ...cambios } : o))
+    );
+  }
+
+  /**
    * Cambia la etapa mostrando el resultado de inmediato y revirtiendo si el
    * servidor lo rechaza. Mueve solo un campo, así que no hace falta recargar
-   * toda la lista.
+   * toda la lista; sí las métricas, que cuentan órdenes por etapa.
    */
   async cambiarEstado(orden: Orden, estado: EstadoOrden): Promise<void> {
     const anterior = orden.estado;
-    orden.estado = estado;
+    this.parchear(orden.id, { estado });
     try {
       await this.api.post(`/api/ordenes/${orden.id}/estado`, { estado });
     } catch (error) {
-      orden.estado = anterior;
+      this.parchear(orden.id, { estado: anterior });
       throw error;
     }
+    void this.cargarMetricas();
   }
 
   async asignar(orden: Orden, idUsuario: number | null): Promise<void> {
     const anterior = orden.asignado_a;
-    orden.asignado_a = idUsuario;
+    this.parchear(orden.id, { asignado_a: idUsuario });
     try {
       await this.api.post(`/api/ordenes/${orden.id}/asignar`, { asignado_a: idUsuario });
     } catch (error) {
-      orden.asignado_a = anterior;
+      this.parchear(orden.id, { asignado_a: anterior });
       throw error;
     }
   }

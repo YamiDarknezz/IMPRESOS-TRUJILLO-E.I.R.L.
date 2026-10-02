@@ -126,6 +126,15 @@ export class OrdenesComponent {
     this.ordenesService.cargarMetricas();
   }
 
+  /** Vuelve a pedir las órdenes y los indicadores (otros usuarios también las mueven). */
+  async actualizar(): Promise<void> {
+    try {
+      await Promise.all([this.ordenesService.recargar(), this.ordenesService.cargarMetricas()]);
+    } catch (e) {
+      alert(mensajeDeError(e, 'No se pudieron actualizar las órdenes.'));
+    }
+  }
+
   /** Trae el siguiente bloque de órdenes (la tabla viene paginada). */
   cargarMas(): void {
     void this.ordenesService.cargarMasOrdenes();
@@ -200,6 +209,16 @@ export class OrdenesComponent {
         cantidad_estimada: m.cantidad,
         cantidad_real: m.cantidad,
       }))
+    );
+  }
+
+  /**
+   * Cambia la cantidad real de un material copiando la lista: el `computed`
+   * de sobrantes solo se recalcula si el signal recibe un arreglo nuevo (#29).
+   */
+  cambiarCantidadReal(idMaterial: number, cantidad: number): void {
+    this.materialesComplecion.update(lista =>
+      lista.map(m => (m.id_material === idMaterial ? { ...m, cantidad_real: Number(cantidad) || 0 } : m))
     );
   }
 
