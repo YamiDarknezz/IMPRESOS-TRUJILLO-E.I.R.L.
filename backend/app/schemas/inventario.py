@@ -4,7 +4,7 @@ from typing import Optional
 from pydantic import BaseModel, Field, field_validator
 
 from app.models.enums import TipoFormatoMaterial
-from app.schemas.comunes import exigir_no_negativo, exigir_positivo, exigir_texto, limpiar
+from app.schemas.comunes import exigir_no_negativo, exigir_positivo, exigir_texto
 
 
 class MaterialCreateData(BaseModel):
