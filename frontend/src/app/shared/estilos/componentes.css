@@ -1320,3 +1320,15 @@ select.date-filter-input:focus {
   .form-actions { flex-wrap: wrap; }
   .search-box { max-width: none; }
 }
+
+/* ─── Pie de listados paginados ──────────────────────────────────────────── */
+
+/* Acompaña a "mostrando N de M" y al botón de traer el resto (#27, #28). */
+.listado-pie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0.25rem 0.85rem;
+}

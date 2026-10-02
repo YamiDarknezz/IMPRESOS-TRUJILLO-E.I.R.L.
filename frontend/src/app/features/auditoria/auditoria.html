@@ -3,6 +3,36 @@
   <button class="btn-secondary btn-sm" (click)="cargar()">↻ Actualizar</button>
 </div>
 
+<!-- Filtros que aplica el servidor sobre todo el historial (#28). -->
+<div class="toolbar filtros-auditoria">
+  <div class="input-group">
+    <label for="filtro-accion">Acción</label>
+    <select id="filtro-accion" [ngModel]="filtros().accion" name="filtroAccion"
+            (ngModelChange)="filtrarPorAccion($event)">
+      <option value="">Todas</option>
+      @for (opcion of opcionesAccion; track opcion.valor) {
+        <option [value]="opcion.valor">{{ opcion.etiqueta }}</option>
+      }
+    </select>
+  </div>
+
+  <div class="input-group">
+    <label for="filtro-desde">Desde</label>
+    <input id="filtro-desde" type="date" [ngModel]="filtros().desde" name="filtroDesde"
+           (ngModelChange)="filtrarPorDesde($event)">
+  </div>
+
+  <div class="input-group">
+    <label for="filtro-hasta">Hasta</label>
+    <input id="filtro-hasta" type="date" [ngModel]="filtros().hasta" name="filtroHasta"
+           (ngModelChange)="filtrarPorHasta($event)">
+  </div>
+
+  @if (hayFiltros()) {
+    <button class="btn-secondary btn-sm" (click)="limpiarFiltros()">Limpiar filtros</button>
+  }
+</div>
+
 <div class="table-card card">
   @if (cargando()) {
     <div class="empty-state">
@@ -17,9 +47,26 @@
   } @else if (entradas().length === 0) {
     <div class="empty-state">
       <span class="empty-icon"><app-icon name="receipt-text" [size]="40" /></span>
-      <p>Aún no hay acciones registradas.</p>
+      @if (hayFiltros()) {
+        <p>No hay acciones que coincidan con los filtros.</p>
+        <button class="btn-secondary btn-sm" (click)="limpiarFiltros()">Limpiar filtros</button>
+      } @else {
+        <p>Aún no hay acciones registradas.</p>
+      }
     </div>
   } @else {
+    <!-- El historial se trae por bloques: sin este aviso parecía completo. -->
+    <div class="listado-pie">
+      <span class="text-muted">
+        Mostrando {{ entradas().length }} de {{ total() }} acciones
+      </span>
+      @if (hayMas()) {
+        <button class="btn-secondary btn-sm" (click)="cargarMas()" [disabled]="cargandoMas()">
+          {{ cargandoMas() ? 'Cargando...' : 'Ver más' }}
+        </button>
+      }
+    </div>
+
     <div class="table-wrapper">
       <table class="data-table">
         <thead>

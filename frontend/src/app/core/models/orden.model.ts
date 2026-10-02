@@ -134,3 +134,12 @@ export interface MaterialComplecion {
   cantidad_estimada: number;
   cantidad_real: number;
 }
+
+/** Indicadores del panel de órdenes, sumados en el backend (#27). */
+export interface MetricasOrdenes {
+  total: number;
+  en_proceso: number;
+  finalizadas: number;
+  vencidas: number;
+  por_cobrar: number;
+}
