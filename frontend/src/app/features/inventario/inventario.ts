@@ -66,6 +66,21 @@ export class InventarioComponent {
   readonly materiales = this.inventarioService.materiales;
   readonly unidades = this.unidadesService.unidades;
 
+  /**
+   * Unidades del formulario de EDICIÓN: las activas y, si el material está en
+   * una unidad ya desactivada, también esa. El borrado de unidades es lógico y
+   * el material sigue usándola: sin esto, abrir la edición de ese material lo
+   * dejaría sin unidad y guardarlo se la cambiaría (#58).
+   */
+  readonly unidadesEdicion = computed(() => {
+    const activas = this.unidades();
+    const elegida = this.formEdicion().unidadId;
+    if (!elegida || activas.some(u => u.id === elegida)) return activas;
+
+    const desactivada = this.unidadesService.todas().find(u => u.id === elegida);
+    return desactivada ? [...activas, desactivada] : activas;
+  });
+
   readonly pestanaActiva = signal<'materiales' | 'piezas'>('materiales');
   readonly busqueda = signal('');
   readonly materialesFiltrados = computed(() =>
@@ -191,9 +206,12 @@ export class InventarioComponent {
   abrirEdicion(material: MaterialInventario): void {
     this.editando.set(material);
     this.errores.set({});
+    // Se piden también las unidades desactivadas: si la de este material lo
+    // está, el selector tiene que poder mostrarla (sigue siendo la suya).
+    this.unidadesService.cargarTodas();
     this.formEdicion.set({
       nombre: material.nombre,
-      unidadId: this.unidades().some(u => u.id === material.unidad_id) ? material.unidad_id : null,
+      unidadId: material.unidad_id,
       stockInicial: 0,
       stockActual: material.stock_actual,
       alertaMinima: material.alerta_minima,

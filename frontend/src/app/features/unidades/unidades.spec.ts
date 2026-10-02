@@ -5,20 +5,27 @@ import { Unidad } from '../../core/models';
 import { signal } from '@angular/core';
 
 const kilogramo: Unidad = { id: 1, nombre: 'Kilogramo', abreviatura: 'kg', activo: true };
+const pulgada: Unidad = { id: 2, nombre: 'Pulgada', abreviatura: 'in', activo: false };
 
 describe('UnidadesComponent', () => {
   let servicioFalso: {
     unidades: ReturnType<typeof signal<Unidad[]>>;
+    todas: ReturnType<typeof signal<Unidad[]>>;
     cargar: ReturnType<typeof vi.fn>;
+    cargarTodas: ReturnType<typeof vi.fn>;
     crear: ReturnType<typeof vi.fn>;
+    actualizar: ReturnType<typeof vi.fn>;
     eliminar: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
     servicioFalso = {
       unidades: signal([kilogramo]),
+      todas: signal([kilogramo, pulgada]),
       cargar: vi.fn().mockResolvedValue(undefined),
+      cargarTodas: vi.fn().mockResolvedValue(undefined),
       crear: vi.fn().mockResolvedValue(undefined),
+      actualizar: vi.fn().mockResolvedValue(undefined),
       eliminar: vi.fn().mockResolvedValue(undefined),
     };
     TestBed.configureTestingModule({
@@ -27,9 +34,9 @@ describe('UnidadesComponent', () => {
     });
   });
 
-  it('al crearse, pide cargar el catálogo', () => {
+  it('al crearse, pide el catálogo completo (incluye las desactivadas)', () => {
     TestBed.createComponent(UnidadesComponent);
-    expect(servicioFalso.cargar).toHaveBeenCalledTimes(1);
+    expect(servicioFalso.cargarTodas).toHaveBeenCalledTimes(1);
   });
 
   it('guardar(): no llama al servicio si el nombre está vacío', async () => {
@@ -70,6 +77,60 @@ describe('UnidadesComponent', () => {
     alertSpy.mockRestore();
   });
 
+  describe('edición (#58)', () => {
+    it('muestra las unidades desactivadas atenuadas y con su etiqueta', () => {
+      const fixture = TestBed.createComponent(UnidadesComponent);
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelectorAll('tbody tr').length).toBe(2);
+      expect(fixture.nativeElement.querySelectorAll('tr.row-inactiva').length).toBe(1);
+      expect(fixture.nativeElement.textContent).toContain('inactiva');
+    });
+
+    it('editar(): abre la fila con los valores actuales', () => {
+      const componente = TestBed.createComponent(UnidadesComponent).componentInstance;
+
+      componente.editar(kilogramo);
+
+      expect(componente.editando()).toEqual(kilogramo);
+      expect(componente.nombreEdicion()).toBe('Kilogramo');
+      expect(componente.abreviaturaEdicion()).toBe('kg');
+    });
+
+    it('guardarEdicion(): guarda nombre y abreviatura y cierra la edición', async () => {
+      const componente = TestBed.createComponent(UnidadesComponent).componentInstance;
+      componente.editar(kilogramo);
+      componente.nombreEdicion.set('  Kilogramos  ');
+      componente.abreviaturaEdicion.set(' kg ');
+
+      await componente.guardarEdicion();
+
+      expect(servicioFalso.actualizar).toHaveBeenCalledWith(1, 'Kilogramos', 'kg');
+      expect(componente.editando()).toBeNull();
+    });
+
+    it('guardarEdicion(): sin nombre no llama al servicio', async () => {
+      const componente = TestBed.createComponent(UnidadesComponent).componentInstance;
+      componente.editar(kilogramo);
+      componente.nombreEdicion.set('   ');
+
+      await componente.guardarEdicion();
+
+      expect(servicioFalso.actualizar).not.toHaveBeenCalled();
+      expect(componente.errorEdicion()).toBe('El nombre es requerido.');
+    });
+
+    it('cancelarEdicion(): cierra sin tocar el servicio', () => {
+      const componente = TestBed.createComponent(UnidadesComponent).componentInstance;
+      componente.editar(kilogramo);
+
+      componente.cancelarEdicion();
+
+      expect(componente.editando()).toBeNull();
+      expect(servicioFalso.actualizar).not.toHaveBeenCalled();
+    });
+  });
+
   it('eliminar(): si el usuario cancela la confirmación, no llama al servicio', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
     const fixture = TestBed.createComponent(UnidadesComponent);
@@ -80,7 +141,7 @@ describe('UnidadesComponent', () => {
     confirmSpy.mockRestore();
   });
 
-  it('eliminar(): si el usuario confirma, elimina la unidad', async () => {
+  it('eliminar(): si el usuario confirma, desactiva la unidad', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     const fixture = TestBed.createComponent(UnidadesComponent);
 

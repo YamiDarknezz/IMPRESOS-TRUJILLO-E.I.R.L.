@@ -237,7 +237,7 @@
                       (ngModelChange)="actualizarEdicion('unidadId', $event)"
                       [class.input-error]="errores()['unidadId']">
                 <option [ngValue]="null">Selecciona una unidad...</option>
-                @for (u of unidades(); track u.id) {
+                @for (u of unidadesEdicion(); track u.id) {
                   <option [ngValue]="u.id">{{ u.nombre }}{{ u.abreviatura ? ' (' + u.abreviatura + ')' : '' }}</option>
                 }
               </select>

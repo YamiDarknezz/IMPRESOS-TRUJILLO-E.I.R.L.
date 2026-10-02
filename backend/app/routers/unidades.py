@@ -20,10 +20,21 @@ router = APIRouter(prefix="/api/unidades", tags=["Unidades"])
 async def listar_unidades(
     usuario: Annotated[Usuario, Depends(usuario_actual)],
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
+    incluir_inactivas: bool = False,
 ):
-    unidades = (
-        await sesion.execute(select(Unidad).order_by(func.lower(Unidad.nombre)))
-    ).scalars()
+    """
+    Catálogo de unidades de medida.
+
+    Por defecto solo las activas: una unidad desactivada sigue siendo válida
+    para los materiales que ya la usan, pero no debe ofrecerse al registrar
+    materiales nuevos (#58). La pantalla del catálogo pide `incluir_inactivas`
+    para poder mostrarlas atenuadas y editarlas.
+    """
+    consulta = select(Unidad)
+    if not incluir_inactivas:
+        consulta = consulta.where(Unidad.activo.is_(True))
+
+    unidades = (await sesion.execute(consulta.order_by(func.lower(Unidad.nombre)))).scalars()
     return {"status": "success", "data": [serializar_unidad(u) for u in unidades]}
 
 
