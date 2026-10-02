@@ -85,6 +85,8 @@
     }
   </div>
 
+  <button class="btn-secondary btn-sm" (click)="actualizar()" [disabled]="cargando()">↻ Actualizar</button>
+
   @if (sesion.puedeGestionarOrdenes()) {
     <a class="btn-primary" routerLink="/ordenes/nueva">+ Nueva Orden</a>
   }
@@ -327,7 +329,8 @@
             </div>
             <div class="input-group modal-mat-input">
               <label>Cantidad real</label>
-              <input type="number" [(ngModel)]="mat.cantidad_real"
+              <input type="number" [ngModel]="mat.cantidad_real"
+                     (ngModelChange)="cambiarCantidadReal(mat.id_material, $event)"
                      [name]="'real-' + mat.id_material" min="0" step="0.01">
             </div>
           </div>

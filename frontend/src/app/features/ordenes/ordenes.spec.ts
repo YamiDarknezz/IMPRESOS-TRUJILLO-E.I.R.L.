@@ -47,6 +47,7 @@ describe('OrdenesComponent', () => {
     vencidas: ReturnType<typeof signal<number>>;
     porCobrar: ReturnType<typeof signal<number>>;
     cargar: ReturnType<typeof vi.fn>;
+    recargar: ReturnType<typeof vi.fn>;
     cambiarEstado: ReturnType<typeof vi.fn>;
     asignar: ReturnType<typeof vi.fn>;
     cancelar: ReturnType<typeof vi.fn>;
@@ -69,6 +70,7 @@ describe('OrdenesComponent', () => {
       vencidas: signal(0),
       porCobrar: signal(0),
       cargar: vi.fn().mockResolvedValue(undefined),
+      recargar: vi.fn().mockResolvedValue(undefined),
       cambiarEstado: vi.fn().mockResolvedValue(undefined),
       asignar: vi.fn().mockResolvedValue(undefined),
       cancelar: vi.fn().mockResolvedValue(undefined),
@@ -127,6 +129,29 @@ describe('OrdenesComponent', () => {
     expect(componente.desde()).toBe('');
     expect(componente.hasta()).toBe('');
     expect(componente.hayFiltroFecha()).toBe(false);
+  });
+
+  describe('actualizar()', () => {
+    it('vuelve a pedir las órdenes y las métricas', async () => {
+      const fixture = TestBed.createComponent(OrdenesComponent);
+      ordenesFalso.cargarMetricas.mockClear();
+
+      await fixture.componentInstance.actualizar();
+
+      expect(ordenesFalso.recargar).toHaveBeenCalledTimes(1);
+      expect(ordenesFalso.cargarMetricas).toHaveBeenCalledTimes(1);
+    });
+
+    it('si falla, avisa en vez de dejar el error sin atender', async () => {
+      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+      ordenesFalso.recargar.mockRejectedValue(new Error('sin red'));
+      const fixture = TestBed.createComponent(OrdenesComponent);
+
+      await fixture.componentInstance.actualizar();
+
+      expect(alertSpy).toHaveBeenCalledTimes(1);
+      alertSpy.mockRestore();
+    });
   });
 
   describe('cambiarEstado()', () => {
@@ -217,6 +242,22 @@ describe('OrdenesComponent', () => {
         lista.map(m => ({ ...m, cantidad_real: 7 })),
       );
       expect(componente.sobrantes()).toEqual([{ nombre: 'Lona', sobrante: 3 }]);
+    });
+
+    // Issue #29: el input mutaba el objeto del signal y `sobrantes()` quedaba
+    // desactualizado, de modo que no se pedía confirmar la devolución al stock.
+    it('cambiarCantidadReal() copia la lista: sobrantes() se recalcula', () => {
+      const fixture = TestBed.createComponent(OrdenesComponent);
+      const componente = fixture.componentInstance;
+      componente.abrirCompletar(ordenConMateriales);
+      const antes = componente.materialesComplecion();
+      expect(componente.sobrantes()).toEqual([]);
+
+      componente.cambiarCantidadReal(1, 4);
+
+      expect(componente.sobrantes()).toEqual([{ nombre: 'Lona', sobrante: 6 }]);
+      expect(componente.materialesComplecion()).not.toBe(antes);
+      expect(antes[0].cantidad_real).toBe(10);
     });
 
     it('confirmarProduccion(): sin sobrantes, completa directo sin confirmar', async () => {
