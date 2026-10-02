@@ -273,6 +273,44 @@ describe('OrdenFormComponent', () => {
       expect(ordenesFalso.crear).not.toHaveBeenCalled();
     });
 
+    // #30: el backend rechaza un descuento mayor al subtotal; la interfaz ahora
+    // lo dice antes, en vez de mostrar el total negativo y fallar al guardar.
+    it('un descuento mayor al subtotal se marca en el formulario', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const fixture = TestBed.createComponent(OrdenFormComponent);
+      const componente = fixture.componentInstance;
+      componente.actualizar('clienteId', 1);
+      componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('fechaEntrega', '2026-12-31');
+      componente.actualizar('precioTotal', 100);
+      componente.actualizar('adelanto', 50);
+      componente.actualizar('descuento', 150);
+
+      await componente.guardar();
+
+      expect(componente.errores()['descuento']).toBe('El descuento no puede superar el subtotal.');
+      // No se llega a confirmar un total negativo ni a llamar al backend.
+      expect(confirmSpy).not.toHaveBeenCalled();
+      expect(ordenesFalso.crear).not.toHaveBeenCalled();
+    });
+
+    it('un descuento igual al subtotal se permite (solo queda el IGV)', async () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const fixture = TestBed.createComponent(OrdenFormComponent);
+      const componente = fixture.componentInstance;
+      componente.actualizar('clienteId', 1);
+      componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('fechaEntrega', '2026-12-31');
+      componente.actualizar('precioTotal', 100);
+      componente.actualizar('adelanto', 50);
+      componente.actualizar('descuento', 100);
+
+      await componente.guardar();
+
+      expect(componente.errores()['descuento']).toBeUndefined();
+      expect(ordenesFalso.crear).toHaveBeenCalled();
+    });
+
     it('RN-01: sin adelanto, lo exige para clientes no corporativos (con el mínimo del 50%)', async () => {
       const fixture = TestBed.createComponent(OrdenFormComponent);
       const componente = fixture.componentInstance;
