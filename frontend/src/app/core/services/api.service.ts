@@ -61,13 +61,13 @@ export class ApiService {
     try {
       switch (metodo) {
         case 'get':
-          return await firstValueFrom(this.http.get<T>(url));
+          return await firstValueFrom(this.http.get<T>(url, { withCredentials: true }));
         case 'post':
-          return await firstValueFrom(this.http.post<T>(url, body ?? {}));
+          return await firstValueFrom(this.http.post<T>(url, body ?? {}, { withCredentials: true }));
         case 'patch':
-          return await firstValueFrom(this.http.patch<T>(url, body ?? {}));
+          return await firstValueFrom(this.http.patch<T>(url, body ?? {}, { withCredentials: true }));
         case 'delete':
-          return await firstValueFrom(this.http.delete<T>(url));
+          return await firstValueFrom(this.http.delete<T>(url, { withCredentials: true }));
       }
     } catch (error) {
       // El 401 del propio login son credenciales incorrectas, no una sesión
