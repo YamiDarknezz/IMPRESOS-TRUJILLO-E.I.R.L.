@@ -110,6 +110,15 @@ describe('OrdenesService', () => {
     expect(resultado).toEqual(creada);
   });
 
+  it('crearVentaRapida() refresca también las tarjetas del panel', async () => {
+    apiFalsa.post.mockResolvedValue({ status: 'success', data: ordenBase({ id: 9 }) });
+    apiFalsa.get.mockClear();
+
+    await servicio.crearVentaRapida({ descripcion: 'Venta mostrador', monto_total: 20 });
+
+    expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes/metricas');
+  });
+
   describe('cambiarEstado() (optimista, revierte si el servidor rechaza)', () => {
     function conListaCargada(...ordenes: Orden[]): Promise<void> {
       apiFalsa.get.mockResolvedValue({ status: 'success', data: ordenes, total: ordenes.length });

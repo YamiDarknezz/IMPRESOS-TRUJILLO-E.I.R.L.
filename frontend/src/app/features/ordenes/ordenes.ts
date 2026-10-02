@@ -34,6 +34,7 @@ import {
   pesoLegible,
 } from '../../shared/utilidades/imagenes';
 import { IconComponent } from '../../shared/componentes/icon/icon.component';
+import { VentaRapidaComponent } from './venta-rapida/venta-rapida';
 
 type FiltroEstado = 'todos' | EstadoOrden;
 
@@ -45,7 +46,7 @@ interface OpcionFiltro {
 @Component({
   selector: 'app-ordenes',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, IconComponent],
+  imports: [CommonModule, FormsModule, RouterLink, IconComponent, VentaRapidaComponent],
   templateUrl: './ordenes.html',
 })
 export class OrdenesComponent {
@@ -102,6 +103,8 @@ export class OrdenesComponent {
   /** Orden cuyo consumo real se está reportando. */
   readonly ordenACompletar = signal<Orden | null>(null);
   readonly materialesComplecion = signal<MaterialComplecion[]>([]);
+
+  readonly ventaRapidaAbierta = signal(false);
 
   /** Orden cuyo saldo se está cobrando. */
   readonly ordenACobrar = signal<Orden | null>(null);
