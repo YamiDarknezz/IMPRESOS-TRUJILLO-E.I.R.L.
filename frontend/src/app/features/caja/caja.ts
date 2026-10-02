@@ -23,6 +23,7 @@ import {
   motivosObservacion,
 } from '../../core/estado/catalogos';
 import { IconComponent } from '../../shared/componentes/icon/icon.component';
+import { ModalComponent } from '../../shared/componentes/modal/modal.component';
 
 /**
  * Cierre y arqueo diario de caja dual (RF-12 a RF-14).
@@ -34,7 +35,7 @@ import { IconComponent } from '../../shared/componentes/icon/icon.component';
 @Component({
   selector: 'app-caja',
   standalone: true,
-  imports: [CommonModule, FormsModule, IconComponent],
+  imports: [CommonModule, FormsModule, IconComponent, ModalComponent],
   templateUrl: './caja.html',
 })
 export class CajaComponent {

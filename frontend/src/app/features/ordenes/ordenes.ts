@@ -39,6 +39,7 @@ import {
   pesoLegible,
 } from '../../shared/utilidades/imagenes';
 import { IconComponent } from '../../shared/componentes/icon/icon.component';
+import { ModalComponent } from '../../shared/componentes/modal/modal.component';
 import { VentaRapidaComponent } from './venta-rapida/venta-rapida';
 
 type FiltroEstado = 'todos' | EstadoOrden;
@@ -51,7 +52,7 @@ interface OpcionFiltro {
 @Component({
   selector: 'app-ordenes',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, IconComponent, VentaRapidaComponent],
+  imports: [CommonModule, FormsModule, RouterLink, IconComponent, ModalComponent, VentaRapidaComponent],
   templateUrl: './ordenes.html',
 })
 export class OrdenesComponent {
@@ -125,7 +126,8 @@ export class OrdenesComponent {
   readonly etiquetaEstado = ETIQUETA_ESTADO;
   readonly etiquetaMetodo = etiquetasMetodo;
   readonly etiquetaUnidad = ETIQUETA_UNIDAD;
-  readonly metodosPago = metodosDelServidor;
+  // Se lee al renderizar: tomar el alias directo quedaba en `undefined` en las pruebas.
+  readonly metodosPago = computed(() => metodosDelServidor());
   readonly formatearFecha = formatearFecha;
   readonly estaEnPipeline = estaEnPipeline;
   readonly estaVencida = estaVencida;

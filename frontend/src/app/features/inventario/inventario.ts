@@ -22,6 +22,7 @@ import { mensajeDeError } from '../../shared/utilidades/errores';
 import { etiquetaMovimiento } from '../../core/estado/catalogos';
 import { formatearFecha } from '../../shared/utilidades/fechas';
 import { IconComponent } from '../../shared/componentes/icon/icon.component';
+import { ModalComponent } from '../../shared/componentes/modal/modal.component';
 
 interface FormularioMaterial {
   nombre: string;
@@ -56,7 +57,7 @@ function formularioVacio(): FormularioMaterial {
 @Component({
   selector: 'app-inventario',
   standalone: true,
-  imports: [CommonModule, FormsModule, IconComponent],
+  imports: [CommonModule, FormsModule, IconComponent, ModalComponent],
   templateUrl: './inventario.html',
 })
 export class InventarioComponent {

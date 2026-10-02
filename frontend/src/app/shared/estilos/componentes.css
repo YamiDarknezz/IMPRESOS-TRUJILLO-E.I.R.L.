@@ -456,6 +456,14 @@
   backdrop-filter: blur(3px);
 }
 
+.modal-content:focus {
+  outline: none; /* recibe el foco por programa (tabindex -1), no es un control */
+}
+
+.modal-content.modal-ancho {
+  max-width: 850px;
+}
+
 .modal-content {
   background: var(--surface);
   padding: 2rem;
@@ -779,6 +787,15 @@ div.actions-cell {
 /* Aviso de error o dinero deducido: los colores siguen al tema */
 .text-danger {
   color: var(--danger-fg);
+}
+
+/* `.modal-header h3` pinta el título con --text y gana por especificidad */
+.modal-header .text-danger {
+  color: var(--danger-fg);
+}
+
+.modal-header .text-success {
+  color: var(--success);
 }
 
 .text-hint {

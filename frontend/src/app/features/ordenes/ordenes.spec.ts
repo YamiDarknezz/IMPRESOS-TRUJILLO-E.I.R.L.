@@ -334,4 +334,60 @@ describe('OrdenesComponent', () => {
       expect(componente.ordenACobrar()).toBeNull();
     });
   });
+
+  // Issue #38: todos los modales son diálogos accesibles que se cierran con Escape.
+  describe('modales (#38)', () => {
+    function conOrdenesVacias() {
+      ordenesFalso.ordenes.set([]); // solo interesa el modal, no las filas
+      return TestBed.createComponent(OrdenesComponent);
+    }
+    function pulsarEscape(fixture: { detectChanges(): void }) {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+      fixture.detectChanges();
+    }
+
+    it('reportar uso de materiales: es un diálogo y Escape lo cierra', () => {
+      const fixture = conOrdenesVacias();
+      fixture.componentInstance.abrirCompletar(ordenBase({ materiales: { estimados: [] } }));
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('[role="dialog"]')).not.toBeNull();
+
+      pulsarEscape(fixture);
+
+      expect(fixture.componentInstance.ordenACompletar()).toBeNull();
+    });
+
+    it('confirmar pago: Escape lo cierra', () => {
+      const fixture = conOrdenesVacias();
+      fixture.componentInstance.abrirCobro(ordenBase());
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('[role="dialog"]')).not.toBeNull();
+
+      pulsarEscape(fixture);
+
+      expect(fixture.componentInstance.ordenACobrar()).toBeNull();
+    });
+
+    it('capturas de pago: Escape lo cierra', () => {
+      const fixture = conOrdenesVacias();
+      fixture.componentInstance.capturasVisibles.set(ordenBase({ comprobantes: [] }));
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('[role="dialog"]')).not.toBeNull();
+
+      pulsarEscape(fixture);
+
+      expect(fixture.componentInstance.capturasVisibles()).toBeNull();
+    });
+
+    it('venta rápida: Escape lo cierra', () => {
+      const fixture = conOrdenesVacias();
+      fixture.componentInstance.ventaRapidaAbierta.set(true);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('app-venta-rapida [role="dialog"]')).not.toBeNull();
+
+      pulsarEscape(fixture);
+
+      expect(fixture.componentInstance.ventaRapidaAbierta()).toBe(false);
+    });
+  });
 });

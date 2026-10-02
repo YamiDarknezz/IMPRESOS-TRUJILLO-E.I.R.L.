@@ -214,105 +214,100 @@
 
   <!-- ═══ Modal: editar material ════════════════════════════════════════════ -->
   @if (editando(); as material) {
-    <div class="modal-overlay" (click)="cerrarEdicion()">
-      <div class="modal-content" (click)="$event.stopPropagation()">
-        <div class="modal-header">
-          <h3>Editar material</h3>
-          <span class="modal-orden-id">{{ material.id }}</span>
+    <app-modal titulo="Editar material" (cerrar)="cerrarEdicion()">
+      <span modal-cabecera class="modal-orden-id">{{ material.id }}</span>
+
+      <form (ngSubmit)="guardarEdicion()">
+        <div class="form-grid">
+          <div class="input-group">
+            <label>Nombre *</label>
+            <input type="text" [ngModel]="formEdicion().nombre" name="editNombre"
+                   (ngModelChange)="actualizarEdicion('nombre', $event)"
+                   [class.input-error]="errores()['nombre']">
+            @if (errores()['nombre']) { <span class="field-error">{{ errores()['nombre'] }}</span> }
+          </div>
+
+          <div class="input-group">
+            <label>Unidad *</label>
+            <select [ngModel]="formEdicion().unidadId" name="editUnidad"
+                    (ngModelChange)="actualizarEdicion('unidadId', $event)"
+                    [class.input-error]="errores()['unidadId']">
+              <option [ngValue]="null">Selecciona una unidad...</option>
+              @for (u of unidadesEdicion(); track u.id) {
+                <option [ngValue]="u.id">{{ u.nombre }}{{ u.abreviatura ? ' (' + u.abreviatura + ')' : '' }}</option>
+              }
+            </select>
+            @if (errores()['unidadId']) { <span class="field-error">{{ errores()['unidadId'] }}</span> }
+          </div>
+
+          <div class="input-group">
+            <label>Formato Físico</label>
+            <select [ngModel]="formEdicion().tipoFormato" name="editTipoFormato"
+                    (ngModelChange)="actualizarEdicion('tipoFormato', $event)">
+              @for (tf of tiposFormato; track tf.id) {
+                <option [value]="tf.id">{{ tf.nombre }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="input-group">
+            <label>Precio Compra (S/)</label>
+            <input type="number" [ngModel]="formEdicion().precioCompra" name="editPrecioCompra"
+                   (ngModelChange)="actualizarEdicion('precioCompra', $event)" min="0" step="0.50">
+          </div>
+
+          <div class="input-group">
+            <label>Ubicación / Estante</label>
+            <input type="text" [ngModel]="formEdicion().ubicacionEstante" name="editUbicacion"
+                   (ngModelChange)="actualizarEdicion('ubicacionEstante', $event)">
+          </div>
+
+          <div class="input-group">
+            <label>Stock actual</label>
+            <input type="number" [ngModel]="formEdicion().stockActual" name="editStock"
+                   (ngModelChange)="actualizarEdicion('stockActual', $event)" min="0" step="0.01">
+            <span class="field-hint">Corrección manual tras un conteo físico.</span>
+          </div>
+
+          <div class="input-group">
+            <label>Alerta mínima</label>
+            <input type="number" [ngModel]="formEdicion().alertaMinima" name="editAlerta"
+                   (ngModelChange)="actualizarEdicion('alertaMinima', $event)" min="0" step="0.01">
+          </div>
+
+          <div class="input-group">
+            <label>Días de reabastecimiento</label>
+            <input type="number" [ngModel]="formEdicion().diasReabastecimiento" name="editDias"
+                   (ngModelChange)="actualizarEdicion('diasReabastecimiento', $event)" min="0" step="1">
+          </div>
+
+          <div class="input-group">
+            <label>Ancho (m)</label>
+            <input type="number" [ngModel]="formEdicion().anchoPredeterminadoM" name="editAncho"
+                   (ngModelChange)="actualizarEdicion('anchoPredeterminadoM', $event)" min="0" step="0.01">
+          </div>
+
+          <div class="input-group">
+            <label>Largo (m)</label>
+            <input type="number" [ngModel]="formEdicion().largoPredeterminadoM" name="editLargo"
+                   (ngModelChange)="actualizarEdicion('largoPredeterminadoM', $event)" min="0" step="0.01">
+          </div>
+
+          <div class="input-group">
+            <label>Espesor (mm)</label>
+            <input type="number" [ngModel]="formEdicion().espesorMm" name="editEspesor"
+                   (ngModelChange)="actualizarEdicion('espesorMm', $event)" min="0" step="0.1">
+          </div>
         </div>
 
-        <form (ngSubmit)="guardarEdicion()">
-          <div class="form-grid">
-            <div class="input-group">
-              <label>Nombre *</label>
-              <input type="text" [ngModel]="formEdicion().nombre" name="editNombre"
-                     (ngModelChange)="actualizarEdicion('nombre', $event)"
-                     [class.input-error]="errores()['nombre']">
-              @if (errores()['nombre']) { <span class="field-error">{{ errores()['nombre'] }}</span> }
-            </div>
-
-            <div class="input-group">
-              <label>Unidad *</label>
-              <select [ngModel]="formEdicion().unidadId" name="editUnidad"
-                      (ngModelChange)="actualizarEdicion('unidadId', $event)"
-                      [class.input-error]="errores()['unidadId']">
-                <option [ngValue]="null">Selecciona una unidad...</option>
-                @for (u of unidadesEdicion(); track u.id) {
-                  <option [ngValue]="u.id">{{ u.nombre }}{{ u.abreviatura ? ' (' + u.abreviatura + ')' : '' }}</option>
-                }
-              </select>
-              @if (errores()['unidadId']) { <span class="field-error">{{ errores()['unidadId'] }}</span> }
-            </div>
-
-            <div class="input-group">
-              <label>Formato Físico</label>
-              <select [ngModel]="formEdicion().tipoFormato" name="editTipoFormato"
-                      (ngModelChange)="actualizarEdicion('tipoFormato', $event)">
-                @for (tf of tiposFormato; track tf.id) {
-                  <option [value]="tf.id">{{ tf.nombre }}</option>
-                }
-              </select>
-            </div>
-
-            <div class="input-group">
-              <label>Precio Compra (S/)</label>
-              <input type="number" [ngModel]="formEdicion().precioCompra" name="editPrecioCompra"
-                     (ngModelChange)="actualizarEdicion('precioCompra', $event)" min="0" step="0.50">
-            </div>
-
-            <div class="input-group">
-              <label>Ubicación / Estante</label>
-              <input type="text" [ngModel]="formEdicion().ubicacionEstante" name="editUbicacion"
-                     (ngModelChange)="actualizarEdicion('ubicacionEstante', $event)">
-            </div>
-
-            <div class="input-group">
-              <label>Stock actual</label>
-              <input type="number" [ngModel]="formEdicion().stockActual" name="editStock"
-                     (ngModelChange)="actualizarEdicion('stockActual', $event)" min="0" step="0.01">
-              <span class="field-hint">Corrección manual tras un conteo físico.</span>
-            </div>
-
-            <div class="input-group">
-              <label>Alerta mínima</label>
-              <input type="number" [ngModel]="formEdicion().alertaMinima" name="editAlerta"
-                     (ngModelChange)="actualizarEdicion('alertaMinima', $event)" min="0" step="0.01">
-            </div>
-
-            <div class="input-group">
-              <label>Días de reabastecimiento</label>
-              <input type="number" [ngModel]="formEdicion().diasReabastecimiento" name="editDias"
-                     (ngModelChange)="actualizarEdicion('diasReabastecimiento', $event)" min="0" step="1">
-            </div>
-
-            <div class="input-group">
-              <label>Ancho (m)</label>
-              <input type="number" [ngModel]="formEdicion().anchoPredeterminadoM" name="editAncho"
-                     (ngModelChange)="actualizarEdicion('anchoPredeterminadoM', $event)" min="0" step="0.01">
-            </div>
-
-            <div class="input-group">
-              <label>Largo (m)</label>
-              <input type="number" [ngModel]="formEdicion().largoPredeterminadoM" name="editLargo"
-                     (ngModelChange)="actualizarEdicion('largoPredeterminadoM', $event)" min="0" step="0.01">
-            </div>
-
-            <div class="input-group">
-              <label>Espesor (mm)</label>
-              <input type="number" [ngModel]="formEdicion().espesorMm" name="editEspesor"
-                     (ngModelChange)="actualizarEdicion('espesorMm', $event)" min="0" step="0.1">
-            </div>
-          </div>
-
-          <div class="form-actions">
-            <button type="button" class="btn-secondary" (click)="cerrarEdicion()">Cancelar</button>
-            <button type="submit" class="btn-primary" [disabled]="guardando()">
-              {{ guardando() ? 'Guardando...' : 'Guardar cambios' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" (click)="cerrarEdicion()">Cancelar</button>
+          <button type="submit" class="btn-primary" [disabled]="guardando()">
+            {{ guardando() ? 'Guardando...' : 'Guardar cambios' }}
+          </button>
+        </div>
+      </form>
+    </app-modal>
   }
 }
 
@@ -409,253 +404,230 @@
 
 <!-- ═══ Modal: Movimientos de Material (Trazabilidad clásica) ═══════════════ -->
 @if (materialMovimientos(); as material) {
-  <div class="modal-overlay" (click)="cerrarMovimientos()">
-    <div class="modal-content" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h3>{{ material.nombre }}</h3>
-        <span class="modal-orden-id">Stock: {{ material.stock_actual }} {{ material.unidad }}</span>
-      </div>
-      <p class="modal-subtitle">
-        Reservas por orden, mermas, devoluciones y ajustes manuales.
-      </p>
+  <app-modal titulo="{{ material.nombre }}" (cerrar)="cerrarMovimientos()">
+    <span modal-cabecera class="modal-orden-id">Stock: {{ material.stock_actual }} {{ material.unidad }}</span>
+    <p class="modal-subtitle">
+      Reservas por orden, mermas, devoluciones y ajustes manuales.
+    </p>
 
-      @if (movimientos().length === 0) {
-        <p class="text-muted">Aún no hay movimientos registrados para este material.</p>
-      } @else {
-        <div class="table-wrapper">
-          <table class="data-table">
-            <thead>
+    @if (movimientos().length === 0) {
+      <p class="text-muted">Aún no hay movimientos registrados para este material.</p>
+    } @else {
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Motivo</th>
+              <th>Cambio</th>
+              <th>Stock final</th>
+              <th>Usuario</th>
+              <th>Nota</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (mov of movimientos(); track mov.id) {
               <tr>
-                <th>Fecha</th>
-                <th>Motivo</th>
-                <th>Cambio</th>
-                <th>Stock final</th>
-                <th>Usuario</th>
-                <th>Nota</th>
+                <td class="fecha-cell">{{ formatearFecha(mov.fecha, true) }}</td>
+                <td><span class="badge badge-neutral">{{ etiquetaMovimiento(mov.motivo) }}</span></td>
+                <td [class.saldo-pendiente]="mov.delta < 0" [class.saldo-ok]="mov.delta > 0">
+                  {{ mov.delta > 0 ? '+' : '' }}{{ mov.delta }}
+                </td>
+                <td>{{ mov.stock_resultante }}</td>
+                <td>{{ mov.usuario || '—' }}</td>
+                <td class="desc-cell">{{ mov.nota || '—' }}</td>
               </tr>
-            </thead>
-            <tbody>
-              @for (mov of movimientos(); track mov.id) {
-                <tr>
-                  <td class="fecha-cell">{{ formatearFecha(mov.fecha, true) }}</td>
-                  <td><span class="badge badge-neutral">{{ etiquetaMovimiento(mov.motivo) }}</span></td>
-                  <td [class.saldo-pendiente]="mov.delta < 0" [class.saldo-ok]="mov.delta > 0">
-                    {{ mov.delta > 0 ? '+' : '' }}{{ mov.delta }}
-                  </td>
-                  <td>{{ mov.stock_resultante }}</td>
-                  <td>{{ mov.usuario || '—' }}</td>
-                  <td class="desc-cell">{{ mov.nota || '—' }}</td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      }
-
-      <div class="form-actions">
-        <button type="button" class="btn-secondary" (click)="cerrarMovimientos()">Cerrar</button>
+            }
+          </tbody>
+        </table>
       </div>
+    }
+
+    <div class="form-actions">
+      <button type="button" class="btn-secondary" (click)="cerrarMovimientos()">Cerrar</button>
     </div>
-  </div>
+  </app-modal>
 }
 
 <!-- ═══ Modal: Alta de Rollo o Plancha Pre-establecida ═════════════════════ -->
 @if (modalNuevaPieza()) {
-  <div class="modal-overlay" (click)="cerrarNuevaPieza()">
-    <div class="modal-content" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h3>Alta de Rollo o Plancha Pre-establecida</h3>
-        <button class="btn-icon" (click)="cerrarNuevaPieza()">✕</button>
+  <app-modal titulo="Alta de Rollo o Plancha Pre-establecida" [conBotonCerrar]="true" (cerrar)="cerrarNuevaPieza()">
+
+    <div class="form-grid">
+      <div class="input-group">
+        <label>Material Base *</label>
+        <select [ngModel]="formPieza().material_id"
+                (ngModelChange)="alCambiarMaterialPieza($event)">
+          @for (m of materiales(); track m.id) {
+            <option [value]="m.id">{{ m.nombre }} ({{ m.unidad }})</option>
+          }
+        </select>
       </div>
 
-      <div class="form-grid">
-        <div class="input-group">
-          <label>Material Base *</label>
-          <select [ngModel]="formPieza().material_id"
-                  (ngModelChange)="alCambiarMaterialPieza($event)">
-            @for (m of materiales(); track m.id) {
-              <option [value]="m.id">{{ m.nombre }} ({{ m.unidad }})</option>
-            }
-          </select>
-        </div>
-
-        <div class="input-group">
-          <label>Código Identificador *</label>
-          <input type="text" [ngModel]="formPieza().codigo_identificador"
-                 (ngModelChange)="actualizarPieza('codigo_identificador', $event)"
-                 placeholder="Ej: ROLL-UV-A-001, PL-MDF-01">
-        </div>
-
-        <div class="input-group">
-          <label>Capacidad Inicial *</label>
-          <input type="number" [ngModel]="formPieza().capacidad_inicial"
-                 (ngModelChange)="actualizarPieza('capacidad_inicial', $event)" min="0.1" step="0.5">
-          <span class="field-hint">Ej: 100 metros lineales o 2.98 m²</span>
-        </div>
-
-        <div class="input-group">
-          <label>Unidad de Medida</label>
-          <input type="text" [ngModel]="formPieza().unidad_medida"
-                 (ngModelChange)="actualizarPieza('unidad_medida', $event)">
-        </div>
-
-        <div class="input-group">
-          <label>Costo de Adquisición (S/)</label>
-          <input type="number" [ngModel]="formPieza().costo_adquisicion"
-                 (ngModelChange)="actualizarPieza('costo_adquisicion', $event)" min="0" step="0.50">
-        </div>
-
-        <div class="input-group">
-          <label>Ubicación / Estante</label>
-          <input type="text" [ngModel]="formPieza().ubicacion"
-                 (ngModelChange)="actualizarPieza('ubicacion', $event)"
-                 placeholder="Ej: Estante R-02, Rack Planchas A">
-        </div>
-
-        <div class="input-group">
-          <label>Máquina asignada (opcional)</label>
-          <input type="text" [ngModel]="formPieza().maquina_asignada"
-                 (ngModelChange)="actualizarPieza('maquina_asignada', $event)"
-                 placeholder="Ej: Mimaki UV DTF, Láser CNC">
-        </div>
-
-        <div class="input-group">
-          <label>Ancho (m)</label>
-          <input type="number" [ngModel]="formPieza().ancho_m"
-                 (ngModelChange)="actualizarPieza('ancho_m', $event)" min="0" step="0.01">
-        </div>
-
-        <div class="input-group">
-          <label>Largo (m)</label>
-          <input type="number" [ngModel]="formPieza().largo_m"
-                 (ngModelChange)="actualizarPieza('largo_m', $event)" min="0" step="0.01">
-        </div>
-
-        <div class="input-group">
-          <label>Espesor (mm)</label>
-          <input type="number" [ngModel]="formPieza().espesor_mm"
-                 (ngModelChange)="actualizarPieza('espesor_mm', $event)" min="0" step="0.1">
-        </div>
+      <div class="input-group">
+        <label>Código Identificador *</label>
+        <input type="text" [ngModel]="formPieza().codigo_identificador"
+               (ngModelChange)="actualizarPieza('codigo_identificador', $event)"
+               placeholder="Ej: ROLL-UV-A-001, PL-MDF-01">
       </div>
 
-      <div class="form-actions">
-        <button type="button" class="btn-secondary" (click)="cerrarNuevaPieza()">Cancelar</button>
-        <button type="button" class="btn-primary" (click)="guardarNuevaPieza()" [disabled]="guardando()">
-          {{ guardando() ? 'Guardando...' : 'Registrar Rollo / Plancha' }}
-        </button>
+      <div class="input-group">
+        <label>Capacidad Inicial *</label>
+        <input type="number" [ngModel]="formPieza().capacidad_inicial"
+               (ngModelChange)="actualizarPieza('capacidad_inicial', $event)" min="0.1" step="0.5">
+        <span class="field-hint">Ej: 100 metros lineales o 2.98 m²</span>
+      </div>
+
+      <div class="input-group">
+        <label>Unidad de Medida</label>
+        <input type="text" [ngModel]="formPieza().unidad_medida"
+               (ngModelChange)="actualizarPieza('unidad_medida', $event)">
+      </div>
+
+      <div class="input-group">
+        <label>Costo de Adquisición (S/)</label>
+        <input type="number" [ngModel]="formPieza().costo_adquisicion"
+               (ngModelChange)="actualizarPieza('costo_adquisicion', $event)" min="0" step="0.50">
+      </div>
+
+      <div class="input-group">
+        <label>Ubicación / Estante</label>
+        <input type="text" [ngModel]="formPieza().ubicacion"
+               (ngModelChange)="actualizarPieza('ubicacion', $event)"
+               placeholder="Ej: Estante R-02, Rack Planchas A">
+      </div>
+
+      <div class="input-group">
+        <label>Máquina asignada (opcional)</label>
+        <input type="text" [ngModel]="formPieza().maquina_asignada"
+               (ngModelChange)="actualizarPieza('maquina_asignada', $event)"
+               placeholder="Ej: Mimaki UV DTF, Láser CNC">
+      </div>
+
+      <div class="input-group">
+        <label>Ancho (m)</label>
+        <input type="number" [ngModel]="formPieza().ancho_m"
+               (ngModelChange)="actualizarPieza('ancho_m', $event)" min="0" step="0.01">
+      </div>
+
+      <div class="input-group">
+        <label>Largo (m)</label>
+        <input type="number" [ngModel]="formPieza().largo_m"
+               (ngModelChange)="actualizarPieza('largo_m', $event)" min="0" step="0.01">
+      </div>
+
+      <div class="input-group">
+        <label>Espesor (mm)</label>
+        <input type="number" [ngModel]="formPieza().espesor_mm"
+               (ngModelChange)="actualizarPieza('espesor_mm', $event)" min="0" step="0.1">
       </div>
     </div>
-  </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn-secondary" (click)="cerrarNuevaPieza()">Cancelar</button>
+      <button type="button" class="btn-primary" (click)="guardarNuevaPieza()" [disabled]="guardando()">
+        {{ guardando() ? 'Guardando...' : 'Registrar Rollo / Plancha' }}
+      </button>
+    </div>
+  </app-modal>
 }
 
 <!-- ═══ Modal: Registrar Consumo / Corte de Rollo / Plancha ════════════════ -->
 @if (modalConsumo(); as pieza) {
-  <div class="modal-overlay" (click)="cerrarConsumo()">
-    <div class="modal-content" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h3>✂ Registrar Corte / Consumo</h3>
-        <button class="btn-icon" (click)="cerrarConsumo()">✕</button>
-      </div>
-      <p class="modal-subtitle">
-        {{ piezaConsumo()?.codigo_identificador }} · Saldo disponible:
-        <strong>{{ piezaConsumo()?.saldo_restante }} {{ piezaConsumo()?.unidad_medida }}</strong>
-      </p>
+  <app-modal titulo="✂ Registrar Corte / Consumo" [conBotonCerrar]="true" (cerrar)="cerrarConsumo()">
+    <p class="modal-subtitle">
+      {{ piezaConsumo()?.codigo_identificador }} · Saldo disponible:
+      <strong>{{ piezaConsumo()?.saldo_restante }} {{ piezaConsumo()?.unidad_medida }}</strong>
+    </p>
 
-      <div class="form-grid">
-        <div class="input-group" style="grid-column: 1 / -1;">
-          <label>Descripción del Trabajo / Cliente *</label>
-          <input type="text" [ngModel]="formConsumo().trabajo_descripcion"
-                 (ngModelChange)="actualizarConsumo('trabajo_descripcion', $event)"
-                 placeholder="Ej: Stickers Barbería Trujillo, Placa Acrílico Odontología...">
-        </div>
-
-        <div class="input-group">
-          <label>Cantidad Consumida ({{ piezaConsumo()?.unidad_medida }}) *</label>
-          <input type="number" [ngModel]="formConsumo().cantidad_consumida"
-                 (ngModelChange)="actualizarConsumo('cantidad_consumida', $event)" min="0.01" step="0.1">
-        </div>
-
-        <div class="input-group">
-          <label>Monto Cobrado (S/)</label>
-          <input type="number" [ngModel]="formConsumo().monto_cobrado"
-                 (ngModelChange)="actualizarConsumo('monto_cobrado', $event)" min="0" step="0.50">
-        </div>
-
-        <div class="input-group">
-          <label>Merma / Desperdicio (opcional)</label>
-          <input type="number" [ngModel]="formConsumo().merma_desperdicio"
-                 (ngModelChange)="actualizarConsumo('merma_desperdicio', $event)" min="0" step="0.01">
-        </div>
-
-        <div class="input-group">
-          <label>Nota / Observación</label>
-          <input type="text" [ngModel]="formConsumo().nota"
-                 (ngModelChange)="actualizarConsumo('nota', $event)"
-                 placeholder="Observaciones del corte...">
-        </div>
+    <div class="form-grid">
+      <div class="input-group" style="grid-column: 1 / -1;">
+        <label>Descripción del Trabajo / Cliente *</label>
+        <input type="text" [ngModel]="formConsumo().trabajo_descripcion"
+               (ngModelChange)="actualizarConsumo('trabajo_descripcion', $event)"
+               placeholder="Ej: Stickers Barbería Trujillo, Placa Acrílico Odontología...">
       </div>
 
-      <div class="form-actions">
-        <button type="button" class="btn-secondary" (click)="cerrarConsumo()">Cancelar</button>
-        <button type="button" class="btn-primary" (click)="guardarConsumo()" [disabled]="guardando()">
-          {{ guardando() ? 'Guardando...' : 'Descontar y Guardar' }}
-        </button>
+      <div class="input-group">
+        <label>Cantidad Consumida ({{ piezaConsumo()?.unidad_medida }}) *</label>
+        <input type="number" [ngModel]="formConsumo().cantidad_consumida"
+               (ngModelChange)="actualizarConsumo('cantidad_consumida', $event)" min="0.01" step="0.1">
+      </div>
+
+      <div class="input-group">
+        <label>Monto Cobrado (S/)</label>
+        <input type="number" [ngModel]="formConsumo().monto_cobrado"
+               (ngModelChange)="actualizarConsumo('monto_cobrado', $event)" min="0" step="0.50">
+      </div>
+
+      <div class="input-group">
+        <label>Merma / Desperdicio (opcional)</label>
+        <input type="number" [ngModel]="formConsumo().merma_desperdicio"
+               (ngModelChange)="actualizarConsumo('merma_desperdicio', $event)" min="0" step="0.01">
+      </div>
+
+      <div class="input-group">
+        <label>Nota / Observación</label>
+        <input type="text" [ngModel]="formConsumo().nota"
+               (ngModelChange)="actualizarConsumo('nota', $event)"
+               placeholder="Observaciones del corte...">
       </div>
     </div>
-  </div>
+
+    <div class="form-actions">
+      <button type="button" class="btn-secondary" (click)="cerrarConsumo()">Cancelar</button>
+      <button type="button" class="btn-primary" (click)="guardarConsumo()" [disabled]="guardando()">
+        {{ guardando() ? 'Guardando...' : 'Descontar y Guardar' }}
+      </button>
+    </div>
+  </app-modal>
 }
 
 <!-- ═══ Modal: Detalle de Cortes / Trazabilidad por Rollo/Plancha ═══════════ -->
 @if (piezaDetalle(); as pd) {
-  <div class="modal-overlay" (click)="cerrarDetallePieza()">
-    <div class="modal-content" style="max-width:850px;" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h3>Historial de Cortes: {{ pd.codigo_identificador }}</h3>
-        <button class="btn-icon" (click)="cerrarDetallePieza()">✕</button>
-      </div>
-      <p class="modal-subtitle">
-        Material: <strong>{{ pd.material_nombre }}</strong> ·
-        Costo: <strong>S/ {{ pd.costo_adquisicion | number:'1.2-2' }}</strong> ·
-        Recaudado: <strong style="color:#16a34a;">S/ {{ pd.total_recaudado | number:'1.2-2' }}</strong> ·
-        Ganancia Neta: <strong [style.color]="pd.ganancia_neta >= 0 ? '#16a34a' : '#ef4444'">S/ {{ pd.ganancia_neta | number:'1.2-2' }}</strong>
-      </p>
+  <app-modal titulo="Historial de Cortes: {{ pd.codigo_identificador }}" claseContenido="modal-ancho" [conBotonCerrar]="true" (cerrar)="cerrarDetallePieza()">
+    <p class="modal-subtitle">
+      Material: <strong>{{ pd.material_nombre }}</strong> ·
+      Costo: <strong>S/ {{ pd.costo_adquisicion | number:'1.2-2' }}</strong> ·
+      Recaudado: <strong style="color:#16a34a;">S/ {{ pd.total_recaudado | number:'1.2-2' }}</strong> ·
+      Ganancia Neta: <strong [style.color]="pd.ganancia_neta >= 0 ? '#16a34a' : '#ef4444'">S/ {{ pd.ganancia_neta | number:'1.2-2' }}</strong>
+    </p>
 
-      @if ((pd.consumos?.length ?? 0) === 0) {
-        <p class="text-muted">Aún no se han registrado consumos en este rollo o plancha.</p>
-      } @else {
-        <div class="table-wrapper">
-          <table class="data-table">
-            <thead>
+    @if ((pd.consumos?.length ?? 0) === 0) {
+      <p class="text-muted">Aún no se han registrado consumos en este rollo o plancha.</p>
+    } @else {
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Trabajo / Cliente</th>
+              <th>Consumo</th>
+              <th>Saldo Anterior</th>
+              <th>Saldo Nuevo</th>
+              <th>Monto Cobrado</th>
+              <th>Merma</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (c of pd.consumos; track c.id) {
               <tr>
-                <th>Fecha</th>
-                <th>Trabajo / Cliente</th>
-                <th>Consumo</th>
-                <th>Saldo Anterior</th>
-                <th>Saldo Nuevo</th>
-                <th>Monto Cobrado</th>
-                <th>Merma</th>
+                <td class="fecha-cell">{{ formatearFecha(c.fecha, true) }}</td>
+                <td><strong>{{ c.trabajo_descripcion }}</strong></td>
+                <td>{{ c.cantidad_consumida }} {{ pd.unidad_medida }}</td>
+                <td>{{ c.saldo_anterior }}</td>
+                <td><strong>{{ c.saldo_nuevo }}</strong></td>
+                <td><strong style="color:#16a34a;">S/ {{ c.monto_cobrado | number:'1.2-2' }}</strong></td>
+                <td>{{ c.merma_desperdicio || 0 }}</td>
               </tr>
-            </thead>
-            <tbody>
-              @for (c of pd.consumos; track c.id) {
-                <tr>
-                  <td class="fecha-cell">{{ formatearFecha(c.fecha, true) }}</td>
-                  <td><strong>{{ c.trabajo_descripcion }}</strong></td>
-                  <td>{{ c.cantidad_consumida }} {{ pd.unidad_medida }}</td>
-                  <td>{{ c.saldo_anterior }}</td>
-                  <td><strong>{{ c.saldo_nuevo }}</strong></td>
-                  <td><strong style="color:#16a34a;">S/ {{ c.monto_cobrado | number:'1.2-2' }}</strong></td>
-                  <td>{{ c.merma_desperdicio || 0 }}</td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      }
-
-      <div class="form-actions">
-        <button type="button" class="btn-secondary" (click)="cerrarDetallePieza()">Cerrar</button>
+            }
+          </tbody>
+        </table>
       </div>
+    }
+
+    <div class="form-actions">
+      <button type="button" class="btn-secondary" (click)="cerrarDetallePieza()">Cerrar</button>
     </div>
-  </div>
+  </app-modal>
 }
