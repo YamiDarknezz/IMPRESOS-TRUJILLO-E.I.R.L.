@@ -103,6 +103,9 @@ class Orden(Base, TemporalMixin):
     pagos: Mapped[List["PagoOrden"]] = relationship(
         back_populates="orden", cascade="all, delete-orphan", lazy="selectin"
     )
+    comprobantes: Mapped[List["Comprobante"]] = relationship(
+        back_populates="orden", cascade="all, delete-orphan", lazy="selectin"
+    )
 
     @property
     def codigo(self) -> str:
@@ -214,6 +217,9 @@ class PagoOrden(Base, TemporalMixin):
         return self.estado_pago is None or self.estado_pago == EstadoPago.CONFORME
 
     orden = relationship("Orden", back_populates="pagos")
+    comprobantes: Mapped[List["Comprobante"]] = relationship(
+        back_populates="pago", cascade="all, delete-orphan", lazy="selectin"
+    )
     usuario = relationship("Usuario", foreign_keys=[registrado_por], lazy="joined")
     observador = relationship("Usuario", foreign_keys=[observado_por], lazy="joined")
 

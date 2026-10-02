@@ -3,6 +3,7 @@ import { provideRouter } from '@angular/router';
 import { signal } from '@angular/core';
 import { OrdenesService } from '../../core/services/ordenes.service';
 import { SesionService } from '../../core/services/sesion.service';
+import { ComprobantesService } from '../../core/services/comprobantes.service';
 import { OrdenesComponent } from './ordenes';
 import { Orden } from '../../core/models';
 
@@ -79,6 +80,14 @@ describe('OrdenesComponent', () => {
       providers: [
         provideRouter([]),
         { provide: OrdenesService, useValue: ordenesFalso },
+        {
+          provide: ComprobantesService,
+          useValue: {
+            subirVarias: vi.fn().mockResolvedValue({ subidos: [], fallidos: [] }),
+            urlDe: (c: { url: string }) => c.url,
+            resumen: () => '',
+          },
+        },
         { provide: SesionService, useValue: { esSupervisor: signal(true), puedeGestionar: () => true, puedeAvanzarEtapa: () => true } },
       ],
     });

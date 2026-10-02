@@ -1332,3 +1332,134 @@ select.date-filter-input:focus {
   flex-wrap: wrap;
   padding: 0.5rem 0.25rem 0.85rem;
 }
+
+/* ─── Adjuntos (capturas de pago, RF-11) ─────────────────────────────────── */
+
+/* El campo ocupa la fila entera: la lista de capturas no cabe en una columna. */
+.campo-completo {
+  grid-column: 1 / -1;
+}
+
+.lista-adjuntos {
+  list-style: none;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.adjunto {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--color-border, #d4d4d4);
+  border-radius: 6px;
+  background: var(--color-surface, #fafafa);
+}
+
+.adjunto-vista {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid var(--color-border, #d4d4d4);
+}
+
+.adjunto-icono {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+}
+
+.adjunto-nombre {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+
+.adjunto-peso {
+  font-size: 0.78rem;
+}
+
+/* Chip con el número de capturas adjuntas, junto a las acciones de la fila. */
+.btn-capturas {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.72rem;
+  border: 1px solid var(--color-border, #d4d4d4);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text-muted, #6b7280);
+  cursor: pointer;
+}
+
+.btn-capturas:hover {
+  color: var(--color-text, #111827);
+  border-color: var(--color-text-muted, #6b7280);
+}
+
+/* ─── Visor de capturas ──────────────────────────────────────────────────── */
+
+.modal-visor {
+  max-width: 900px;
+  width: 92vw;
+}
+
+.visor-capturas {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  padding: 0.5rem 0.15rem 1rem;
+}
+
+.captura-tarjeta {
+  margin: 0;
+  flex: 0 0 auto;
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.captura-tarjeta img {
+  width: 220px;
+  height: 300px;
+  object-fit: contain;
+  border: 1px solid var(--color-border, #d4d4d4);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.captura-tarjeta figcaption {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.75rem;
+}
+
+.captura-titulo {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.captura-pdf {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  height: 300px;
+  border: 1px dashed var(--color-border, #d4d4d4);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  text-decoration: none;
+}

@@ -32,6 +32,11 @@ services:
       JWT_SECRET: ${JWT_SECRET:-cambia-esta-clave-en-produccion}
       ADELANTO_MINIMO_PORCENTAJE: ${ADELANTO_MINIMO_PORCENTAJE:-50}
       IGV_PORCENTAJE: ${IGV_PORCENTAJE:-18}
+    volumes:
+      # Capturas de Yape o transferencia (RF-11). En desarrollo, un volumen
+      # con nombre: la API se reconstruye en cada cambio y las capturas no
+      # pueden irse con el contenedor.
+      - datos_comprobantes:/var/lib/impresos/comprobantes
     ports:
       - "8000:8080"
     depends_on:
@@ -47,4 +52,5 @@ services:
       - api
 
 volumes:
+  datos_comprobantes:
   datos_postgres:

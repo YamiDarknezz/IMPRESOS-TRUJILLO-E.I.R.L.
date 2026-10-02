@@ -46,6 +46,22 @@ export const ETIQUETA_UNIDAD: Record<UnidadNegocio, string> = {
   gigantografias: 'Gigantografías',
 };
 
+/** Captura de Yape o transferencia adjunta a una orden o a uno de sus pagos. */
+export interface Comprobante {
+  id: number;
+  orden_id: number;
+  /** Nulo cuando respalda el adelanto; con valor, el abono que respalda. */
+  pago_id: number | null;
+  nombre_original: string;
+  tipo_mime: string;
+  tamano_bytes: number;
+  subido_por: number | null;
+  subido_por_nombre: string;
+  subido_en: string;
+  /** Ruta en la API. Nunca apunta al almacén: sirve igual si cambia de sitio. */
+  url: string;
+}
+
 export interface PagoOrden {
   id: number;
   fecha: string;
@@ -59,6 +75,7 @@ export interface PagoOrden {
   nota_observacion?: string;
   observado_por?: string | null;
   observado_en?: string | null;
+  comprobantes?: Comprobante[];
 }
 
 export interface VentaRapidaData {
@@ -119,6 +136,8 @@ export interface Orden {
   igv: number;
   items: OrdenItem[];
   finanzas?: FinanzasOrden;
+  /** Todas las capturas de la orden: la del adelanto y la de cada abono. */
+  comprobantes?: Comprobante[];
   materiales?: {
     estimados: MaterialItem[];
     reales?: MaterialItem[];

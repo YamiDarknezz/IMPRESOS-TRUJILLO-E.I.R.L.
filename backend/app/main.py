@@ -20,7 +20,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.core.config import settings, validar_jwt_secret
+from app.core.config import settings, validar_almacenamiento, validar_jwt_secret
 from app.core.contexto import ip_cliente
 from app.core.errores import MENSAJE_ERROR_INTERNO, ErrorDeNegocio, logger
 from app.routers import (
@@ -28,6 +28,7 @@ from app.routers import (
     auth,
     caja,
     clientes,
+    comprobantes,
     finanzas,
     inventario,
     ordenes,
@@ -38,6 +39,15 @@ from app.routers import (
 
 logging.basicConfig(level=settings.log_level)
 validar_jwt_secret(settings.entorno, settings.jwt_secret)
+# Con ALMACENAMIENTO=s3 sin credenciales, la aplicación fallaría al primer
+# comprobante subido: mejor negarse a arrancar y decirlo (issue #67).
+validar_almacenamiento(
+    settings.almacenamiento,
+    settings.s3_endpoint,
+    settings.s3_bucket,
+    settings.s3_access_key,
+    settings.s3_secret_key,
+)
 
 app = FastAPI(
     title=settings.app_nombre,
@@ -113,7 +123,10 @@ async def manejar_error_inesperado(request: Request, exc: Exception):
 
 # ── Rutas ───────────────────────────────────────────────────────────────────
 
-for modulo in (auth, usuarios, clientes, unidades, inventario, productos, ordenes, finanzas, caja, auditoria):
+for modulo in (
+    auth, usuarios, clientes, unidades, inventario, productos, ordenes, comprobantes,
+    finanzas, caja, auditoria,
+):
     app.include_router(modulo.router)
 
 
