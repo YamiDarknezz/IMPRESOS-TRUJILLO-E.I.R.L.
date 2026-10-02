@@ -1,4 +1,4 @@
-import { Injectable, computed, inject } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { ApiService } from './api.service';
 import { InventarioService } from './inventario.service';
 import {
@@ -7,6 +7,7 @@ import {
   EstadoOrden,
   MaterialItem,
   MetodoPago,
+  MetricasOrdenes,
   Orden,
   RespuestaItem,
   TipoDocumento,
@@ -58,41 +59,49 @@ export class OrdenesService {
   private api = inject(ApiService);
   private inventario = inject(InventarioService);
 
-  private lista = new ListaRemota<Orden>(this.api, '/api/ordenes');
+  /** Se pide por bloques de 100 y el backend informa cuántas hay en total. */
+  private lista = new ListaRemota<Orden>(this.api, '/api/ordenes', 100);
 
   readonly ordenes = this.lista.items;
   readonly cargando = this.lista.cargando;
+  readonly totalOrdenes = this.lista.total;
+  readonly hayMasOrdenes = this.lista.hayMas;
+  readonly cargandoMasOrdenes = this.lista.cargandoMas;
 
   cargar = (forzar = false) => this.lista.cargar(forzar);
   recargar = () => this.lista.recargar();
+  cargarMasOrdenes = () => this.lista.cargarMas();
 
   /**
    * Recarga órdenes e inventario a la vez: toda operación sobre una orden
    * mueve stock, así que mostrar una sin la otra deja la pantalla inconsistente.
    */
   private async recargarConInventario(): Promise<void> {
-    await Promise.all([this.lista.recargar(), this.inventario.recargar()]);
+    await Promise.all([this.lista.recargar(), this.inventario.recargar(), this.cargarMetricas()]);
   }
 
   // ── Métricas del panel ───────────────────────────────────────────────────
+  // Las suma el backend sobre TODAS las órdenes (#27). Antes se calculaban
+  // aquí sobre la lista cargada, que viene recortada a 100: a partir de la
+  // orden 101 el panel mostraba números falsos sin avisar, y las órdenes
+  // antiguas ni siquiera eran alcanzables.
 
-  readonly enProceso = computed(() =>
-    this.ordenes().filter(o => estaEnPipeline(o)).length
-  );
+  readonly metricas = signal<MetricasOrdenes | null>(null);
 
-  readonly finalizadas = computed(() =>
-    this.ordenes().filter(o => ESTADOS_CERRADOS.includes(o.estado)).length
-  );
+  readonly enProceso = computed(() => this.metricas()?.en_proceso ?? 0);
+  readonly finalizadas = computed(() => this.metricas()?.finalizadas ?? 0);
+  readonly vencidas = computed(() => this.metricas()?.vencidas ?? 0);
+  readonly porCobrar = computed(() => this.metricas()?.por_cobrar ?? 0);
 
-  readonly vencidas = computed(() =>
-    this.ordenes().filter(o => estaEnPipeline(o) && o.fecha_entrega < hoyISO()).length
-  );
-
-  readonly porCobrar = computed(() =>
-    this.ordenes()
-      .filter(o => o.estado !== 'cancelada' && !o.finanzas?.pagado_totalmente)
-      .reduce((suma, o) => suma + (o.finanzas?.saldo_pendiente ?? 0), 0)
-  );
+  /** Pide los indicadores del panel. Se llama al cargar y tras cada operación. */
+  async cargarMetricas(): Promise<void> {
+    try {
+      const res = await this.api.get<RespuestaItem<MetricasOrdenes>>('/api/ordenes/metricas');
+      this.metricas.set(res.data);
+    } catch {
+      // Se conserva lo último que se supo: es preferible a mostrar ceros.
+    }
+  }
 
   // ── Operaciones ──────────────────────────────────────────────────────────
 

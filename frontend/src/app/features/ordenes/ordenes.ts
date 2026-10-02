@@ -47,6 +47,11 @@ export class OrdenesComponent {
   readonly cargando = this.ordenesService.cargando;
 
   // Métricas del panel (solo supervisión)
+  // Cuántas hay en total en el servidor y si quedan bloques por traer (#27).
+  readonly totalOrdenes = this.ordenesService.totalOrdenes;
+  readonly hayMasOrdenes = this.ordenesService.hayMasOrdenes;
+  readonly cargandoMas = this.ordenesService.cargandoMasOrdenes;
+
   readonly enProceso = this.ordenesService.enProceso;
   readonly finalizadas = this.ordenesService.finalizadas;
   readonly vencidas = this.ordenesService.vencidas;
@@ -107,6 +112,13 @@ export class OrdenesComponent {
 
   constructor() {
     this.ordenesService.cargar();
+    // Las tarjetas salen de las métricas del backend, no de la lista cargada.
+    this.ordenesService.cargarMetricas();
+  }
+
+  /** Trae el siguiente bloque de órdenes (la tabla viene paginada). */
+  cargarMas(): void {
+    void this.ordenesService.cargarMasOrdenes();
   }
 
   limpiarFiltroFecha(): void {
