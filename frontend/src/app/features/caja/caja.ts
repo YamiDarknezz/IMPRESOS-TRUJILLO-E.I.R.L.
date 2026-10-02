@@ -1,4 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -36,6 +37,8 @@ import { IconComponent } from '../../shared/componentes/icon/icon.component';
 export class CajaComponent {
   private cajaService = inject(CajaService);
   private ordenesService = inject(OrdenesService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
   sesion = inject(SesionService);
 
   readonly fecha = signal(hoyISO());
@@ -75,8 +78,12 @@ export class CajaComponent {
     { id: 'otro', nombre: 'Otro motivo' },
   ];
 
-  constructor() {
+    constructor() {
     this.cargar();
+    if (this.route.snapshot.queryParamMap.has('venta_rapida')) {
+      this.abrirModalVentaRapida();
+      this.router.navigate([], { queryParams: {}, replaceUrl: true }); // evita reabrir al refrescar
+    }
   }
 
   cambiarFecha(valor: string): void {

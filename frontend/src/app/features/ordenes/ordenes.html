@@ -88,7 +88,13 @@
   @if (sesion.esAdmin()) {
     <a class="btn-primary" routerLink="/ordenes/nueva">+ Nueva Orden</a>
   }
-</div>
+
+  @if (sesion.puedeGestionarOrdenes()) {
+    <a class="btn-primary btn-success" routerLink="/caja" [queryParams]="{ venta_rapida: 1 }">
+      <app-icon name="plus" [size]="16" /> Venta Rápida / Mostrador
+    </a>
+  }
+</div>                            
 
 <!-- ═══ Tabla ═════════════════════════════════════════════════════════════ -->
 <div class="table-card card">
@@ -103,7 +109,12 @@
       @if (busqueda()) {
         <p>No se encontraron órdenes para "{{ busqueda() }}".</p>
         <button class="btn-secondary btn-sm" (click)="busqueda.set('')">Limpiar búsqueda</button>
-      } @else {
+      } @else if (hayFiltroFecha()) {
+  <p>No hay órdenes en el rango de fechas seleccionado.</p>
+  <button class="btn-secondary btn-sm" (click)="limpiarFiltroFecha()">
+    Limpiar fechas
+  </button>
+} @else {
         <p>{{ filtroEstado() === 'todos' ? 'Aún no hay órdenes registradas.' : 'No hay órdenes con este estado.' }}</p>
         @if (filtroEstado() === 'todos' && sesion.esAdmin()) {
           <a class="btn-primary" routerLink="/ordenes/nueva">+ Crear primera orden</a>
