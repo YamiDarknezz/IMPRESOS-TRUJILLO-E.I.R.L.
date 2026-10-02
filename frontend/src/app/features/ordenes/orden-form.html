@@ -245,7 +245,7 @@
         <label class="checkbox-label">
           <input type="checkbox" [ngModel]="form().incluyeIgv" name="incluyeIgv"
                  (ngModelChange)="actualizar('incluyeIgv', $event)">
-          Incluye IGV (18%)
+          Incluye IGV ({{ igvPorcentaje() }}%)
         </label>
       </div>
 
@@ -285,7 +285,7 @@
           <span class="field-hint">Cliente corporativo: puede autorizarse sin adelanto mínimo.</span>
         } @else {
           <span class="field-hint">
-            Sin adelanto no se inicia el trabajo. Mínimo: S/ {{ adelantoMinimo() | number:'1.2-2' }} (50%).
+            Sin adelanto no se inicia el trabajo. Mínimo: S/ {{ adelantoMinimo() | number:'1.2-2' }} ({{ adelantoPorcentaje() }}%).
           </span>
         }
         @if (errores()['adelanto']) {
@@ -301,8 +301,8 @@
       <div class="input-group">
         <label>Método del adelanto</label>
         <select [ngModel]="form().metodoPago" (ngModelChange)="actualizar('metodoPago', $event)" name="metodoPago">
-          @for (m of metodosPago; track m) {
-            <option [value]="m">{{ etiquetaMetodo[m] }}</option>
+          @for (m of metodosPago(); track m) {
+            <option [value]="m">{{ etiquetaMetodo()[m] }}</option>
           }
         </select>
       </div>

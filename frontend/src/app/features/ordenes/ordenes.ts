@@ -26,6 +26,7 @@ import {
 } from '../../core/models';
 import { formatearFecha } from '../../shared/utilidades/fechas';
 import { mensajeDeError } from '../../shared/utilidades/errores';
+import { etiquetasMetodo, metodosPago as metodosDelServidor } from '../../core/estado/catalogos';
 import {
   CapturaElegida,
   capturasDesdeArchivos,
@@ -109,9 +110,9 @@ export class OrdenesComponent {
 
   // Helpers reexpuestos para la plantilla
   readonly etiquetaEstado = ETIQUETA_ESTADO;
-  readonly etiquetaMetodo = ETIQUETA_METODO;
+  readonly etiquetaMetodo = etiquetasMetodo;
   readonly etiquetaUnidad = ETIQUETA_UNIDAD;
-  readonly metodosPago = METODOS_PAGO;
+  readonly metodosPago = metodosDelServidor;
   readonly formatearFecha = formatearFecha;
   readonly estaEnPipeline = estaEnPipeline;
   readonly estaVencida = estaVencida;

@@ -1,6 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { AuditoriaService } from '../../core/services/auditoria.service';
+import { hidratarConfiguracion } from '../../core/estado/catalogos';
+import { CATALOGOS_DE_PRUEBA, PARAMETROS_DE_PRUEBA } from '../../core/estado/catalogos.prueba';
 import { AuditoriaComponent } from './auditoria';
 import { EntradaAuditoria } from '../../core/models';
 
@@ -13,6 +15,9 @@ describe('AuditoriaComponent', () => {
   };
 
   beforeEach(() => {
+    // Las etiquetas de las acciones vienen del catálogo del servidor.
+    hidratarConfiguracion({ parametros: PARAMETROS_DE_PRUEBA, catalogos: CATALOGOS_DE_PRUEBA });
+
     servicioFalso = {
       entradas: signal([]),
       cargando: signal(false),

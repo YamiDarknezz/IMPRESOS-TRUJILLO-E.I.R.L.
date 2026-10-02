@@ -172,7 +172,7 @@
           <thead>
             <tr>
               <th>Usuario</th>
-              @for (m of metodos; track m) { <th>{{ etiquetaMetodo[m] }}</th> }
+              @for (m of metodos(); track m) { <th>{{ etiquetaMetodo()[m] }}</th> }
               <th>Total</th>
             </tr>
           </thead>
@@ -180,7 +180,7 @@
             @for (fila of datos.por_usuario; track fila.usuario_id ?? 0) {
               <tr>
                 <td><strong>{{ fila.nombre }}</strong></td>
-                @for (m of metodos; track m) {
+                @for (m of metodos(); track m) {
                   <td>S/ {{ montoDe(fila, m) | number:'1.2-2' }}</td>
                 }
                 <td><strong>S/ {{ fila.total | number:'1.2-2' }}</strong></td>
@@ -334,7 +334,7 @@
         <div class="form-group" style="margin-bottom:1rem;">
           <label class="form-label">Motivo de observación</label>
           <select [ngModel]="motivoObservacion()" (ngModelChange)="motivoObservacion.set($event)" class="form-input">
-            @for (m of motivosObservacion; track m.id) {
+            @for (m of motivosObservacion(); track m.id) {
               <option [value]="m.id">{{ m.nombre }}</option>
             }
           </select>
@@ -381,8 +381,8 @@
           <div class="form-group" style="flex:1;">
             <label class="form-label">Método de Pago</label>
             <select [ngModel]="vrMetodo()" (ngModelChange)="vrMetodo.set($event)" class="form-input">
-              @for (m of metodos; track m) {
-                <option [value]="m">{{ etiquetaMetodo[m] }}</option>
+              @for (m of metodos(); track m) {
+                <option [value]="m">{{ etiquetaMetodo()[m] }}</option>
               }
             </select>
           </div>
