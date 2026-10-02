@@ -1,15 +1,19 @@
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { leerToken } from '../services/sesion-almacen';
+import { SesionService } from '../services/sesion.service';
 
 /**
  * Exige sesión iniciada.
  *
- * Es solo la puerta de la interfaz: el permiso real lo aplica el backend en
- * cada petición.
+ * La comprobación es contra el servidor: el perfil lo devuelve `/api/auth/me`
+ * y su cookie HttpOnly, así que no hay nada que el navegador pueda fabricar
+ * (#48). Es solo la puerta de la interfaz: el permiso real lo aplica el
+ * backend en cada petición.
  */
-export const authGuard = () => {
+export const authGuard = async () => {
   const router = inject(Router);
-  if (leerToken()) return true;
-  return router.createUrlTree(['/login']);
+  const sesion = inject(SesionService);
+
+  await sesion.cargar();
+  return sesion.usuario() ? true : router.createUrlTree(['/login']);
 };
