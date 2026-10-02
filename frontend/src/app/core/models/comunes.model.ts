@@ -22,6 +22,8 @@ export interface MaterialItem {
 export interface RespuestaLista<T> {
   status: string;
   data: T[];
+  /** Total de registros que cumplen el filtro; lo informan los listados paginados. */
+  total?: number | null;
 }
 
 /** Forma en que la API devuelve un solo elemento. */

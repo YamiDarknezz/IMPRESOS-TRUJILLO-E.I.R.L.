@@ -10,7 +10,6 @@ import {
   estaVencida,
   filtrarOrdenes,
 } from './ordenes.service';
-import { hoyISO } from '../../shared/utilidades/fechas';
 import { Orden } from '../models';
 
 function ordenBase(sobrescribe: Partial<Orden> = {}): Orden {
@@ -63,7 +62,7 @@ describe('OrdenesService', () => {
     await servicio.crear(datos);
 
     expect(apiFalsa.post).toHaveBeenCalledWith('/api/ordenes', datos);
-    expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes');
+    expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes?limit=100&offset=0');
     expect(inventarioFalso.recargar).toHaveBeenCalledTimes(1);
   });
 
@@ -150,28 +149,78 @@ describe('OrdenesService', () => {
     });
   });
 
-  describe('métricas del panel', () => {
-    it('cuenta correctamente en proceso, finalizadas, vencidas y por cobrar', async () => {
-      const hoy = hoyISO();
-      const datos: Orden[] = [
-        ordenBase({ id: 1, estado: 'pendiente', fecha_entrega: '2020-01-01' }), // vencida
-        ordenBase({ id: 2, estado: 'en_produccion', fecha_entrega: '2099-01-01' }), // en proceso, no vencida
-        ordenBase({ id: 3, estado: 'entregada', fecha_entrega: hoy }), // finalizada
-        ordenBase({
-          id: 4,
-          estado: 'finalizada',
-          finanzas: { precio_total: 200, subtotal: 170, igv: 30, adelanto_pago: 0, saldo_pendiente: 80, metodo_pago_adelanto: 'efectivo', pagado_totalmente: false },
-        }),
-        ordenBase({ id: 5, estado: 'cancelada' }),
-      ];
-      apiFalsa.get.mockResolvedValue({ status: 'success', data: datos });
+  describe('métricas del panel (las suma el backend)', () => {
+    const metricas = {
+      total: 120,
+      en_proceso: 7,
+      finalizadas: 5,
+      vencidas: 2,
+      por_cobrar: 310.5,
+    };
+
+    it('cargarMetricas() las pide al endpoint y las expone', async () => {
+      apiFalsa.get.mockRejectedValue(new Error('no debería pedir la lista aquí'));
+      apiFalsa.get.mockResolvedValue({ status: 'success', data: metricas });
+
+      await servicio.cargarMetricas();
+
+      expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes/metricas');
+      expect(servicio.enProceso()).toBe(7);
+      expect(servicio.finalizadas()).toBe(5);
+      expect(servicio.vencidas()).toBe(2);
+      expect(servicio.porCobrar()).toBe(310.5);
+    });
+
+    it('sin datos del servidor muestra ceros, no números calculados en el navegador', () => {
+      expect(servicio.enProceso()).toBe(0);
+      expect(servicio.finalizadas()).toBe(0);
+      expect(servicio.vencidas()).toBe(0);
+      expect(servicio.porCobrar()).toBe(0);
+    });
+
+    it('si la petición falla, conserva lo último que se supo', async () => {
+      apiFalsa.get.mockResolvedValueOnce({ status: 'success', data: metricas });
+      await servicio.cargarMetricas();
+
+      apiFalsa.get.mockRejectedValueOnce(new Error('sin red'));
+      await servicio.cargarMetricas();
+
+      expect(servicio.enProceso()).toBe(7);
+      expect(servicio.porCobrar()).toBe(310.5);
+    });
+  });
+
+  describe('paginación del listado', () => {
+    it('cargar() pide el primer bloque e informa cuántas hay en total', async () => {
+      apiFalsa.get.mockResolvedValue({ status: 'success', data: [ordenBase()], total: 120 });
 
       await servicio.cargar();
 
-      expect(servicio.enProceso()).toBe(2); // pendiente (id1) + en_produccion (id2)
-      expect(servicio.finalizadas()).toBe(2); // entregada (id3) + finalizada (id4)
-      expect(servicio.vencidas()).toBe(1); // solo id1
-      expect(servicio.porCobrar()).toBe(80); // solo id4 aporta saldo pendiente
+      expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes?limit=100&offset=0');
+      expect(servicio.totalOrdenes()).toBe(120);
+      expect(servicio.hayMasOrdenes()).toBe(true);
+    });
+
+    it('cargarMasOrdenes() trae el bloque siguiente y lo agrega al final', async () => {
+      apiFalsa.get.mockResolvedValue({ status: 'success', data: [ordenBase({ id: 1 })], total: 2 });
+      await servicio.cargar();
+
+      apiFalsa.get.mockResolvedValue({ status: 'success', data: [ordenBase({ id: 2 })], total: 2 });
+      await servicio.cargarMasOrdenes();
+
+      expect(apiFalsa.get).toHaveBeenLastCalledWith('/api/ordenes?limit=100&offset=1');
+      expect(servicio.ordenes().map(o => o.id)).toEqual([1, 2]);
+      expect(servicio.hayMasOrdenes()).toBe(false);
+    });
+
+    it('si no hay más, no vuelve a pedir', async () => {
+      apiFalsa.get.mockResolvedValue({ status: 'success', data: [ordenBase()], total: 1 });
+      await servicio.cargar();
+      apiFalsa.get.mockClear();
+
+      await servicio.cargarMasOrdenes();
+
+      expect(apiFalsa.get).not.toHaveBeenCalled();
     });
   });
 });

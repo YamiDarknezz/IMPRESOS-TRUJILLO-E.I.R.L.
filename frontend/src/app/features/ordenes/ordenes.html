@@ -7,7 +7,7 @@
       </div>
       <div class="stat-body">
         <span class="stat-label">Total órdenes</span>
-        <span class="stat-value">{{ ordenes().length }}</span>
+        <span class="stat-value">{{ totalOrdenes() ?? ordenes().length }}</span>
       </div>
     </div>
     <div class="stat-card">
@@ -95,6 +95,21 @@
     </a>
   }
 </div>                            
+
+<!-- Aviso de recorte: la tabla trae un bloque y el backend informa el total.
+     Sin esto, con más de 100 órdenes la pantalla parecía completa (#27). -->
+@if (totalOrdenes() !== null && !cargando()) {
+  <div class="listado-pie">
+    <span class="text-muted">
+      Mostrando {{ ordenes().length }} de {{ totalOrdenes() }} órdenes
+    </span>
+    @if (hayMasOrdenes()) {
+      <button class="btn-secondary btn-sm" (click)="cargarMas()" [disabled]="cargandoMas()">
+        {{ cargandoMas() ? 'Cargando...' : 'Ver más' }}
+      </button>
+    }
+  </div>
+}
 
 <!-- ═══ Tabla ═════════════════════════════════════════════════════════════ -->
 <div class="table-card card">

@@ -36,6 +36,11 @@ describe('OrdenesComponent', () => {
   let ordenesFalso: {
     ordenes: ReturnType<typeof signal<Orden[]>>;
     cargando: ReturnType<typeof signal<boolean>>;
+    totalOrdenes: ReturnType<typeof signal<number | null>>;
+    hayMasOrdenes: ReturnType<typeof signal<boolean>>;
+    cargandoMasOrdenes: ReturnType<typeof signal<boolean>>;
+    cargarMetricas: ReturnType<typeof vi.fn>;
+    cargarMasOrdenes: ReturnType<typeof vi.fn>;
     enProceso: ReturnType<typeof signal<number>>;
     finalizadas: ReturnType<typeof signal<number>>;
     vencidas: ReturnType<typeof signal<number>>;
@@ -52,6 +57,12 @@ describe('OrdenesComponent', () => {
     ordenesFalso = {
       ordenes: signal([ordenBase()]),
       cargando: signal(false),
+      // La tabla viene paginada y las tarjetas salen del backend (#27).
+      totalOrdenes: signal(120),
+      hayMasOrdenes: signal(true),
+      cargandoMasOrdenes: signal(false),
+      cargarMetricas: vi.fn().mockResolvedValue(undefined),
+      cargarMasOrdenes: vi.fn().mockResolvedValue(undefined),
       enProceso: signal(1),
       finalizadas: signal(0),
       vencidas: signal(0),
@@ -73,9 +84,19 @@ describe('OrdenesComponent', () => {
     });
   });
 
-  it('al crearse, carga las órdenes', () => {
+  it('al crearse, carga las órdenes y las métricas del panel', () => {
     TestBed.createComponent(OrdenesComponent);
     expect(ordenesFalso.cargar).toHaveBeenCalledTimes(1);
+    // Las tarjetas ya no se calculan sobre la lista cargada: vienen del backend.
+    expect(ordenesFalso.cargarMetricas).toHaveBeenCalledTimes(1);
+  });
+
+  it('cargarMas() pide el siguiente bloque de órdenes', () => {
+    const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
+
+    componente.cargarMas();
+
+    expect(ordenesFalso.cargarMasOrdenes).toHaveBeenCalledTimes(1);
   });
 
   it('ordenesFiltradas() aplica el filtro de estado y búsqueda combinados', () => {

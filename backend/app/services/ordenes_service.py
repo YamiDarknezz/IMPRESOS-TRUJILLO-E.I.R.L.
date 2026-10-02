@@ -12,9 +12,9 @@ Concentra las decisiones que definen el sistema (SRS, Reglas de Negocio):
 """
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Optional
+from typing import Any, Optional
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auditoria import registrar
@@ -230,24 +230,84 @@ async def obtener(sesion: AsyncSession, id_orden: int, usuario: Usuario) -> Orde
     return orden
 
 
+def _aplicar_alcance(consulta, usuario: Usuario):
+    """
+    Limita la consulta a lo que este usuario puede ver.
+
+    El trabajador solo ve sus órdenes asignadas y las que no tienen dueño. Se
+    usa en el listado, en el total y en las métricas: si cada uno aplicara su
+    propio filtro, los números del panel no cuadrarían con la tabla (#27).
+    """
+    if not ve_todas_las_ordenes(usuario):
+        return consulta.where(
+            or_(Orden.asignado_a == usuario.id, Orden.asignado_a.is_(None))
+        )
+    return consulta
+
+
 async def listar(
     sesion: AsyncSession,
     usuario: Usuario,
     estado: Optional[EstadoOrden] = None,
     limite: int = 200,
+    desplazamiento: int = 0,
 ) -> list[Orden]:
-    consulta = select(Orden).order_by(Orden.creado_en.desc()).limit(limite)
-
+    consulta = select(Orden).order_by(Orden.creado_en.desc())
     if estado is not None:
         consulta = consulta.where(Orden.estado == estado)
-
-    if not ve_todas_las_ordenes(usuario):
-        # El trabajador solo ve sus órdenes asignadas y las que no tienen dueño.
-        consulta = consulta.where(
-            or_(Orden.asignado_a == usuario.id, Orden.asignado_a.is_(None))
-        )
+    consulta = _aplicar_alcance(consulta, usuario).limit(limite).offset(desplazamiento)
 
     return list((await sesion.execute(consulta)).scalars())
+
+
+async def contar(
+    sesion: AsyncSession,
+    usuario: Usuario,
+    estado: Optional[EstadoOrden] = None,
+) -> int:
+    """Cuántas órdenes cumplen el filtro (para 'mostrando N de M' y el panel)."""
+    consulta = select(func.count()).select_from(Orden)
+    if estado is not None:
+        consulta = consulta.where(Orden.estado == estado)
+    consulta = _aplicar_alcance(consulta, usuario)
+    return int((await sesion.execute(consulta)).scalar_one())
+
+
+async def metricas(sesion: AsyncSession, usuario: Usuario) -> dict[str, Any]:
+    """
+    Indicadores del panel, sumados en la base.
+
+    Antes los calculaba el navegador sobre la lista que devuelve `listar()`,
+    limitada a 100 registros: a partir de la orden 101 el panel mostraba
+    números falsos sin avisar (#27). El alcance es el mismo que el del listado,
+    así que un operario ve las cuentas de lo suyo.
+    """
+    hoy_peru = a_fecha_peru(ahora_utc())
+
+    async def contar_donde(*condiciones) -> int:
+        consulta = select(func.count()).select_from(Orden).where(*condiciones)
+        consulta = _aplicar_alcance(consulta, usuario)
+        return int((await sesion.execute(consulta)).scalar_one())
+
+    por_cobrar = select(
+        func.coalesce(func.sum(Orden.saldo_pendiente), 0)
+    ).where(
+        Orden.estado != EstadoOrden.CANCELADA,
+        Orden.pagado_totalmente.is_(False),
+    )
+    por_cobrar = _aplicar_alcance(por_cobrar, usuario)
+    saldo = (await sesion.execute(por_cobrar)).scalar_one()
+
+    return {
+        "total": await contar_donde(),
+        "en_proceso": await contar_donde(Orden.estado.in_(ESTADOS_PIPELINE)),
+        "finalizadas": await contar_donde(Orden.estado.in_(ESTADOS_CERRADOS)),
+        "vencidas": await contar_donde(
+            Orden.estado.in_(ESTADOS_PIPELINE), Orden.fecha_entrega < hoy_peru
+        ),
+        # Se redondea a centavos: es dinero que ya viene sumado de la base.
+        "por_cobrar": float(_redondear(_decimal(saldo))),
+    }
 
 
 async def _resolver_cliente(sesion: AsyncSession, data: OrdenCreateData) -> Cliente:

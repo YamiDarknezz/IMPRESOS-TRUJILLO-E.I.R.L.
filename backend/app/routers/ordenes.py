@@ -41,9 +41,26 @@ async def listar_ordenes(
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
     estado: Optional[EstadoOrden] = Query(default=None),
     limit: int = Query(default=LIMITE_POR_DEFECTO, le=LIMITE_MAXIMO),
+    offset: int = Query(default=0, ge=0),
 ):
-    ordenes = await ordenes_service.listar(sesion, usuario, estado, limit)
-    return {"status": "success", "data": [serializar_orden(o) for o in ordenes]}
+    """
+    Órdenes visibles para quien pregunta, con su total.
+
+    El `total` va aparte del bloque: sin él, la pantalla no puede decir si la
+    lista viene recortada (#27).
+    """
+    ordenes = await ordenes_service.listar(sesion, usuario, estado, limit, offset)
+    total = await ordenes_service.contar(sesion, usuario, estado)
+    return {"status": "success", "data": [serializar_orden(o) for o in ordenes], "total": total}
+
+
+@router.get("/metricas")
+async def metricas_ordenes(
+    usuario: Annotated[Usuario, Depends(usuario_actual)],
+    sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
+):
+    """Indicadores del panel de órdenes, sumados en la base (no en el navegador)."""
+    return {"status": "success", "data": await ordenes_service.metricas(sesion, usuario)}
 
 
 @router.get("/{id_orden}")
