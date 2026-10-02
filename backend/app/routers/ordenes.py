@@ -10,7 +10,13 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import obtener_sesion
-from app.core.security import gestion_ordenes, personal_venta, supervision, usuario_actual
+from app.core.security import (
+    gestion_ordenes,
+    personal_produccion,
+    personal_venta,
+    supervision,
+    usuario_actual,
+)
 from app.models import EstadoOrden, Usuario
 from app.schemas import (
     AsignarData,
@@ -107,7 +113,7 @@ async def asignar_orden(
 async def cambiar_estado(
     id_orden: int,
     data: CambiarEstadoData,
-    usuario: Annotated[Usuario, Depends(personal_venta)],
+    usuario: Annotated[Usuario, Depends(personal_produccion)],
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
 ):
     """Avanza (o corrige) la etapa de producción de una orden."""
@@ -119,11 +125,11 @@ async def cambiar_estado(
 async def confirmar_pago(
     id_orden: int,
     data: ConfirmarPagoData,
-    usuario: Annotated[Usuario, Depends(personal_venta)],
+    usuario: Annotated[Usuario, Depends(personal_produccion)],
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
 ):
     orden = await ordenes_service.confirmar_pago(
-        sesion, id_orden, data.metodo_pago, data.referencia, usuario
+        sesion, id_orden, data.metodo_pago, data.referencia, usuario, monto=data.monto
     )
     return {"status": "success", "data": serializar_orden(orden)}
 
@@ -131,7 +137,7 @@ async def confirmar_pago(
 @router.post("/completar")
 async def completar_orden(
     data: OrdenCompletionData,
-    usuario: Annotated[Usuario, Depends(personal_venta)],
+    usuario: Annotated[Usuario, Depends(personal_produccion)],
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
 ):
     """Cierra la producción reportando el consumo real de materiales."""

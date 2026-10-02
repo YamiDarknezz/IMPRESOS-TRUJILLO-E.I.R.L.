@@ -1,16 +1,16 @@
 """Esquemas de usuarios."""
 from typing import Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from app.models import Rol
 from app.schemas.auth import LONGITUD_MAXIMA_CONTRASENA
-from app.schemas.comunes import exigir_texto, limpiar
+from app.schemas.comunes import exigir_password_compleja, exigir_texto, limpiar
 
 
 class UsuarioCreateData(BaseModel):
-    nombre: str
-    email: str
+    nombre: str = Field(max_length=120)
+    email: str = Field(max_length=150)
     password: str
     rol: Rol = Rol.OPERARIO
 
@@ -21,16 +21,12 @@ class UsuarioCreateData(BaseModel):
 
     @field_validator("password")
     @classmethod
-    def _longitud(cls, v: str) -> str:
-        if len(v) < 8:
-            raise ValueError("La contraseña debe tener al menos 8 caracteres")
-        if len(v.encode("utf-8")) > LONGITUD_MAXIMA_CONTRASENA:
-            raise ValueError("La contraseña es demasiado larga")
-        return v
+    def _complejidad(cls, v: str) -> str:
+        return exigir_password_compleja(v, LONGITUD_MAXIMA_CONTRASENA)
 
 
 class UsuarioUpdateData(BaseModel):
-    nombre: Optional[str] = None
+    nombre: Optional[str] = Field(default=None, max_length=120)
     rol: Optional[Rol] = None
     activo: Optional[bool] = None
 

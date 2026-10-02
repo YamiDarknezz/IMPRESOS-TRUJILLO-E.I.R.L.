@@ -202,6 +202,17 @@ class PagoOrden(Base, TemporalMixin):
         DateTime(timezone=True), nullable=True
     )
 
+    @property
+    def es_conforme(self) -> bool:
+        """
+        ¿Este pago cuenta como dinero real recibido?
+
+        Única fuente de verdad para Caja, Finanzas y el saldo de la orden
+        (issues #15/#16): un pago OBSERVADO o ANULADO no es dinero válido,
+        aunque siga en el historial para la auditoría.
+        """
+        return self.estado_pago is None or self.estado_pago == EstadoPago.CONFORME
+
     orden = relationship("Orden", back_populates="pagos")
     usuario = relationship("Usuario", foreign_keys=[registrado_por], lazy="joined")
     observador = relationship("Usuario", foreign_keys=[observado_por], lazy="joined")

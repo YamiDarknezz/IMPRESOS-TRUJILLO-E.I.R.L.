@@ -6,8 +6,8 @@ de creación de la orden y lo cobrado por la fecha real de cada pago.
 from datetime import timedelta
 
 from app.core.fechas import a_fecha_peru, ahora_utc, rango_dia_peru_a_utc
-from app.models import MetodoPago, UnidadNegocio
-from app.services import finanzas_service, ordenes_service
+from app.models import MetodoPago, MotivoObservacionPago, UnidadNegocio
+from app.services import caja_service, finanzas_service, ordenes_service
 from tests.apoyo import datos_orden
 
 
@@ -114,3 +114,31 @@ async def test_trabajador_solo_ve_sus_ordenes(sesion, admin, operario, material,
     assert resumen["total_contratos"] == 100
     assert resumen["total_ordenes"] == 1
     assert len(resumen["por_trabajador"]) == 1
+
+
+async def test_pago_observado_no_cuenta_como_ingreso(sesion, admin, material, cliente):
+    """
+    Issue #16: Finanzas no comprobaba `estado_pago`, así que un cobro
+    observado (dinero que el negocio ya sabe que no existe) sumaba como
+    ingreso recibido aunque Caja, para el mismo día, ya lo excluyera.
+    """
+    orden = await ordenes_service.crear_orden(
+        sesion,
+        datos_orden(material.id, cliente_id=cliente.id, precio_total=100, adelanto_pago=100),
+        admin,
+    )
+    pago = orden.pagos[0]
+
+    hoy = a_fecha_peru(ahora_utc())
+    antes = await finanzas_service.resumen(sesion, admin, desde=hoy, hasta=hoy)
+    assert antes["total_ingresos"] == 100
+    assert antes["total_adelantos"] == 100
+
+    await caja_service.observar_pago(
+        sesion, pago.id, MotivoObservacionPago.YAPE_FALSO, "Captura editada", admin
+    )
+
+    despues = await finanzas_service.resumen(sesion, admin, desde=hoy, hasta=hoy)
+    assert despues["total_ingresos"] == 0
+    assert despues["total_adelantos"] == 0
+    assert despues["por_metodo"] == {}

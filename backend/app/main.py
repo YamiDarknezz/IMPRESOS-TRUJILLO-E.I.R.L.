@@ -15,11 +15,12 @@ le llega un mensaje genérico.
 """
 import logging
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.core.config import settings
+from app.core.config import settings, validar_jwt_secret
 from app.core.contexto import ip_cliente
 from app.core.errores import MENSAJE_ERROR_INTERNO, ErrorDeNegocio, logger
 from app.routers import (
@@ -36,6 +37,7 @@ from app.routers import (
 )
 
 logging.basicConfig(level=settings.log_level)
+validar_jwt_secret(settings.entorno, settings.jwt_secret)
 
 app = FastAPI(
     title=settings.app_nombre,
@@ -56,9 +58,17 @@ app.add_middleware(
 
 @app.middleware("http")
 async def registrar_ip(request: Request, call_next):
-    """Deja la IP del cliente disponible para el registro de auditoría."""
-    reenviada = request.headers.get("x-forwarded-for", "")
-    ip_cliente.set((reenviada.split(",")[0].strip() if reenviada else None) or (request.client.host if request.client else ""))
+    """
+    Deja la IP del cliente disponible para el registro de auditoría.
+
+    `X-Forwarded-For` no sirve como fuente: nginx lo AMPLÍA en vez de
+    reemplazarlo (`$proxy_add_x_forwarded_for`), así que el primer valor
+    sigue siendo el que decide mandar el cliente. `X-Real-IP` en cambio lo
+    fija nginx con `$remote_addr` (`frontend/nginx.conf`), su propio socket,
+    y lo sobreescribe sin importar qué mande el cliente.
+    """
+    ip_real = request.headers.get("x-real-ip", "").strip()
+    ip_cliente.set(ip_real or (request.client.host if request.client else ""))
     return await call_next(request)
 
 
@@ -71,6 +81,24 @@ async def manejar_error_de_negocio(request: Request, exc: ErrorDeNegocio):
     muestra, porque le dice exactamente qué corregir.
     """
     return JSONResponse(status_code=exc.estado_http, content={"detail": str(exc)})
+
+
+@app.exception_handler(RequestValidationError)
+async def manejar_error_de_validacion(request: Request, exc: RequestValidationError):
+    """
+    FastAPI manda el `detail` de un 422 como una LISTA de errores; el cliente
+    (`mensajeDeError`, en el frontend) espera un texto. Sin este handler,
+    ninguna validación de esquema (Pydantic) le llega al usuario: solo ve
+    "Error al guardar...", el mensaje de respaldo genérico.
+    """
+    mensajes = []
+    for error in exc.errors():
+        campo = ".".join(str(parte) for parte in error["loc"] if parte != "body")
+        mensajes.append(f"{campo}: {error['msg']}" if campo else error["msg"])
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        content={"detail": " | ".join(mensajes)},
+    )
 
 
 @app.exception_handler(Exception)

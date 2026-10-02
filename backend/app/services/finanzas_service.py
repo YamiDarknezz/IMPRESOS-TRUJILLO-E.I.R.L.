@@ -119,6 +119,11 @@ async def resumen(
         for pago in orden.pagos:
             if not dentro_del_rango(pago.fecha, desde, hasta):
                 continue
+            if not pago.es_conforme:
+                # Un pago observado/anulado es dinero que el negocio ya sabe
+                # que no existe; Caja lo excluye del arqueo (issue #16), y
+                # Finanzas no puede seguir contándolo como ingreso recibido.
+                continue
 
             monto = float(pago.monto)
             metodo = pago.metodo.value if pago.metodo else METODO_SIN_ESPECIFICAR

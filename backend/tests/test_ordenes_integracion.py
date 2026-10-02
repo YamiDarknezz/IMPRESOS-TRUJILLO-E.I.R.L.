@@ -7,7 +7,7 @@ reajuste, cancelación, reporte de consumo real, candado de entrega y permisos.
 import pytest
 from sqlalchemy import select
 
-from app.core.errores import Conflicto, ErrorDeNegocio, PermisoDenegado
+from app.core.errores import Conflicto, ErrorDeNegocio, NoEncontrado, PermisoDenegado
 from app.models import (
     EstadoOrden,
     MetodoPago,
@@ -52,6 +52,40 @@ async def test_crear_orden_sin_adelanto_falla(sesion, admin, material):
         )
     assert "adelanto mínimo" in str(exc.value).lower()
     assert float(material.stock_actual) == 10  # no se reservó nada
+
+
+async def test_corporativo_exime_el_adelanto_solo_si_se_selecciono_por_id(
+    sesion, admin, material, cliente_corporativo
+):
+    """
+    Issue #36: la exención de RN-01 es del cliente que se eligió a propósito
+    (cliente_id explícito), no de cualquier orden cuyo campo de texto libre
+    coincida con el nombre de un cliente corporativo ya registrado.
+    """
+    orden = await ordenes_service.crear_orden(
+        sesion,
+        datos_orden(
+            material.id,
+            cliente_id=cliente_corporativo.id,
+            adelanto_pago=0,
+        ),
+        admin,
+    )
+    assert orden.cliente_id == cliente_corporativo.id
+    assert float(orden.adelanto) == 0
+
+    with pytest.raises(ErrorDeNegocio) as exc:
+        await ordenes_service.crear_orden(
+            sesion,
+            datos_orden(
+                material.id,
+                cliente_id=None,
+                cliente=cliente_corporativo.nombre,
+                adelanto_pago=10,  # menos del 50% mínimo (RN-01) que sí le aplicaría
+            ),
+            admin,
+        )
+    assert "adelanto mínimo" in str(exc.value).lower()
 
 
 async def test_crear_orden_sin_stock_falla(sesion, admin, material):
@@ -141,6 +175,24 @@ async def test_reportar_uso_con_sobrante_devuelve_material(sesion, admin, materi
 
     assert float(material.stock_actual) == 9  # 8 + 1 devuelto
     assert devoluciones and mermas == []
+
+
+async def test_reportar_uso_omite_un_material_y_no_deja_la_reserva_sin_liquidar(sesion, admin, material):
+    """
+    Issue #34: un material estimado que no viene en el reporte de uso no debe
+    quedar con `cantidad_real` en NULL ni con su reserva sin explicar. Se
+    liquida como consumido tal cual se estimó (sin merma ni devolución).
+    """
+    orden = await ordenes_service.crear_orden(sesion, datos_orden(material.id), admin)
+
+    _, mermas, devoluciones = await ordenes_service.completar(sesion, orden.id, [], admin)
+
+    assert orden.estado == EstadoOrden.FINALIZADA
+    assert float(material.stock_actual) == 8  # la reserva de 2 queda igual, no se toca de más
+    assert mermas == [] and devoluciones == []
+    linea = orden.materiales[0]
+    assert linea.cantidad_real is not None
+    assert float(linea.cantidad_real) == float(linea.cantidad_estimada)
 
 
 async def test_no_se_puede_finalizar_sin_reporte_de_uso(sesion, admin, material):
@@ -266,3 +318,58 @@ async def test_crear_venta_rapida_mostrador(sesion, admin):
     assert float(orden.pagos[0].monto) == 15.50
     assert orden.pagos[0].metodo == MetodoPago.YAPE
     assert orden.pagos[0].estado_pago == EstadoPago.CONFORME
+
+
+async def test_crear_venta_rapida_usa_el_dia_peruano_no_el_utc(sesion, admin, monkeypatch):
+    """
+    Issue #32: una venta de mostrador a las 20:00 hora de Perú (01:00 UTC del
+    día siguiente) debe quedar con `fecha_entrega` del día peruano, no un día
+    adelantada por usar el día UTC.
+    """
+    from datetime import datetime, timezone
+
+    from app.models import MetodoPago, UnidadNegocio
+    from app.schemas.orden import VentaRapidaData
+
+    momento_utc = datetime(2026, 9, 28, 1, 0, tzinfo=timezone.utc)  # 27/09 20:00 en Perú
+    monkeypatch.setattr(
+        "app.services.ordenes_service.ahora_utc", lambda: momento_utc
+    )
+
+    data = VentaRapidaData(
+        descripcion="Copias",
+        monto_total=5.0,
+        metodo_pago=MetodoPago.EFECTIVO,
+        unidad_negocio=UnidadNegocio.IMPRENTA,
+        cliente_nombre="Cliente Mostrador",
+    )
+    orden = await ordenes_service.crear_venta_rapida(sesion, data, admin)
+
+    assert orden.fecha_entrega.isoformat() == "2026-09-27"
+
+
+# ══ Issue #35: material_id inexistente no debe llegar a un 500 ═════════════
+
+async def test_crear_orden_con_material_inexistente_no_revienta(sesion, admin, cliente):
+    """
+    Antes esto quedaba con nombre="" y reventaba recién al insertar, por la
+    FK a materiales.id: un 500 crudo en vez de decirle al usuario qué id
+    estaba mal.
+    """
+    with pytest.raises(NoEncontrado):
+        await ordenes_service.crear_orden(
+            sesion,
+            datos_orden(9999, cliente_id=cliente.id),
+            admin,
+        )
+
+
+async def test_editar_orden_con_material_inexistente_no_revienta(sesion, admin, material, cliente):
+    orden = await ordenes_service.crear_orden(
+        sesion, datos_orden(material.id, cliente_id=cliente.id), admin
+    )
+
+    with pytest.raises(NoEncontrado):
+        await ordenes_service.actualizar(
+            sesion, orden.id, datos_orden(9999, cliente_id=cliente.id), admin
+        )

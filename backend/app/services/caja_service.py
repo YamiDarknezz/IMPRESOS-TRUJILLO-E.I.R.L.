@@ -12,10 +12,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auditoria import registrar
 from app.core.errores import Conflicto, ErrorDeNegocio, NoEncontrado
-from app.core.fechas import ahora_utc, rango_dia_peru_a_utc
+from app.core.fechas import a_fecha_peru, ahora_utc, rango_dia_peru_a_utc
 from app.models import (
     CierreCaja,
     EstadoCierre,
+    EstadoOrden,
     EstadoPago,
     MotivoObservacionPago,
     Orden,
@@ -24,6 +25,10 @@ from app.models import (
     UnidadNegocio,
     Usuario,
 )
+# Caja y Finanzas no deben poder divergir sobre qué es una orden "cerrada" y
+# cómo se recalcula su saldo: se reutiliza la misma fuente de verdad que usa
+# confirmar_pago (bloqueo de fila incluido), en vez de reimplementarla aquí.
+from app.services.ordenes_service import _obtener_para_escritura, _recalcular_finanzas
 
 METODOS = ("efectivo", "yape", "transferencia")
 
@@ -45,7 +50,15 @@ async def _pagos_del_dia(sesion: AsyncSession, fecha: date) -> list[tuple[PagoOr
         await sesion.execute(
             select(PagoOrden, Orden)
             .join(Orden, PagoOrden.orden_id == Orden.id)
-            .where(PagoOrden.fecha >= inicio, PagoOrden.fecha < fin)
+            # Finanzas ya excluye las órdenes canceladas (issue #18): sin
+            # este filtro los dos reportes del mismo día no cuadran, y Caja
+            # sigue mostrando como efectivo del día un cobro cuya orden ya
+            # no existe para el negocio.
+            .where(
+                PagoOrden.fecha >= inicio,
+                PagoOrden.fecha < fin,
+                Orden.estado != EstadoOrden.CANCELADA,
+            )
             .order_by(PagoOrden.fecha)
         )
     ).all()
@@ -75,10 +88,9 @@ async def resumen_dia(
         if unidad_negocio is not None and orden.unidad_negocio != unidad_negocio:
             continue
 
-        es_conforme = pago.estado_pago is None or pago.estado_pago == EstadoPago.CONFORME
         monto = float(pago.monto)
 
-        if es_conforme:
+        if pago.es_conforme:
             _sumar(total, pago)
             _sumar(por_unidad[orden.unidad_negocio.value], pago)
 
@@ -154,7 +166,8 @@ async def observar_pago(
 ) -> dict:
     """
     Audita y observa/anula un cobro erróneo o fraudulento (p. ej. Yape falso, billete falso).
-    Deduce el dinero de la caja y reabre la deuda en la orden (bloqueando la entrega).
+    Recalcula el saldo desde el historial de pagos conformes, la misma fuente
+    de verdad que usa `confirmar_pago` (issue #20): nada de sumas manuales.
     """
     pago = await sesion.get(PagoOrden, pago_id)
     if pago is None:
@@ -163,9 +176,36 @@ async def observar_pago(
     if pago.estado_pago and pago.estado_pago != EstadoPago.CONFORME:
         raise ErrorDeNegocio(f"Este pago ya se encuentra en estado '{pago.estado_pago.value}'.")
 
-    orden = await sesion.get(Orden, pago.orden_id)
-    if orden is None:
-        raise NoEncontrado("Orden asociada al pago no encontrada.")
+    # Bloquea la fila de la orden (igual que confirmar_pago): dos operaciones
+    # financieras sobre la misma orden no deben poder pisarse entre sí.
+    orden = await _obtener_para_escritura(sesion, pago.orden_id)
+
+    if orden.estado == EstadoOrden.ENTREGADA:
+        # El resto del sistema trata la entrega como definitiva (no admite
+        # más cambios de estado); reabrir su deuda sería la única excepción.
+        raise ErrorDeNegocio(
+            "No se puede observar un pago de una orden ya entregada: "
+            "la entrega es definitiva."
+        )
+
+    # El cierre congelado es el documento de control de gerencia: si el pago
+    # ya quedó dentro de uno, no se toca más (issue #19 trata el resto de ese
+    # problema; aquí solo se cierra esta puerta puntual).
+    cierre_del_dia = (
+        await sesion.execute(
+            select(CierreCaja).where(
+                CierreCaja.fecha == a_fecha_peru(pago.fecha),
+                CierreCaja.unidad_negocio == orden.unidad_negocio,
+                CierreCaja.usuario_id == pago.registrado_por,
+            )
+        )
+    ).scalar_one_or_none()
+    if cierre_del_dia is not None and cierre_del_dia.estado == EstadoCierre.CONGELADO:
+        raise ErrorDeNegocio(
+            "No se puede observar un pago de un cierre de caja ya congelado."
+        )
+
+    cajero = await sesion.get(Usuario, pago.registrado_por) if pago.registrado_por else None
 
     pago.estado_pago = EstadoPago.OBSERVADO
     pago.motivo_observacion = motivo
@@ -173,9 +213,9 @@ async def observar_pago(
     pago.observado_por = usuario.id
     pago.observado_en = ahora_utc()
 
-    # Reabrir deuda en la orden y quitar marca de pagado totalmente
-    orden.saldo_pendiente = round(orden.saldo_pendiente + pago.monto, 2)
-    orden.pagado_totalmente = False
+    # Recalcula saldo, adelanto y pagado_totalmente desde el historial
+    # conforme: no una suma manual que ya se había desincronizado antes.
+    _recalcular_finanzas(orden)
 
     registrar(
         sesion,
@@ -183,13 +223,18 @@ async def observar_pago(
         TipoEventoAuditoria.OBSERVACION_PAGO,
         tabla_afectada="pagos_orden",
         registro_id=pago.id,
-        detalle=f"Pago #{pago.id} de {orden.codigo} observado por {motivo.value}: S/ {pago.monto}. {nota}",
+        detalle=(
+            f"Pago #{pago.id} de {orden.codigo}, cobrado por "
+            f"{cajero.nombre if cajero else 'usuario desconocido'}, "
+            f"observado por {motivo.value}: S/ {pago.monto}. {nota}"
+        ),
         valores_anteriores={"estado_pago": "conforme"},
         valores_nuevos={
             "estado_pago": pago.estado_pago.value,
             "motivo": motivo.value,
             "nota": nota,
             "orden_id": orden.id,
+            "registrado_por": pago.registrado_por,
             "nuevo_saldo_pendiente": float(orden.saldo_pendiente),
         },
     )

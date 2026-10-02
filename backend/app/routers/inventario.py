@@ -187,6 +187,7 @@ async def ajustar_stock(
 
     delta = data.stock_actual - float(material.stock_actual)
     if delta != 0:
+        anterior = float(material.stock_actual)
         await aplicar_ajustes(
             sesion,
             [
@@ -199,6 +200,16 @@ async def ajustar_stock(
                 )
             ],
             usuario_id=usuario.id,
+        )
+        registrar(
+            sesion,
+            usuario.id,
+            TipoEventoAuditoria.AJUSTE_STOCK,
+            tabla_afectada="materiales",
+            registro_id=material.id,
+            detalle=f"Ajuste manual de stock de {material.nombre}: {anterior} -> {float(material.stock_actual)}",
+            valores_anteriores={"stock_actual": anterior},
+            valores_nuevos={"stock_actual": float(material.stock_actual)},
         )
 
     return {"status": "success", "data": serializar_material(material)}

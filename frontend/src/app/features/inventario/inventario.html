@@ -1,4 +1,4 @@
-<div class="tabs-nav" style="display:flex; gap:0.5rem; margin-bottom:1.5rem; border-bottom:1px solid #e5e7eb; padding-bottom:0.5rem;">
+<div class="tabs-nav">
   <button class="btn-sm" [ngClass]="pestanaActiva() === 'materiales' ? 'btn-primary' : 'btn-secondary'"
           (click)="cambiarPestana('materiales')">
     📦 Catálogo e Insumos
@@ -334,7 +334,9 @@
     @if (piezas().length === 0) {
       <div class="empty-state">
         <p>No hay rollos o planchas individuales registrados.</p>
-        <button class="btn-primary btn-sm" (click)="abrirNuevaPieza()">+ Registrar primer rollo o plancha</button>
+        @if (sesion.esSupervisor()) {
+          <button class="btn-primary btn-sm" (click)="abrirNuevaPieza()">+ Registrar primer rollo o plancha</button>
+        }
       </div>
     } @else {
       <div class="table-wrapper">
@@ -365,9 +367,9 @@
                 </td>
                 <td>
                   <strong>{{ p.saldo_restante }}</strong> / {{ p.capacidad_inicial }} {{ p.unidad_medida }}
-                  <div style="background:#e5e7eb; border-radius:4px; height:6px; width:100%; margin-top:4px; overflow:hidden;">
+                  <div style="background:var(--surface-3); border-radius:4px; height:6px; width:100%; margin-top:4px; overflow:hidden;">
                     <div [style.width.%]="(p.saldo_restante / p.capacidad_inicial) * 100"
-                         [style.background]="p.saldo_restante > 20 ? '#16a34a' : (p.saldo_restante > 0 ? '#eab308' : '#9ca3af')"
+                         [style.background]="(p.saldo_restante / p.capacidad_inicial) < 0.1 ? 'var(--danger)' : ((p.saldo_restante / p.capacidad_inicial) <= 0.3 ? 'var(--warning)' : 'var(--success)')"
                          style="height:100%;"></div>
                   </div>
                 </td>

@@ -1,12 +1,12 @@
 """Esquemas de unidades de medida."""
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from app.schemas.comunes import exigir_texto, limpiar
 
 
 class UnidadCreateData(BaseModel):
-    nombre: str
-    abreviatura: str = ""
+    nombre: str = Field(max_length=50)
+    abreviatura: str = Field(default="", max_length=10)
 
     @field_validator("nombre")
     @classmethod

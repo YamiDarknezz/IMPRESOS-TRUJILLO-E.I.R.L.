@@ -20,9 +20,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auditoria import registrar
 from app.core.config import settings
 from app.core.errores import Conflicto, ErrorDeNegocio, NoEncontrado, PermisoDenegado
-from app.core.fechas import ahora_utc
+from app.core.fechas import a_fecha_peru, ahora_utc
 from app.models import (
+    CierreCaja,
     Cliente,
+    EstadoCierre,
     EstadoOrden,
     EstadoPago,
     Material,
@@ -318,13 +320,18 @@ def _reemplazar_materiales(
     orden.materiales.clear()
     for estimado in estimados:
         material = materiales.get(estimado.material_id)
+        if material is None:
+            # Antes esto quedaba con nombre="" y el INSERT fallaba recién al
+            # violar la FK a materiales.id: un 500 crudo por una entrada del
+            # usuario que ya se podía rechazar aquí con el id que falla.
+            raise NoEncontrado(f"El material {estimado.material_id} no existe.")
         orden.materiales.append(
             OrdenMaterial(
                 material_id=estimado.material_id,
-                nombre=material.nombre if material else "",
+                nombre=material.nombre,
                 unidad=(
                     (material.unidad.abreviatura or material.unidad.nombre)
-                    if material and material.unidad
+                    if material.unidad
                     else ""
                 ),
                 cantidad_estimada=_redondear(_decimal(estimado.cantidad)),
@@ -333,10 +340,18 @@ def _reemplazar_materiales(
 
 
 def _recalcular_finanzas(orden: Orden) -> None:
-    """Deja el saldo y el estado de pago consistentes con el historial."""
-    total_pagado = sum((_decimal(pago.monto) for pago in orden.pagos), Decimal("0"))
+    """
+    Deja el saldo y el estado de pago consistentes con el historial.
+
+    Solo cuenta los pagos CONFORME (issue #15): sin este filtro, un pago que
+    ya se marcó OBSERVADO (Yape falso, voucher no ubicado...) vuelve a
+    contar como dinero recibido en cuanto se llama esta función de nuevo, y
+    eso desactiva el candado de entrega que la observación acababa de poner.
+    """
+    conformes = [pago for pago in orden.pagos if pago.es_conforme]
+    total_pagado = sum((_decimal(pago.monto) for pago in conformes), Decimal("0"))
     adelantos = sum(
-        (_decimal(pago.monto) for pago in orden.pagos if pago.tipo == TipoPago.ADELANTO),
+        (_decimal(pago.monto) for pago in conformes if pago.tipo == TipoPago.ADELANTO),
         Decimal("0"),
     )
     orden.adelanto = _redondear(adelantos)
@@ -344,7 +359,9 @@ def _recalcular_finanzas(orden: Orden) -> None:
     orden.pagado_totalmente = _decimal(orden.total) <= total_pagado
 
 
-def _sincronizar_adelanto(orden: Orden, data: OrdenCreateData, usuario: Usuario) -> None:
+async def _sincronizar_adelanto(
+    sesion: AsyncSession, orden: Orden, data: OrdenCreateData, usuario: Usuario
+) -> None:
     """
     Al editar una orden en proceso, el adelanto pactado puede cambiar. Se
     corrige el evento de pago de adelanto (la edición está permitida justo
@@ -354,8 +371,26 @@ def _sincronizar_adelanto(orden: Orden, data: OrdenCreateData, usuario: Usuario)
     nuevo = _redondear(_decimal(data.adelanto_pago))
 
     if adelantos:
-        adelantos[0].monto = nuevo
-        adelantos[0].metodo = data.metodo_pago
+        # El cierre congelado es el documento de control de gerencia: si el
+        # adelanto ya quedó dentro de uno, cambiar su monto aquí lo dejaría
+        # desincronizado sin ningún aviso (issue #19).
+        primero = adelantos[0]
+        cierre_del_dia = (
+            await sesion.execute(
+                select(CierreCaja).where(
+                    CierreCaja.fecha == a_fecha_peru(primero.fecha),
+                    CierreCaja.unidad_negocio == orden.unidad_negocio,
+                    CierreCaja.usuario_id == primero.registrado_por,
+                )
+            )
+        ).scalar_one_or_none()
+        if cierre_del_dia is not None and cierre_del_dia.estado == EstadoCierre.CONGELADO:
+            raise ErrorDeNegocio(
+                "No se puede cambiar el adelanto: el cierre de caja de ese día ya está congelado."
+            )
+
+        primero.monto = nuevo
+        primero.metodo = data.metodo_pago
         # Si hubiera más de un adelanto registrado, se conserva el primero.
         for sobrante in adelantos[1:]:
             orden.pagos.remove(sobrante)
@@ -401,7 +436,9 @@ async def crear_orden(sesion: AsyncSession, data: OrdenCreateData, usuario: Usua
     subtotal = _calcular_subtotal(data)
     descuento = _redondear(_decimal(data.descuento))
     igv, total = calcular_totales(subtotal, data.incluye_igv, descuento)
-    validar_adelanto(total, data.adelanto_pago, cliente.es_corporativo)
+    # La exención de RN-01 solo aplica cuando el cliente fue seleccionado
+    # explícitamente por id, no cuando se resolvió por coincidencia de nombre.
+    validar_adelanto(total, data.adelanto_pago, bool(data.cliente_id) and cliente.es_corporativo)
 
     orden = Orden(
         tipo_documento=data.tipo_documento,
@@ -496,7 +533,7 @@ async def crear_venta_rapida(
         await sesion.flush()
 
     monto = _redondear(_decimal(data.monto_total))
-    hoy = ahora_utc().date()
+    hoy = fecha_hoy_peru()
     ahora = ahora_utc()
 
     orden = Orden(
@@ -572,13 +609,14 @@ async def actualizar(sesion: AsyncSession, id_orden: int, data: OrdenCreateData,
             "(antes de finalizar la producción)."
         )
 
-    asignado = await _validar_asignado(sesion, data.asignado_a)
     cliente = await _resolver_cliente(sesion, data)
 
     subtotal = _calcular_subtotal(data)
     descuento = _redondear(_decimal(data.descuento))
     igv, total = calcular_totales(subtotal, data.incluye_igv, descuento)
-    validar_adelanto(total, data.adelanto_pago, cliente.es_corporativo)
+    # La exención de RN-01 solo aplica cuando el cliente fue seleccionado
+    # explícitamente por id, no cuando se resolvió por coincidencia de nombre.
+    validar_adelanto(total, data.adelanto_pago, bool(data.cliente_id) and cliente.es_corporativo)
 
     anteriores = {
         linea.material_id: float(linea.cantidad_estimada) for linea in orden.materiales
@@ -595,7 +633,13 @@ async def actualizar(sesion: AsyncSession, id_orden: int, data: OrdenCreateData,
     orden.cliente = cliente
     orden.direccion = data.direccion or cliente.direccion
     orden.telefono = data.telefono or cliente.telefono
-    orden.asignado = asignado
+    # El asignado NO se toca aquí a propósito: el formulario de edición ni
+    # siquiera muestra ese campo salvo a supervisión, y por rol no puede
+    # mandar "no cambiar" — solo puede mandar `asignado_a` o nada. Cambiar a
+    # quién le toca una orden ya tiene su propio endpoint permisionado
+    # (`POST /{id_orden}/asignar`, solo supervisión); aceptar el campo aquí
+    # también es lo que dejaba a Secretaría desasignar la orden sin querer
+    # con cada edición.
     orden.descripcion = data.descripcion
     orden.tipo_documento = data.tipo_documento
     orden.unidad_negocio = data.unidad_negocio
@@ -613,16 +657,19 @@ async def actualizar(sesion: AsyncSession, id_orden: int, data: OrdenCreateData,
         sesion, {estimado.material_id for estimado in data.materiales_estimados}
     )
     _reemplazar_materiales(orden, data.materiales_estimados, materiales)
-    _sincronizar_adelanto(orden, data, usuario)
+    await _sincronizar_adelanto(sesion, orden, data, usuario)
     await sesion.flush()
 
     if ajustes:
+        # `_reemplazar_materiales` (arriba) ya garantiza que todo material_id
+        # nuevo existe; exigir_material=True cierra el mismo hueco para el
+        # ajuste de stock que ya reservaban las líneas que no cambiaron.
         await inventario_service.aplicar_ajustes(
             sesion,
             ajustes,
             orden_id=orden.id,
             usuario_id=usuario.id,
-            exigir_material=False,
+            exigir_material=True,
         )
 
     _recalcular_finanzas(orden)
@@ -668,14 +715,24 @@ async def cancelar(sesion: AsyncSession, id_orden: int, usuario: Usuario) -> Ord
 
     estado_anterior = orden.estado
     orden.estado = EstadoOrden.CANCELADA
+
+    # El dinero ya cobrado no se toca aquí (a devolver, dejar como penalidad
+    # o abonar a otra orden es una decisión del negocio que este cambio no
+    # asume por su cuenta); lo mínimo es que quede visible en la auditoría
+    # cuánto es y no se pierda de vista (issue #18).
+    cobrado = sum((_decimal(pago.monto) for pago in orden.pagos if pago.es_conforme), Decimal("0"))
+    detalle = "Orden cancelada — stock estimado devuelto"
+    if cobrado > 0:
+        detalle += f". Adelanto ya cobrado (S/ {_redondear(cobrado)}) pendiente de resolver con el cliente."
+
     _auditar_orden(
         sesion,
         usuario,
         "cambio_estado",
         orden,
-        "Orden cancelada — stock estimado devuelto",
+        detalle,
         anteriores={"estado": estado_anterior.value},
-        nuevos={"estado": orden.estado.value},
+        nuevos={"estado": orden.estado.value, "monto_cobrado_sin_resolver": float(cobrado)},
     )
     await sesion.flush()
     return orden
@@ -738,8 +795,15 @@ async def confirmar_pago(
     metodo: Optional[MetodoPago],
     referencia: str,
     usuario: Usuario,
+    monto: Optional[float] = None,
 ) -> Orden:
-    """Registra el cobro del saldo y deja la orden habilitada para entregarse."""
+    """
+    Registra un cobro contra el saldo pendiente (issue #13).
+
+    Sin `monto`, cobra el saldo completo (comportamiento anterior). Con un
+    `monto` menor al saldo, registra un abono parcial: la orden sigue
+    `pagado_totalmente=False` hasta que el saldo llegue a 0.
+    """
     orden = await _obtener_para_escritura(sesion, id_orden)
     exigir_gestion(orden, usuario)
 
@@ -749,18 +813,26 @@ async def confirmar_pago(
         raise Conflicto("El pago ya fue confirmado.")
 
     saldo = _decimal(orden.saldo_pendiente)
-    if saldo > 0:
-        orden.pagos.append(
-            PagoOrden(
-                monto=_redondear(saldo),
-                # Si no se indica, se asume el mismo medio del adelanto.
-                metodo=metodo or orden.metodo_pago_adelanto,
-                tipo=TipoPago.SALDO,
-                registrado_por=usuario.id,
-                referencia=referencia,
-            )
+    if saldo <= 0:
+        raise Conflicto("Esta orden no tiene saldo pendiente.")
+
+    monto_cobrado = _redondear(_decimal(monto)) if monto is not None else _redondear(saldo)
+    if monto_cobrado > saldo:
+        raise ErrorDeNegocio(
+            f"El monto cobrado (S/ {monto_cobrado}) supera el saldo pendiente (S/ {saldo})."
         )
-        await sesion.flush()
+
+    orden.pagos.append(
+        PagoOrden(
+            monto=monto_cobrado,
+            # Si no se indica, se asume el mismo medio del adelanto.
+            metodo=metodo or orden.metodo_pago_adelanto,
+            tipo=TipoPago.SALDO,
+            registrado_por=usuario.id,
+            referencia=referencia,
+        )
+    )
+    await sesion.flush()
 
     anterior = float(orden.saldo_pendiente)
     _recalcular_finanzas(orden)
@@ -769,7 +841,10 @@ async def confirmar_pago(
         usuario,
         "pago",
         orden,
-        f"Pago completo confirmado para la orden {orden.codigo}",
+        (
+            f"Pago de S/ {monto_cobrado} confirmado para la orden {orden.codigo}"
+            + ("" if orden.pagado_totalmente else " (abono parcial)")
+        ),
         anteriores={"saldo_pendiente": anterior},
         nuevos={"saldo_pendiente": float(orden.saldo_pendiente)},
     )
@@ -786,6 +861,12 @@ async def completar(
     El estimado ya se descontó al crear la orden, así que aquí solo se ajusta
     la diferencia: lo que se usó de más se descuenta (merma) y lo que sobró
     vuelve al inventario (devolución).
+
+    No exige que la orden haya pasado por diseño/aprobación/producción: se
+    puede completar directo desde 'pendiente'. Es intencional (trabajos
+    simples de mostrador no siempre necesitan esas etapas) y no un hueco de
+    `validar_transicion` — cambiarlo rompería los flujos existentes que
+    completan sin pasar por el pipeline completo.
     """
     orden = await _obtener_para_escritura(sesion, id_orden)
     exigir_gestion(orden, usuario)
@@ -821,10 +902,10 @@ async def completar(
     devoluciones: list[dict] = []
 
     for material_id, linea in lineas_por_id.items():
-        if material_id not in reales_por_id:
-            continue
-
-        real = reales_por_id[material_id]
+        # Un material estimado que no viene en el reporte no significa que no
+        # se usó: la reserva ya se descontó al crear la orden, así que se
+        # liquida como consumido tal cual se estimó (sin merma ni devolución).
+        real = reales_por_id.get(material_id, _decimal(linea.cantidad_estimada))
         linea.cantidad_real = real
         exceso = real - _decimal(linea.cantidad_estimada)
         if exceso == 0:

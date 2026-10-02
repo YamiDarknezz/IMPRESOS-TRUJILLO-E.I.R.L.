@@ -83,6 +83,18 @@ jobs:
       - name: Aplicar migraciones sobre base vacía
         run: python -m alembic upgrade head
 
+      # Esto reproduce el escenario de recuperación de desastres: restaurar
+      # una base CON filas y volver a aplicar (o revertir y reaplicar) el
+      # esquema. Antes el CI solo migraba sobre una base vacía, así que se
+      # coló una migración que fallaba con datos reales y un downgrade roto
+      # (no hay vuelta atrás del esquema si nadie prueba que funciona).
+      - name: Sembrar datos y probar downgrade/upgrade sobre una base con filas
+        run: |
+          python scripts/crear_admin.py --email admin@ci.local --password "SoloParaEsteCI123" --nombre "Admin CI"
+          python scripts/seed_datos.py
+          python -m alembic downgrade -2
+          python -m alembic upgrade head
+
       - name: Pruebas
         run: python -m pytest -q
 

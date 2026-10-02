@@ -30,7 +30,11 @@ def enum_columna(enum_clase, nombre: str, longitud: int = 30) -> SAEnum:
     Se usa `native_enum=False` (VARCHAR + CHECK) para que las migraciones no
     tengan que alterar tipos nativos de PostgreSQL cada vez que se agrega una
     opción, y `values_callable` para que en la base diga "en_diseno" y no
-    "EN_DISENO".
+    "EN_DISENO". `create_constraint=True` es lo que realmente genera el CHECK
+    en la base (sin esto, `native_enum=False` guarda un VARCHAR sin ninguna
+    restricción real); toda columna nueva creada con este helper ya nace con
+    su invariante. Las columnas existentes se corrigen aparte con una
+    migración (ver `agregar_invariantes_de_esquema`).
     """
     return SAEnum(
         enum_clase,
@@ -38,5 +42,6 @@ def enum_columna(enum_clase, nombre: str, longitud: int = 30) -> SAEnum:
         native_enum=False,
         length=longitud,
         validate_strings=True,
+        create_constraint=True,
         values_callable=lambda clase: [miembro.value for miembro in clase],
     )

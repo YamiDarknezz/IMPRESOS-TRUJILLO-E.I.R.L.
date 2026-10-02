@@ -21,6 +21,7 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from sqlalchemy import func, select  # noqa: E402
 
+from app.core.config import settings  # noqa: E402
 from app.core.database import FabricaSesiones  # noqa: E402
 from app.core.security import hash_password  # noqa: E402
 from app.models import (  # noqa: E402
@@ -42,6 +43,11 @@ from app.services import ordenes_service  # noqa: E402
 
 CLAVE_DEMO = "Demo12345"
 PREFIJO_DEMO = "[Demo]"
+
+# Allowlist (no denylist): un ENTORNO nuevo que alguien agregue mañana (p. ej.
+# "staging") queda protegido por defecto en vez de sembrar producción sin
+# querer.
+ENTORNOS_CON_SEED_PERMITIDO = {"desarrollo", "pruebas"}
 
 UNIDADES = [
     ("metros cuadrados", "m2"),
@@ -354,6 +360,12 @@ async def _sembrar_ordenes_demo(
 
 
 async def sembrar() -> None:
+    if settings.entorno not in ENTORNOS_CON_SEED_PERMITIDO:
+        raise SystemExit(
+            f"ENTORNO='{settings.entorno}' no admite datos de demostración. "
+            f"Este script solo corre en: {', '.join(sorted(ENTORNOS_CON_SEED_PERMITIDO))}."
+        )
+
     async with FabricaSesiones() as sesion:
         admin = (
             await sesion.execute(select(Usuario).where(Usuario.rol == Rol.ADMIN).limit(1))

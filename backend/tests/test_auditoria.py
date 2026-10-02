@@ -52,5 +52,7 @@ async def test_la_cancelacion_queda_auditada(sesion, admin, material, cliente):
     ).scalars().all()
 
     assert len(entradas) == 1
-    assert entradas[0].valores_nuevos == {"estado": "cancelada"}
+    # El adelanto (50) queda cobrado y sin resolver: issue #18 exige que
+    # quede visible en la auditoría cuánto es, ya que cancelar no lo revierte.
+    assert entradas[0].valores_nuevos == {"estado": "cancelada", "monto_cobrado_sin_resolver": 50.0}
     assert "stock" in entradas[0].detalle.lower()

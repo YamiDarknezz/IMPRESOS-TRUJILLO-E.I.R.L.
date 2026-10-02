@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { signal } from '@angular/core';
 import { CajaService } from '../../core/services/caja.service';
 import { OrdenesService } from '../../core/services/ordenes.service';
@@ -53,9 +54,10 @@ describe('CajaComponent', () => {
     TestBed.configureTestingModule({
       imports: [CajaComponent],
       providers: [
+        provideRouter([]),
         { provide: CajaService, useValue: cajaFalso },
         { provide: OrdenesService, useValue: ordenesFalso },
-        { provide: SesionService, useValue: { esSupervisor: signal(true) } },
+        { provide: SesionService, useValue: { esSupervisor: signal(true), puedeVender: signal(true) } },
       ],
     });
   });
@@ -200,6 +202,32 @@ describe('CajaComponent', () => {
         expect.objectContaining({ descripcion: 'Copias', monto_total: 15 }),
       );
       expect(componente.modalVentaRapida()).toBe(false);
+    });
+
+    // Issue #23: el enlace en Órdenes ya está guardado, pero esta URL
+    // también se puede teclear a mano (el backend igual la rechaza, pero
+    // el formulario no debe ni abrirse para quien de todos modos no puede).
+    it('constructor(): con venta_rapida en la URL y permiso, abre el modal', () => {
+      TestBed.overrideProvider(ActivatedRoute, {
+        useValue: { snapshot: { queryParamMap: convertToParamMap({ venta_rapida: '1' }) } },
+      });
+
+      const fixture = TestBed.createComponent(CajaComponent);
+
+      expect(fixture.componentInstance.modalVentaRapida()).toBe(true);
+    });
+
+    it('constructor(): con venta_rapida en la URL pero sin permiso, no abre el modal', () => {
+      TestBed.overrideProvider(ActivatedRoute, {
+        useValue: { snapshot: { queryParamMap: convertToParamMap({ venta_rapida: '1' }) } },
+      });
+      TestBed.overrideProvider(SesionService, {
+        useValue: { esSupervisor: signal(true), puedeVender: signal(false) },
+      });
+
+      const fixture = TestBed.createComponent(CajaComponent);
+
+      expect(fixture.componentInstance.modalVentaRapida()).toBe(false);
     });
   });
 });

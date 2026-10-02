@@ -1,5 +1,5 @@
 """Esquemas del catálogo de productos y su receta."""
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from app.models import TipoProducto
 from app.schemas.comunes import exigir_no_negativo, exigir_positivo, exigir_texto, limpiar
@@ -16,7 +16,7 @@ class RecetaItem(BaseModel):
 
 
 class ProductoCreateData(BaseModel):
-    nombre: str
+    nombre: str = Field(max_length=150)
     tipo: TipoProducto = TipoProducto.PROPIO
     precio_base: float = 0.0
     notas: str = ""
