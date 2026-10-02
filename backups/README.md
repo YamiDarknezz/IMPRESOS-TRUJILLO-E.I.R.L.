@@ -64,10 +64,14 @@ el detalle completo en `~/data/backups/impresos/backup.log`.
 0 3 * * * cd $HOME/data/repos/impresos-trujillo && ./backups/backup.sh >/dev/null 2>&1
 ```
 
-Está pensado para encadenarse con el respaldo del resto del servidor, que ya
-copia la base de este proyecto desde el script de infraestructura. Este de aquí
-es el que además se lleva **las capturas**, y por eso vive en el repositorio del
-proyecto.
+Esas líneas todavía **no están instaladas**: hay que añadirlas al `crontab` del
+servidor para que la copia se haga sola.
+
+Ojo con no confundirlo con el respaldo del resto del servidor
+(`darknezz-infra/scripts/backup.sh`), que corre **los domingos** y cubre Traefik,
+Hermes y también la base de este proyecto. Este de aquí es el que se lleva
+**las capturas y la configuración del despliegue**, así que conviene que corra a
+diario: entre un domingo y el siguiente pueden entrar decenas de vouchers.
 
 ### Opciones
 
