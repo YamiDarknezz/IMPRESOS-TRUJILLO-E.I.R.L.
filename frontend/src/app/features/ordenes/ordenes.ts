@@ -12,7 +12,9 @@ import {
   filtrarOrdenes,
 } from '../../core/services/ordenes.service';
 import { SesionService, nombreVisible } from '../../core/services/sesion.service';
+import { ComprobantesService } from '../../core/services/comprobantes.service';
 import {
+  Comprobante,
   ETIQUETA_ESTADO,
   ETIQUETA_METODO,
   ETIQUETA_UNIDAD,
@@ -24,6 +26,12 @@ import {
 } from '../../core/models';
 import { formatearFecha } from '../../shared/utilidades/fechas';
 import { mensajeDeError } from '../../shared/utilidades/errores';
+import {
+  CapturaElegida,
+  capturasDesdeArchivos,
+  liberarCaptura,
+  pesoLegible,
+} from '../../shared/utilidades/imagenes';
 import { IconComponent } from '../../shared/componentes/icon/icon.component';
 
 type FiltroEstado = 'todos' | EstadoOrden;
@@ -41,6 +49,7 @@ interface OpcionFiltro {
 })
 export class OrdenesComponent {
   private ordenesService = inject(OrdenesService);
+  private comprobantes = inject(ComprobantesService);
   sesion = inject(SesionService);
 
   readonly ordenes = this.ordenesService.ordenes;
@@ -244,10 +253,12 @@ export class OrdenesComponent {
     this.ordenACobrar.set(orden);
     this.metodoPago.set(orden.finanzas?.metodo_pago_adelanto ?? 'efectivo');
     this.referenciaPago.set('');
+    this.limpiarAdjuntosCobro();
   }
 
   cerrarCobro(): void {
     this.ordenACobrar.set(null);
+    this.limpiarAdjuntosCobro();
   }
 
   async confirmarPago(): Promise<void> {
@@ -256,16 +267,81 @@ export class OrdenesComponent {
 
     this.guardando.set(true);
     try {
-      await this.ordenesService.confirmarPago(
+      const actualizada = await this.ordenesService.confirmarPago(
         orden.id,
         this.metodoPago(),
         this.referenciaPago().trim()
       );
+
+      const pendientes = this.adjuntosCobro();
+      if (pendientes.length > 0) {
+        // La captura respalda el abono que se acaba de registrar: el de id más
+        // alto. Si por lo que sea no vuelve ninguno, queda colgada de la orden.
+        const pagos = actualizada.finanzas?.pagos ?? [];
+        const ultimo = pagos.reduce(
+          (mayor, pago) => (pago.id > (mayor?.id ?? 0) ? pago : mayor),
+          pagos[0]
+        );
+
+        const { fallidos } = await this.comprobantes.subirVarias(
+          actualizada.id,
+          pendientes.map(adjunto => adjunto.archivo),
+          ultimo?.id ?? null
+        );
+        if (fallidos.length > 0) {
+          alert(
+            'El pago quedó registrado, pero estas capturas no subieron:\n' +
+              fallidos.map(fallo => `• ${fallo.nombre}: ${fallo.motivo}`).join('\n')
+          );
+        }
+      }
       this.cerrarCobro();
     } catch (e) {
       alert(mensajeDeError(e, 'Error al confirmar el pago.'));
     } finally {
       this.guardando.set(false);
     }
+  }
+
+  // ── Capturas de pago (RF-11) ─────────────────────────────────────────────
+  // El respaldo del cobro: la captura del Yape o la transferencia. Opcional,
+  // porque el pago se registra igual cuando el voucher llega después.
+
+  readonly adjuntosCobro = signal<CapturaElegida[]>([]);
+  /** Orden cuyas capturas se están viendo. */
+  readonly capturasVisibles = signal<Orden | null>(null);
+
+  readonly pesoLegible = pesoLegible;
+  readonly urlDe = (captura: Comprobante): string => this.comprobantes.urlDe(captura);
+  readonly resumenCaptura = (captura: Comprobante): string => this.comprobantes.resumen(captura);
+
+  agregarAdjuntosCobro(evento: Event): void {
+    const entrada = evento.target as HTMLInputElement;
+    const { aceptadas, rechazadas } = capturasDesdeArchivos(entrada.files);
+    entrada.value = '';
+
+    if (rechazadas > 0) {
+      alert('Solo se aceptan capturas en JPG, PNG o WebP, o un PDF.');
+    }
+    this.adjuntosCobro.update(actuales => [...actuales, ...aceptadas]);
+  }
+
+  quitarAdjuntoCobro(indice: number): void {
+    const adjunto = this.adjuntosCobro()[indice];
+    if (adjunto) liberarCaptura(adjunto);
+    this.adjuntosCobro.update(actuales => actuales.filter((_, posicion) => posicion !== indice));
+  }
+
+  private limpiarAdjuntosCobro(): void {
+    this.adjuntosCobro().forEach(liberarCaptura);
+    this.adjuntosCobro.set([]);
+  }
+
+  abrirCapturas(orden: Orden): void {
+    this.capturasVisibles.set(orden);
+  }
+
+  cerrarCapturas(): void {
+    this.capturasVisibles.set(null);
   }
 }

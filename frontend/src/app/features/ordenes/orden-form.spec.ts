@@ -4,6 +4,7 @@ import { signal } from '@angular/core';
 import { ClientesService } from '../../core/services/clientes.service';
 import { InventarioService } from '../../core/services/inventario.service';
 import { OrdenesService } from '../../core/services/ordenes.service';
+import { ComprobantesService } from '../../core/services/comprobantes.service';
 import { ProductosService } from '../../core/services/productos.service';
 import { SesionService } from '../../core/services/sesion.service';
 import { OrdenFormComponent } from './orden-form';
@@ -70,7 +71,9 @@ describe('OrdenFormComponent', () => {
     ordenesFalso = {
       ordenes: signal([ordenExistente()]),
       cargar: vi.fn().mockResolvedValue(undefined),
-      crear: vi.fn().mockResolvedValue(undefined),
+      // `crear` devuelve la orden: el formulario la necesita para adjuntar
+      // las capturas del adelanto (RF-11).
+      crear: vi.fn().mockResolvedValue({ id: 7 }),
       actualizar: vi.fn().mockResolvedValue(undefined),
     };
     sesionFalsa = { esSupervisor: signal(true) };
@@ -83,6 +86,10 @@ describe('OrdenFormComponent', () => {
         { provide: InventarioService, useValue: inventarioFalso },
         { provide: ProductosService, useValue: productosFalso },
         { provide: OrdenesService, useValue: ordenesFalso },
+        {
+          provide: ComprobantesService,
+          useValue: { subirVarias: vi.fn().mockResolvedValue({ subidos: [], fallidos: [] }) },
+        },
         { provide: SesionService, useValue: sesionFalsa },
         { provide: Router, useValue: routerFalso },
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => idRuta } } } },

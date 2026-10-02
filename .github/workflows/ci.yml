@@ -147,11 +147,20 @@ jobs:
             # el job en verde mientras los contenedores siguen con el código viejo.
             set -e
 
-            echo "── 1/5 fuente: sincronizar el código ──"
+            echo "── 1/6 fuente: sincronizar el código ──"
             cd $HOME/data/repos/impresos-trujillo
             git pull --ff-only origin main
 
-            echo "── 2/5 construir la imagen nueva ──"
+            echo "── 2/6 capturas de pago: preparar el volumen ──"
+            # Los comprobantes de Yape/transferencia viven fuera del contenedor
+            # (issue #67). La API corre como el usuario `app` de la imagen
+            # (uid 100) y el despliegue entra como el usuario del VPS, que no
+            # tiene sudo: el dueño se ajusta desde un contenedor, que sí puede.
+            mkdir -p $HOME/data/volumes/impresos/comprobantes
+            docker run --rm -v $HOME/data/volumes/impresos/comprobantes:/datos \
+              alpine:3 chown -R 100:101 /datos
+
+            echo "── 3/6 construir la imagen nueva ──"
             # Se construye ANTES de migrar a proposito: las migraciones viven
             # dentro de la imagen (el Dockerfile hace COPY . .), asi que un
             # `run` sobre una imagen vieja aplicaria las migraciones viejas y el
@@ -159,16 +168,16 @@ jobs:
             cd $HOME/data/deploy/impresos
             docker compose build api
 
-            echo "── 3/5 migraciones: antes de arrancar el codigo nuevo ──"
+            echo "── 4/6 migraciones: antes de arrancar el codigo nuevo ──"
             docker compose run --rm api python -m alembic upgrade head
 
-            echo "── 4/5 levantar los tres servicios (esperando los healthchecks) ──"
+            echo "── 5/6 levantar los tres servicios (esperando los healthchecks) ──"
             # --wait no devuelve el control hasta que los tres pasen su
             # healthcheck, en vez de dejarlos en "health: starting".
             docker compose up -d --build --wait --wait-timeout 180
             docker compose ps
 
-            echo "── 5/5 smoke test ──"
+            echo "── 6/6 smoke test ──"
             # Se reintenta a proposito. `up -d` deja el contenedor arriba en
             # menos de un segundo, pero Traefik tarda unos segundos mas en leer
             # las etiquetas del contenedor nuevo y crear el router. Una unica

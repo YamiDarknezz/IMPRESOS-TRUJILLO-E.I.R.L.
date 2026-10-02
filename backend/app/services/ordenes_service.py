@@ -465,6 +465,8 @@ async def _sincronizar_adelanto(
     elif nuevo > 0:
         orden.pagos.append(
             PagoOrden(
+                # Nace con la colección vacía: leerla después sería un SELECT implícito.
+                comprobantes=[],
                 monto=nuevo,
                 metodo=data.metodo_pago,
                 tipo=TipoPago.ADELANTO,
@@ -532,6 +534,7 @@ async def crear_orden(sesion: AsyncSession, data: OrdenCreateData, usuario: Usua
         items=[],
         materiales=[],
         pagos=[],
+        comprobantes=[],
     )
     sesion.add(orden)
     await sesion.flush()  # asigna el id y con él el correlativo ORD-000000
@@ -563,6 +566,8 @@ async def crear_orden(sesion: AsyncSession, data: OrdenCreateData, usuario: Usua
     if data.adelanto_pago > 0:
         orden.pagos.append(
             PagoOrden(
+                # Nace con la colección vacía: leerla después sería un SELECT implícito.
+                comprobantes=[],
                 monto=_redondear(_decimal(data.adelanto_pago)),
                 metodo=data.metodo_pago,
                 tipo=TipoPago.ADELANTO,
@@ -630,6 +635,7 @@ async def crear_venta_rapida(
         items=[],
         materiales=[],
         pagos=[],
+        comprobantes=[],
     )
     sesion.add(orden)
     await sesion.flush()
@@ -645,6 +651,8 @@ async def crear_venta_rapida(
 
     pago = PagoOrden(
         orden_id=orden.id,
+        # Nace con la colección vacía: leerla después sería un SELECT implícito.
+        comprobantes=[],
         monto=monto,
         metodo=data.metodo_pago,
         tipo=TipoPago.ADELANTO,
@@ -892,6 +900,8 @@ async def confirmar_pago(
 
     orden.pagos.append(
         PagoOrden(
+            # Nace con la colección vacía: leerla después sería un SELECT implícito.
+            comprobantes=[],
             monto=monto_cobrado,
             # Si no se indica, se asume el mismo medio del adelanto.
             metodo=metodo or orden.metodo_pago_adelanto,

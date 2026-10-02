@@ -306,6 +306,37 @@
           }
         </select>
       </div>
+
+      <!-- Captura del adelanto: opcional, es el respaldo de la conciliación. -->
+      <div class="input-group campo-completo">
+        <label for="adjuntos-orden">Captura del adelanto (opcional)</label>
+        <input id="adjuntos-orden" type="file" accept="image/*,application/pdf" multiple
+               (change)="agregarAdjuntos($event)">
+        <span class="field-hint">
+          Captura de Yape o transferencia. Se reduce antes de subirla, así que puedes
+          adjuntar la foto tal como la tomaste.
+        </span>
+
+        @if (adjuntos().length > 0) {
+          <ul class="lista-adjuntos">
+            @for (adjunto of adjuntos(); track adjunto.nombre; let i = $index) {
+              <li class="adjunto">
+                @if (adjunto.vista) {
+                  <img class="adjunto-vista" [src]="adjunto.vista" [alt]="adjunto.nombre">
+                } @else {
+                  <span class="adjunto-icono"><app-icon name="receipt-text" [size]="18" /></span>
+                }
+                <span class="adjunto-nombre">{{ adjunto.nombre }}</span>
+                <span class="adjunto-peso text-muted">{{ pesoLegible(adjunto.peso) }}</span>
+                <button type="button" class="btn-icon" title="Quitar"
+                        aria-label="Quitar la captura" (click)="quitarAdjunto(i)">
+                  <app-icon name="x" [size]="14" />
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      </div>
     </div>
 
     <div class="form-actions">
