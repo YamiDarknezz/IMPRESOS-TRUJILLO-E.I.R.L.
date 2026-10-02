@@ -52,7 +52,12 @@ describe('InventarioComponent', () => {
     registrarPieza: ReturnType<typeof vi.fn>;
     registrarConsumoPieza: ReturnType<typeof vi.fn>;
   };
-  let unidadesFalso: { unidades: ReturnType<typeof signal<Unidad[]>>; cargar: ReturnType<typeof vi.fn> };
+  let unidadesFalso: {
+    unidades: ReturnType<typeof signal<Unidad[]>>;
+    todas: ReturnType<typeof signal<Unidad[]>>;
+    cargar: ReturnType<typeof vi.fn>;
+    cargarTodas: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     inventarioFalso = {
@@ -66,7 +71,14 @@ describe('InventarioComponent', () => {
       registrarPieza: vi.fn().mockResolvedValue(piezaBase()),
       registrarConsumoPieza: vi.fn().mockResolvedValue({}),
     };
-    unidadesFalso = { unidades: signal([m2]), cargar: vi.fn().mockResolvedValue(undefined) };
+    unidadesFalso = {
+      unidades: signal([m2]),
+      // El catálogo completo (con las desactivadas) lo usa la edición de un
+      // material cuya unidad ya no está activa (#58).
+      todas: signal([m2]),
+      cargar: vi.fn().mockResolvedValue(undefined),
+      cargarTodas: vi.fn().mockResolvedValue(undefined),
+    };
     TestBed.configureTestingModule({
       imports: [InventarioComponent],
       providers: [

@@ -560,6 +560,11 @@
   opacity: 0.55;
 }
 
+/* Fila de un registro desactivado (borrado lógico): se muestra, pero apagada. */
+.row-inactiva {
+  opacity: 0.55;
+}
+
 .fecha-cell {
   white-space: nowrap;
   font-size: 0.85rem;
