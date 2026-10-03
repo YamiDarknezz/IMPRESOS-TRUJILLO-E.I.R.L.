@@ -1314,6 +1314,11 @@ select.date-filter-input:focus {
   gap: 0.4rem;
 }
 
+/* ─── Usuarios: clases que reemplazan estilos inline (Issue #37) ────────── */
+
+/* Pista de campo con padding lateral (mismo que style="padding:0 1.25rem 1rem") */
+.field-hint.field-hint-padded { padding: 0 1.5rem 1rem 1.25rem; }
+
 /* ─── Checkbox con texto (clientes, orden-form) ──────────────────────────── */
 .input-group .checkbox-label {
   display: flex;
