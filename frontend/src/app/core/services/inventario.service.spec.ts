@@ -1,6 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import { ApiService } from './api.service';
-import { InventarioService, filtrarMateriales, tieneStockBajo } from './inventario.service';
+import {
+  InventarioService,
+  filtrarMateriales,
+  filtrarPiezas,
+  tieneStockBajo,
+  ubicacionesEnUso,
+} from './inventario.service';
 import { MaterialInventario, PiezaLoteMaterial } from '../models';
 
 const material: MaterialInventario = {
@@ -124,5 +130,56 @@ describe('filtrarMateriales', () => {
 
   it('filtra por nombre sin importar mayúsculas', () => {
     expect(filtrarMateriales(lista, 'acrílico')).toEqual([otro]);
+  });
+
+  // Issue #109: "¿qué hay en el almacén?"
+  describe('por ubicación (#109)', () => {
+    const enAlmacen = { ...material, id: 3, nombre: 'Vinilo', ubicacion_estante: 'Almacén' };
+    const enEstante = { ...otro, ubicacion_estante: 'Estante 2' };
+    const todos = [material, enAlmacen, enEstante];
+
+    it('el texto también busca en la ubicación', () => {
+      expect(filtrarMateriales(todos, 'almacén')).toEqual([enAlmacen]);
+      expect(filtrarMateriales(todos, 'estante')).toEqual([enEstante]);
+    });
+
+    it('una ubicación exacta deja solo lo que está ahí', () => {
+      expect(filtrarMateriales(todos, '', 'Almacén')).toEqual([enAlmacen]);
+    });
+
+    it('la ubicación exacta se combina con el texto', () => {
+      expect(filtrarMateriales(todos, 'vinilo', 'Estante 2')).toEqual([]);
+      expect(filtrarMateriales(todos, 'vinilo', 'Almacén')).toEqual([enAlmacen]);
+    });
+
+    it('un material sin ubicación no aparece al filtrar por una', () => {
+      expect(filtrarMateriales([material], '', 'Almacén')).toEqual([]);
+    });
+
+    it('ubicacionesEnUso() lista las distintas, sin vacías y ordenadas', () => {
+      const repetida = { ...enAlmacen, id: 4 };
+      expect(ubicacionesEnUso([material, enEstante, enAlmacen, repetida])).toEqual(['Almacén', 'Estante 2']);
+    });
+  });
+});
+
+describe('filtrarPiezas (#109)', () => {
+  const rollo = (sobrescribe: Partial<PiezaLoteMaterial>): PiezaLoteMaterial => ({
+    id: 1, material_id: 1, material_nombre: 'Lona banner', codigo_identificador: 'ROLL-01',
+    capacidad_inicial: 50, saldo_restante: 50, unidad_medida: 'm', costo_adquisicion: 0, estado: 'disponible',
+    ubicacion: 'Estante 2', maquina_asignada: '', fecha_ingreso: '2026-09-01', nota: '',
+    total_recaudado: 0, ...sobrescribe,
+  });
+  const a = rollo({});
+  const b = rollo({ id: 2, codigo_identificador: 'PL-02', material_nombre: 'Acrílico', ubicacion: 'Almacén' });
+
+  it('sin texto devuelve todo', () => {
+    expect(filtrarPiezas([a, b], '  ')).toEqual([a, b]);
+  });
+
+  it('busca por código, material o ubicación', () => {
+    expect(filtrarPiezas([a, b], 'pl-02')).toEqual([b]);
+    expect(filtrarPiezas([a, b], 'lona')).toEqual([a]);
+    expect(filtrarPiezas([a, b], 'almacén')).toEqual([b]);
   });
 });

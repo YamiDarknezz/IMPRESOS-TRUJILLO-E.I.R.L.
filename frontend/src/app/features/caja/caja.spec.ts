@@ -1,8 +1,7 @@
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { provideRouter } from '@angular/router';
 import { signal } from '@angular/core';
 import { CajaService } from '../../core/services/caja.service';
-import { OrdenesService } from '../../core/services/ordenes.service';
 import { SesionService } from '../../core/services/sesion.service';
 import { CajaComponent } from './caja';
 import { CierreCaja, DetalleCaja, ResumenCaja } from '../../core/models';
@@ -39,8 +38,9 @@ describe('CajaComponent', () => {
     cerrar: ReturnType<typeof vi.fn>;
     congelar: ReturnType<typeof vi.fn>;
     observarPago: ReturnType<typeof vi.fn>;
+    registrarGasto: ReturnType<typeof vi.fn>;
+    eliminarGasto: ReturnType<typeof vi.fn>;
   };
-  let ordenesFalso: { crearVentaRapida: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     cajaFalso = {
@@ -49,14 +49,14 @@ describe('CajaComponent', () => {
       cerrar: vi.fn().mockResolvedValue(cierre),
       congelar: vi.fn().mockResolvedValue(cierre),
       observarPago: vi.fn().mockResolvedValue({}),
+      registrarGasto: vi.fn().mockResolvedValue({}),
+      eliminarGasto: vi.fn().mockResolvedValue(undefined),
     };
-    ordenesFalso = { crearVentaRapida: vi.fn().mockResolvedValue({}) };
     TestBed.configureTestingModule({
       imports: [CajaComponent],
       providers: [
         provideRouter([]),
         { provide: CajaService, useValue: cajaFalso },
-        { provide: OrdenesService, useValue: ordenesFalso },
         { provide: SesionService, useValue: { esSupervisor: signal(true), puedeVender: signal(true) } },
       ],
     });
@@ -162,72 +162,103 @@ describe('CajaComponent', () => {
     });
   });
 
-  describe('venta rápida / mostrador', () => {
-    it('guardarVentaRapida(): exige descripción', async () => {
+  // Issue #38: el modal de observación es un diálogo accesible y Escape lo cierra.
+  it('observar cobro: es un diálogo y Escape lo cierra', async () => {
+    cajaFalso.listarCierres.mockResolvedValue([]); // solo interesa el modal, no la tabla de cierres
+    const fixture = TestBed.createComponent(CajaComponent);
+    await fixture.whenStable(); // espera el resumen: la plantilla lo da por cargado
+    fixture.componentInstance.abrirModalObservar({
+      pago_id: 9, orden: 'C-0001', orden_id: 1, cliente: 'Juan Pérez', unidad_negocio: 'imprenta',
+      metodo: 'yape', tipo: 'adelanto', monto: 100, fecha: '2026-09-18', usuario_id: 2,
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="dialog"]')).not.toBeNull();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.pagoAObservar()).toBeNull();
+  });
+
+  // Issue #112: los gastos del día restan del arqueo.
+  describe('gastos de caja', () => {
+    it('abrirModalGasto() parte vacío y usa la unidad filtrada', () => {
+      const componente = TestBed.createComponent(CajaComponent).componentInstance;
+      componente.cambiarUnidad('gigantografias');
+      componente.gastoMotivo.set('algo viejo');
+
+      componente.abrirModalGasto();
+
+      expect(componente.modalGasto()).toBe(true);
+      expect(componente.gastoMotivo()).toBe('');
+      expect(componente.gastoMonto()).toBeNull();
+      expect(componente.gastoUnidad()).toBe('gigantografias');
+    });
+
+    it('guardarGasto(): exige el motivo y un monto mayor a 0', async () => {
       const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-      const fixture = TestBed.createComponent(CajaComponent);
-      fixture.componentInstance.vrMonto.set(20);
+      const componente = TestBed.createComponent(CajaComponent).componentInstance;
+      componente.gastoMonto.set(10);
+      await componente.guardarGasto();
+      expect(alertSpy).toHaveBeenLastCalledWith('Indica en qué se gastó.');
 
-      await fixture.componentInstance.guardarVentaRapida();
+      componente.gastoMotivo.set('Tinta');
+      componente.gastoMonto.set(0);
+      await componente.guardarGasto();
+      expect(alertSpy).toHaveBeenLastCalledWith('Ingresa un monto válido mayor a 0.');
 
-      expect(ordenesFalso.crearVentaRapida).not.toHaveBeenCalled();
-      expect(alertSpy).toHaveBeenCalledWith('Ingresa la descripción del servicio o producto rápido.');
+      expect(cajaFalso.registrarGasto).not.toHaveBeenCalled();
       alertSpy.mockRestore();
     });
 
-    it('guardarVentaRapida(): exige un monto mayor a 0', async () => {
-      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    it('guardarGasto(): lo anota en el día que se mira, cierra el modal y recarga', async () => {
       const fixture = TestBed.createComponent(CajaComponent);
       const componente = fixture.componentInstance;
-      componente.vrDescripcion.set('Copias');
-      componente.vrMonto.set(0);
+      componente.cambiarFecha('2026-09-18');
+      componente.abrirModalGasto();
+      componente.gastoMotivo.set('  Papel bond ');
+      componente.gastoMonto.set(15.5);
+      cajaFalso.resumen.mockClear();
 
-      await componente.guardarVentaRapida();
+      await componente.guardarGasto();
 
-      expect(ordenesFalso.crearVentaRapida).not.toHaveBeenCalled();
-      expect(alertSpy).toHaveBeenCalledWith('Ingresa un monto válido mayor a 0.');
+      expect(cajaFalso.registrarGasto).toHaveBeenCalledWith({
+        monto: 15.5,
+        motivo: 'Papel bond',
+        unidad_negocio: 'imprenta',
+        fecha: '2026-09-18',
+      });
+      expect(componente.modalGasto()).toBe(false);
+      expect(cajaFalso.resumen).toHaveBeenCalled();
+    });
+
+    it('guardarGasto(): si el servidor lo rechaza, avisa y el modal sigue abierto', async () => {
+      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+      cajaFalso.registrarGasto.mockRejectedValue(new Error('Ya cerraste tu caja'));
+      const componente = TestBed.createComponent(CajaComponent).componentInstance;
+      componente.abrirModalGasto();
+      componente.gastoMotivo.set('Tinta');
+      componente.gastoMonto.set(5);
+
+      await componente.guardarGasto();
+
+      expect(alertSpy).toHaveBeenCalledTimes(1);
+      expect(componente.modalGasto()).toBe(true);
       alertSpy.mockRestore();
     });
 
-    it('guardarVentaRapida(): con datos válidos, crea la venta y cierra el modal', async () => {
-      const fixture = TestBed.createComponent(CajaComponent);
-      const componente = fixture.componentInstance;
-      componente.abrirModalVentaRapida();
-      componente.vrDescripcion.set('Copias');
-      componente.vrMonto.set(15);
+    it('eliminarGasto(): pide confirmación antes de quitarlo', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+      const componente = TestBed.createComponent(CajaComponent).componentInstance;
+      const gasto = { id: 4, fecha: '2026-09-18', unidad_negocio: 'imprenta' as const, monto: 9, motivo: 'Tinta', usuario_id: 1, usuario_nombre: 'Ana' };
 
-      await componente.guardarVentaRapida();
+      await componente.eliminarGasto(gasto);
+      expect(cajaFalso.eliminarGasto).not.toHaveBeenCalled();
 
-      expect(ordenesFalso.crearVentaRapida).toHaveBeenCalledWith(
-        expect.objectContaining({ descripcion: 'Copias', monto_total: 15 }),
-      );
-      expect(componente.modalVentaRapida()).toBe(false);
-    });
-
-    // Issue #23: el enlace en Órdenes ya está guardado, pero esta URL
-    // también se puede teclear a mano (el backend igual la rechaza, pero
-    // el formulario no debe ni abrirse para quien de todos modos no puede).
-    it('constructor(): con venta_rapida en la URL y permiso, abre el modal', () => {
-      TestBed.overrideProvider(ActivatedRoute, {
-        useValue: { snapshot: { queryParamMap: convertToParamMap({ venta_rapida: '1' }) } },
-      });
-
-      const fixture = TestBed.createComponent(CajaComponent);
-
-      expect(fixture.componentInstance.modalVentaRapida()).toBe(true);
-    });
-
-    it('constructor(): con venta_rapida en la URL pero sin permiso, no abre el modal', () => {
-      TestBed.overrideProvider(ActivatedRoute, {
-        useValue: { snapshot: { queryParamMap: convertToParamMap({ venta_rapida: '1' }) } },
-      });
-      TestBed.overrideProvider(SesionService, {
-        useValue: { esSupervisor: signal(true), puedeVender: signal(false) },
-      });
-
-      const fixture = TestBed.createComponent(CajaComponent);
-
-      expect(fixture.componentInstance.modalVentaRapida()).toBe(false);
+      confirmSpy.mockReturnValue(true);
+      await componente.eliminarGasto(gasto);
+      expect(cajaFalso.eliminarGasto).toHaveBeenCalledWith(4);
+      confirmSpy.mockRestore();
     });
   });
 });

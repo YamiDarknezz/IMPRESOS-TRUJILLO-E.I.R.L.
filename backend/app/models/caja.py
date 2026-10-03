@@ -3,7 +3,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import Date, ForeignKey, Numeric, Text, UniqueConstraint
+from sqlalchemy import CheckConstraint, Date, ForeignKey, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TemporalMixin, enum_columna
@@ -37,6 +37,11 @@ class CierreCaja(Base, TemporalMixin):
     monto_yape: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, nullable=False)
     monto_transferencia: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, nullable=False)
     total: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, nullable=False)
+    # Lo que salió de la caja ese día por gastos (#112). `total` sigue siendo lo
+    # cobrado; el neto es total - monto_gastos.
+    monto_gastos: Mapped[Decimal] = mapped_column(
+        Numeric(12, 2), default=0, server_default="0", nullable=False
+    )
 
     estado: Mapped[EstadoCierre] = mapped_column(
         enum_columna(EstadoCierre, "estado_cierre", 15),
@@ -48,3 +53,31 @@ class CierreCaja(Base, TemporalMixin):
 
     usuario = relationship("Usuario", foreign_keys=[usuario_id], lazy="joined")
     validador = relationship("Usuario", foreign_keys=[validado_por], lazy="joined")
+
+
+class GastoCaja(Base, TemporalMixin):
+    """
+    Egreso de la caja del día (tinta, papel, banner, numeración...) (#112).
+
+    El negocio lo anota a mano en sus cuentas diarias; sin este registro el
+    arqueo nunca cuadra con el cuaderno, porque el dinero que salió por
+    gastos no existe en el sistema. Va ligado a una unidad de negocio porque
+    la caja es dual (RN-05): no se mezclan los fondos de Imprenta y
+    Gigantografías.
+    """
+
+    __tablename__ = "gastos_caja"
+    __table_args__ = (CheckConstraint("monto > 0", name="gasto_caja_monto_positivo"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    fecha: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    unidad_negocio: Mapped[UnidadNegocio] = mapped_column(
+        enum_columna(UnidadNegocio, "unidad_negocio", 20), nullable=False
+    )
+    monto: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    # Texto libre: el cliente aún no definió si quiere categorías.
+    motivo: Mapped[str] = mapped_column(String(200), nullable=False)
+    registrado_por: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), nullable=False)
+
+    usuario = relationship("Usuario", foreign_keys=[registrado_por], lazy="joined")
+

@@ -10,6 +10,7 @@ import { DatosOrden, OrdenesService } from '../../core/services/ordenes.service'
 import { ProductosService } from '../../core/services/productos.service';
 import { SesionService, nombreVisible } from '../../core/services/sesion.service';
 import {
+  CanalIngreso,
   ETIQUETA_METODO,
   ETIQUETA_TIPO_DOCUMENTO,
   ETIQUETA_UNIDAD,
@@ -24,6 +25,7 @@ import {
 import { mensajeDeError } from '../../shared/utilidades/errores';
 import {
   adelantoMinimoPorcentaje,
+  canalesIngreso,
   etiquetasMetodo,
   igvPorcentaje,
   metodosPago as metodosDelServidor,
@@ -52,12 +54,15 @@ interface FormularioOrden {
   productoId: number | null;
   descripcion: string;
   tipoDocumento: TipoDocumento;
+  /** Vacío hasta que se elige: es un dato que después no se puede reconstruir (#69). */
+  canalIngreso: CanalIngreso | '';
   unidadNegocio: UnidadNegocio;
   fechaEntrega: string;
   incluyeIgv: boolean;
   metodoPago: MetodoPago;
   precioTotal: number;
   adelanto: number;
+  adelantoDescripcion: string;
   descuento: number;
   motivoDescuento: string;
   materiales: MaterialItem[];
@@ -75,9 +80,9 @@ function lineaVacia(): LineaFormulario {
 function formularioVacio(): FormularioOrden {
   return {
     clienteId: null, cliente: '', asignadoA: null, productoId: null,
-    descripcion: '', tipoDocumento: 'contrato', unidadNegocio: 'imprenta',
+    descripcion: '', tipoDocumento: 'contrato', canalIngreso: '', unidadNegocio: 'imprenta',
     fechaEntrega: '', incluyeIgv: false, metodoPago: 'efectivo',
-    precioTotal: 0, adelanto: 0, descuento: 0, motivoDescuento: '',
+    precioTotal: 0, adelanto: 0, adelantoDescripcion: '', descuento: 0, motivoDescuento: '',
     materiales: [], lineas: [],
   };
 }
@@ -120,6 +125,7 @@ export class OrdenFormComponent {
 
   // Catálogos para la plantilla
   readonly metodosPago = metodosDelServidor;
+  readonly canales = computed(() => canalesIngreso());
   readonly igvPorcentaje = igvPorcentaje;
   readonly adelantoPorcentaje = adelantoMinimoPorcentaje;
   readonly unidadesNegocio = UNIDADES_NEGOCIO;
@@ -167,9 +173,17 @@ export class OrdenFormComponent {
     Math.max(redondear(this.total() - this.form().adelanto), 0)
   );
 
-  /** Adelanto mínimo exigido para clientes no corporativos. */
+  /**
+   * La proforma es el documento de los clientes de confianza y de las empresas
+   * que pagan a plazo: no exige adelanto. Los clientes corporativos tampoco (#72).
+   */
+  readonly exentoDeAdelanto = computed(
+    () => this.form().tipoDocumento === 'proforma' || !!this.clienteSeleccionado()?.es_corporativo
+  );
+
+  /** Adelanto mínimo exigido; 0 si el documento o el cliente están exentos. */
   readonly adelantoMinimo = computed(() => {
-    if (this.clienteSeleccionado()?.es_corporativo) return 0;
+    if (this.exentoDeAdelanto()) return 0;
     return redondear(this.total() * adelantoMinimoPorcentaje() / 100);
   });
 
@@ -207,12 +221,15 @@ export class OrdenFormComponent {
       productoId: null,
       descripcion: orden.descripcion,
       tipoDocumento: orden.tipo_documento,
+      canalIngreso: orden.canal_ingreso,
       unidadNegocio: orden.unidad_negocio,
       fechaEntrega: orden.fecha_entrega,
       incluyeIgv: orden.incluye_igv,
       metodoPago: orden.finanzas?.metodo_pago_adelanto ?? 'efectivo',
       precioTotal: orden.items?.length ? 0 : orden.subtotal,
       adelanto: orden.finanzas?.adelanto_pago ?? 0,
+      adelantoDescripcion:
+        orden.finanzas?.pagos?.find(p => p.tipo === 'adelanto')?.descripcion ?? '',
       descuento: orden.finanzas?.descuento ?? 0,
       motivoDescuento: orden.finanzas?.motivo_descuento ?? '',
       materiales: (orden.materiales?.estimados ?? []).map(m => ({ ...m })),
@@ -285,6 +302,11 @@ export class OrdenFormComponent {
 
   // ── Materiales estimados ─────────────────────────────────────────────────
 
+  /** Dónde está guardado un material, para ir a buscarlo (#109). */
+  ubicacionDe(idMaterial: number): string {
+    return this.materiales().find(m => m.id === idMaterial)?.ubicacion_estante?.trim() ?? '';
+  }
+
   agregarMaterial(): void {
     const material = this.materiales().find(m => String(m.id) === this.materialSelId());
     const cantidad = this.materialSelCantidad();
@@ -347,6 +369,9 @@ export class OrdenFormComponent {
     if (!form.descripcion.trim()) {
       errores['descripcion'] = 'La descripción es requerida.';
     }
+    if (!form.canalIngreso) {
+      errores['canalIngreso'] = 'Indica por qué vía llegó el pedido.';
+    }
     if (!form.fechaEntrega) {
       errores['fechaEntrega'] = 'La fecha de entrega es requerida.';
     }
@@ -362,7 +387,7 @@ export class OrdenFormComponent {
       errores['descuento'] = 'El descuento no puede superar el subtotal.';
     }
     // RN-01: sin adelanto no se arranca el trabajo.
-    if (!(form.adelanto > 0) && !this.clienteSeleccionado()?.es_corporativo) {
+    if (!(form.adelanto > 0) && !this.exentoDeAdelanto()) {
       errores['adelanto'] = 'Se requiere un adelanto para iniciar el trabajo.';
     }
     if (form.adelanto < this.adelantoMinimo()) {
@@ -424,6 +449,7 @@ export class OrdenFormComponent {
       asignado_a: this.sesion.esSupervisor() ? form.asignadoA : null,
       descripcion: form.descripcion,
       tipo_documento: form.tipoDocumento,
+      canal_ingreso: form.canalIngreso as CanalIngreso,
       unidad_negocio: form.unidadNegocio,
       fecha_entrega: form.fechaEntrega,
       incluye_igv: form.incluyeIgv,
@@ -443,6 +469,7 @@ export class OrdenFormComponent {
       precio_total: form.lineas.length > 0 ? null : form.precioTotal,
       adelanto_pago: form.adelanto,
       metodo_pago: form.metodoPago,
+      adelanto_descripcion: form.adelantoDescripcion.trim(),
     };
 
     this.guardando.set(true);

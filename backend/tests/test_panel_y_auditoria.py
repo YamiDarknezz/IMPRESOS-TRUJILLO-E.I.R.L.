@@ -6,7 +6,7 @@ diciendo la verdad y la pantalla tiene que poder saber cuántos hay.
 """
 from datetime import date, timedelta
 
-from app.core.fechas import ahora_utc
+from app.core.fechas import a_fecha_peru, ahora_utc
 from app.models import Auditoria, EstadoOrden, Orden, TipoEventoAuditoria
 from tests.apoyo import cabecera_token
 
@@ -202,9 +202,12 @@ async def test_auditoria_filtra_por_dia_peruano(cliente_api, sesion, admin):
     )
     await sesion.flush()
 
+    # El filtro es por día PERUANO: la fecha UTC de "ayer" difiere de la peruana
+    # entre las 00:00 y las 05:00 UTC, y la prueba fallaba solo a esas horas.
+    dia_ayer = a_fecha_peru(ayer).isoformat()
     rango_ayer = (
         await cliente_api.get(
-            f"/api/auditoria?desde={ayer.date().isoformat()}&hasta={ayer.date().isoformat()}",
+            f"/api/auditoria?desde={dia_ayer}&hasta={dia_ayer}",
             headers=cabecera_token(admin),
         )
     ).json()

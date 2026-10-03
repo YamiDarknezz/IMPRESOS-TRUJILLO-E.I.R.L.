@@ -13,6 +13,7 @@ function ordenBase(sobrescribe: Partial<Orden> = {}): Orden {
     id_documento: 'C-0001',
     codigo: 'C-0001',
     tipo_documento: 'contrato',
+    canal_ingreso: 'otro',
     unidad_negocio: 'imprenta',
     cliente_id: 1,
     cliente: 'Juan Pérez',
@@ -47,6 +48,9 @@ describe('OrdenesComponent', () => {
     vencidas: ReturnType<typeof signal<number>>;
     porCobrar: ReturnType<typeof signal<number>>;
     cargar: ReturnType<typeof vi.fn>;
+    recargar: ReturnType<typeof vi.fn>;
+    entregarConSaldo: ReturnType<typeof vi.fn>;
+    rollosDeOrden: ReturnType<typeof vi.fn>;
     cambiarEstado: ReturnType<typeof vi.fn>;
     asignar: ReturnType<typeof vi.fn>;
     cancelar: ReturnType<typeof vi.fn>;
@@ -69,6 +73,9 @@ describe('OrdenesComponent', () => {
       vencidas: signal(0),
       porCobrar: signal(0),
       cargar: vi.fn().mockResolvedValue(undefined),
+      recargar: vi.fn().mockResolvedValue(undefined),
+      entregarConSaldo: vi.fn().mockResolvedValue(undefined),
+      rollosDeOrden: vi.fn().mockResolvedValue({ data: [], resumen: [] }),
       cambiarEstado: vi.fn().mockResolvedValue(undefined),
       asignar: vi.fn().mockResolvedValue(undefined),
       cancelar: vi.fn().mockResolvedValue(undefined),
@@ -88,7 +95,7 @@ describe('OrdenesComponent', () => {
             resumen: () => '',
           },
         },
-        { provide: SesionService, useValue: { esSupervisor: signal(true), puedeGestionar: () => true, puedeAvanzarEtapa: () => true } },
+        { provide: SesionService, useValue: { esSupervisor: signal(true), puedeVender: signal(true), puedeGestionarOrdenes: signal(true), usuarios: signal([]), puedeGestionar: () => true, puedeAvanzarEtapa: () => true } },
       ],
     });
   });
@@ -127,6 +134,170 @@ describe('OrdenesComponent', () => {
     expect(componente.desde()).toBe('');
     expect(componente.hasta()).toBe('');
     expect(componente.hayFiltroFecha()).toBe(false);
+  });
+
+  describe('venta rápida / mostrador (#12)', () => {
+    it('el botón abre y el componente avisa cuando se cierra', () => {
+      ordenesFalso.ordenes.set([]); // solo interesa el modal, no las filas
+      const fixture = TestBed.createComponent(OrdenesComponent);
+      const componente = fixture.componentInstance;
+      expect(componente.ventaRapidaAbierta()).toBe(false);
+
+      componente.ventaRapidaAbierta.set(true);
+      fixture.detectChanges();
+      const modal = fixture.nativeElement.querySelector('app-venta-rapida') as HTMLElement;
+      expect(modal).not.toBeNull();
+
+      (modal.querySelector('.modal-footer .btn-secondary') as HTMLButtonElement).click();
+      expect(componente.ventaRapidaAbierta()).toBe(false);
+    });
+  });
+
+  // Issue #72: la proforma se entrega antes de pagar, con un supervisor.
+  describe('entrega con saldo de una proforma (#72)', () => {
+    const conSaldo = (extra: Partial<Orden> = {}) =>
+      ordenBase({
+        estado: 'finalizada',
+        tipo_documento: 'proforma',
+        finanzas: { precio_total: 100, subtotal: 85, igv: 15, adelanto_pago: 50, saldo_pendiente: 50, metodo_pago_adelanto: 'efectivo', pagado_totalmente: false },
+        ...extra,
+      });
+
+    it('un supervisor abre la autorización en vez de recibir el aviso de bloqueo', async () => {
+      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+      const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
+      const orden = conSaldo();
+
+      await componente.cambiarEstado(orden, 'entregada');
+
+      expect(componente.ordenAEntregarConSaldo()).toBe(orden);
+      expect(alertSpy).not.toHaveBeenCalled();
+      expect(ordenesFalso.cambiarEstado).not.toHaveBeenCalled();
+      alertSpy.mockRestore();
+    });
+
+    it('quien no es supervisor recibe el aviso y no se abre la autorización', async () => {
+      TestBed.overrideProvider(SesionService, {
+        useValue: { esSupervisor: signal(false), puedeVender: signal(true), puedeGestionarOrdenes: signal(true), usuarios: signal([]), puedeGestionar: () => true, puedeAvanzarEtapa: () => true },
+      });
+      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+      const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
+
+      await componente.cambiarEstado(conSaldo(), 'entregada');
+
+      expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('Solo un supervisor'));
+      expect(componente.ordenAEntregarConSaldo()).toBeNull();
+      alertSpy.mockRestore();
+    });
+
+    it('un contrato sigue sin poder entregarse antes de pagar, aunque quien pregunte sea supervisor', async () => {
+      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+      const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
+
+      await componente.cambiarEstado(conSaldo({ tipo_documento: 'contrato' }), 'entregada');
+
+      expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('no está pagada en su totalidad'));
+      expect(componente.ordenAEntregarConSaldo()).toBeNull();
+      alertSpy.mockRestore();
+    });
+
+    it('confirmar exige el motivo', async () => {
+      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+      const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
+      await componente.cambiarEstado(conSaldo(), 'entregada');
+      componente.motivoEntrega.set('   ');
+
+      await componente.confirmarEntregaConSaldo();
+
+      expect(ordenesFalso.entregarConSaldo).not.toHaveBeenCalled();
+      expect(alertSpy).toHaveBeenCalledWith('Indica el motivo por el que se entrega antes de que pague.');
+      alertSpy.mockRestore();
+    });
+
+    it('confirmar manda la orden con el motivo recortado y cierra la autorización', async () => {
+      const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
+      const orden = conSaldo();
+      await componente.cambiarEstado(orden, 'entregada');
+      componente.motivoEntrega.set('  Orden de compra a 30 días ');
+
+      await componente.confirmarEntregaConSaldo();
+
+      expect(ordenesFalso.entregarConSaldo).toHaveBeenCalledWith(orden, 'Orden de compra a 30 días');
+      expect(componente.ordenAEntregarConSaldo()).toBeNull();
+    });
+
+    it('si el servidor la rechaza, avisa y la autorización sigue abierta', async () => {
+      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+      ordenesFalso.entregarConSaldo.mockRejectedValue(new Error('Solo un supervisor'));
+      const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
+      await componente.cambiarEstado(conSaldo(), 'entregada');
+      componente.motivoEntrega.set('Pidió el gerente');
+
+      await componente.confirmarEntregaConSaldo();
+
+      expect(alertSpy).toHaveBeenCalledTimes(1);
+      expect(componente.ordenAEntregarConSaldo()).not.toBeNull();
+      alertSpy.mockRestore();
+    });
+  });
+
+  describe('rollos usados por el pedido (#71)', () => {
+    it('abrirRollos() pide los cortes del pedido y los guarda', async () => {
+      const respuesta = { data: [], resumen: [{ material: 'Lona', unidad: 'm', cantidad: 8 }] };
+      ordenesFalso.rollosDeOrden.mockResolvedValue(respuesta);
+      const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
+      const orden = ordenBase();
+
+      await componente.abrirRollos(orden);
+
+      expect(ordenesFalso.rollosDeOrden).toHaveBeenCalledWith(1);
+      expect(componente.ordenRollos()).toBe(orden);
+      expect(componente.rollos()).toEqual(respuesta);
+      expect(componente.cargandoRollos()).toBe(false);
+    });
+
+    it('si falla, avisa y no deja el modal a medias', async () => {
+      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+      ordenesFalso.rollosDeOrden.mockRejectedValue(new Error('sin red'));
+      const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
+
+      await componente.abrirRollos(ordenBase());
+
+      expect(alertSpy).toHaveBeenCalledTimes(1);
+      expect(componente.ordenRollos()).toBeNull();
+      alertSpy.mockRestore();
+    });
+
+    it('cerrarRollos() limpia el pedido y los datos', async () => {
+      const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
+      await componente.abrirRollos(ordenBase());
+      componente.cerrarRollos();
+      expect(componente.ordenRollos()).toBeNull();
+      expect(componente.rollos()).toBeNull();
+    });
+  });
+
+  describe('actualizar()', () => {
+    it('vuelve a pedir las órdenes y las métricas', async () => {
+      const fixture = TestBed.createComponent(OrdenesComponent);
+      ordenesFalso.cargarMetricas.mockClear();
+
+      await fixture.componentInstance.actualizar();
+
+      expect(ordenesFalso.recargar).toHaveBeenCalledTimes(1);
+      expect(ordenesFalso.cargarMetricas).toHaveBeenCalledTimes(1);
+    });
+
+    it('si falla, avisa en vez de dejar el error sin atender', async () => {
+      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+      ordenesFalso.recargar.mockRejectedValue(new Error('sin red'));
+      const fixture = TestBed.createComponent(OrdenesComponent);
+
+      await fixture.componentInstance.actualizar();
+
+      expect(alertSpy).toHaveBeenCalledTimes(1);
+      alertSpy.mockRestore();
+    });
   });
 
   describe('cambiarEstado()', () => {
@@ -219,6 +390,22 @@ describe('OrdenesComponent', () => {
       expect(componente.sobrantes()).toEqual([{ nombre: 'Lona', sobrante: 3 }]);
     });
 
+    // Issue #29: el input mutaba el objeto del signal y `sobrantes()` quedaba
+    // desactualizado, de modo que no se pedía confirmar la devolución al stock.
+    it('cambiarCantidadReal() copia la lista: sobrantes() se recalcula', () => {
+      const fixture = TestBed.createComponent(OrdenesComponent);
+      const componente = fixture.componentInstance;
+      componente.abrirCompletar(ordenConMateriales);
+      const antes = componente.materialesComplecion();
+      expect(componente.sobrantes()).toEqual([]);
+
+      componente.cambiarCantidadReal(1, 4);
+
+      expect(componente.sobrantes()).toEqual([{ nombre: 'Lona', sobrante: 6 }]);
+      expect(componente.materialesComplecion()).not.toBe(antes);
+      expect(antes[0].cantidad_real).toBe(10);
+    });
+
     it('confirmarProduccion(): sin sobrantes, completa directo sin confirmar', async () => {
       const confirmSpy = vi.spyOn(window, 'confirm');
       const fixture = TestBed.createComponent(OrdenesComponent);
@@ -268,11 +455,88 @@ describe('OrdenesComponent', () => {
       const componente = fixture.componentInstance;
       componente.abrirCobro(ordenBase());
       componente.referenciaPago.set('  OP-99  ');
+      componente.descripcionPago.set('  Abono de la semana ');
 
       await componente.confirmarPago();
 
-      expect(ordenesFalso.confirmarPago).toHaveBeenCalledWith(1, 'efectivo', 'OP-99');
+      expect(ordenesFalso.confirmarPago).toHaveBeenCalledWith(1, 'efectivo', 'OP-99', 'Abono de la semana');
       expect(componente.ordenACobrar()).toBeNull();
+    });
+
+    // Issue #110: cada cobro nuevo parte sin la descripción del anterior.
+    it('abrirCobro() limpia la descripción del cobro anterior', () => {
+      const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
+      componente.abrirCobro(ordenBase());
+      componente.descripcionPago.set('algo');
+
+      componente.abrirCobro(ordenBase());
+
+      expect(componente.descripcionPago()).toBe('');
+    });
+
+    it('el historial de pagos se abre y se cierra por orden', () => {
+      const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
+      const orden = ordenBase();
+      componente.abrirHistorial(orden);
+      expect(componente.ordenHistorial()).toBe(orden);
+      componente.cerrarHistorial();
+      expect(componente.ordenHistorial()).toBeNull();
+    });
+  });
+
+  // Issue #38: todos los modales son diálogos accesibles que se cierran con Escape.
+  describe('modales (#38)', () => {
+    function conOrdenesVacias() {
+      ordenesFalso.ordenes.set([]); // solo interesa el modal, no las filas
+      return TestBed.createComponent(OrdenesComponent);
+    }
+    function pulsarEscape(fixture: { detectChanges(): void }) {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+      fixture.detectChanges();
+    }
+
+    it('reportar uso de materiales: es un diálogo y Escape lo cierra', () => {
+      const fixture = conOrdenesVacias();
+      fixture.componentInstance.abrirCompletar(ordenBase({ materiales: { estimados: [] } }));
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('[role="dialog"]')).not.toBeNull();
+
+      pulsarEscape(fixture);
+
+      expect(fixture.componentInstance.ordenACompletar()).toBeNull();
+    });
+
+    it('confirmar pago: Escape lo cierra', () => {
+      const fixture = conOrdenesVacias();
+      fixture.componentInstance.abrirCobro(ordenBase());
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('[role="dialog"]')).not.toBeNull();
+
+      pulsarEscape(fixture);
+
+      expect(fixture.componentInstance.ordenACobrar()).toBeNull();
+    });
+
+    it('capturas de pago: Escape lo cierra', () => {
+      const fixture = conOrdenesVacias();
+      fixture.componentInstance.capturasVisibles.set(ordenBase({ comprobantes: [] }));
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('[role="dialog"]')).not.toBeNull();
+
+      pulsarEscape(fixture);
+
+      expect(fixture.componentInstance.capturasVisibles()).toBeNull();
+    });
+
+    it('venta rápida: Escape lo cierra', () => {
+      const fixture = conOrdenesVacias();
+      fixture.componentInstance.ventaRapidaAbierta.set(true);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('app-venta-rapida [role="dialog"]')).not.toBeNull();
+
+      pulsarEscape(fixture);
+
+      expect(fixture.componentInstance.ventaRapidaAbierta()).toBe(false);
     });
   });
 });

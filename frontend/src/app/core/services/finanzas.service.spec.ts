@@ -50,6 +50,17 @@ describe('FinanzasService', () => {
     expect(localStorage.getItem('it-fin-hasta')).toBe('2026-08-31');
   });
 
+  it('cargar() incluye el canal de ingreso en la query si está elegido (#69)', async () => {
+    servicio.canal.set('whatsapp');
+    await servicio.cargar();
+    expect(apiFalsa.get).toHaveBeenCalledWith(expect.stringContaining('canal_ingreso=whatsapp'));
+  });
+
+  it('cargar() sin canal no manda el parámetro (#69)', async () => {
+    await servicio.cargar();
+    expect(apiFalsa.get).not.toHaveBeenCalledWith(expect.stringContaining('canal_ingreso'));
+  });
+
   it('cargar() incluye el trabajador en la query si está seleccionado', async () => {
     servicio.trabajador.set(7);
     await servicio.cargar();
@@ -87,5 +98,18 @@ describe('FinanzasService', () => {
 
   it('porMetodo() es una lista vacía si todavía no hay resumen', () => {
     expect(servicio.porMetodo()).toEqual([]);
+  });
+
+  // Issue #72
+  it('cuentasPorCobrar() pide solo las proformas por defecto', async () => {
+    apiFalsa.get.mockResolvedValue({ status: 'success', data: { clientes: [] } });
+    await servicio.cuentasPorCobrar();
+    expect(apiFalsa.get).toHaveBeenCalledWith('/api/finanzas/cuentas-por-cobrar?solo_proformas=true');
+  });
+
+  it('cuentasPorCobrar(false) incluye también los contratos', async () => {
+    apiFalsa.get.mockResolvedValue({ status: 'success', data: { clientes: [] } });
+    await servicio.cuentasPorCobrar(false);
+    expect(apiFalsa.get).toHaveBeenCalledWith('/api/finanzas/cuentas-por-cobrar?solo_proformas=false');
   });
 });

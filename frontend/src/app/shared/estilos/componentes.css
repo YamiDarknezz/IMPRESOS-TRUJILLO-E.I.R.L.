@@ -456,6 +456,14 @@
   backdrop-filter: blur(3px);
 }
 
+.modal-content:focus {
+  outline: none; /* recibe el foco por programa (tabindex -1), no es un control */
+}
+
+.modal-content.modal-ancho {
+  max-width: 850px;
+}
+
 .modal-content {
   background: var(--surface);
   padding: 2rem;
@@ -774,6 +782,39 @@ div.actions-cell {
 
 .text-success {
   color: var(--success);
+}
+
+/* Aviso de error o dinero deducido: los colores siguen al tema */
+.text-danger {
+  color: var(--danger-fg);
+}
+
+/* `.modal-header h3` pinta el título con --text y gana por especificidad */
+.modal-header .text-danger {
+  color: var(--danger-fg);
+}
+
+.modal-header .text-success {
+  color: var(--success);
+}
+
+.text-hint {
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.stat-card-danger,
+.card-alerta {
+  border-left: 4px solid var(--danger);
+}
+
+.card-alerta {
+  margin-bottom: 1.5rem;
+}
+
+.toolbar-encabezado {
+  padding: 1rem 1.25rem 0;
 }
 
 .btn-pago:hover {
@@ -1198,10 +1239,17 @@ select.date-filter-input:focus {
 
 /* Dos columnas iguales; se apilan solas en pantallas angostas */
 .modal-content .form-row {
+  display: flex;
   flex-wrap: wrap;
+  gap: 1rem;
 }
 .modal-content .form-row > .form-group {
+  flex: 1;
   min-width: 200px;
+}
+.modal-content .form-row,
+.modal-content .modal-body > .form-group:not(:last-child) {
+  margin-bottom: 1rem;
 }
 
 /* Pie del modal: mismo patrón que .form-actions */
@@ -1462,4 +1510,253 @@ select.date-filter-input:focus {
   border-radius: 6px;
   font-size: 0.8rem;
   text-decoration: none;
+}
+
+/* ─── Utilidades de maquetación (sustituyen estilos escritos en el HTML) ──── */
+
+.bloque {
+  display: block;
+}
+
+.filtro-canal {
+  max-width: 200px;
+}
+
+.card-seccion {
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.section-title-primero {
+  margin-top: 0;
+}
+
+.card-seccion-tabla {
+  margin-bottom: 1.5rem;
+}
+
+.fila-detalle td {
+  background: var(--surface-alt, var(--chip-bg));
+  font-size: 0.85rem;
+}
+
+.toolbar .checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+}
+
+/* ─── Contrato imprimible (#68) ────────────────────────────────────────────
+   En pantalla es una hoja centrada; al imprimir desaparece el armazón de la
+   aplicación y queda solo el documento. Se usan colores fijos de papel a
+   propósito: lo impreso no sigue al tema oscuro. */
+
+.acciones-impresion {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.documento {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  background: #fff;
+  color: #111;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.documento p { margin: 0.15rem 0; }
+.documento h2 { margin: 1.1rem 0 0.35rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: #444; border-bottom: 1px solid #ccc; padding-bottom: 0.2rem; }
+.documento-cabecera { display: flex; justify-content: space-between; gap: 1.5rem; border-bottom: 2px solid #111; padding-bottom: 0.75rem; }
+.documento-empresa { margin: 0 0 0.25rem; font-size: 1.3rem; }
+.documento-numero { display: flex; flex-direction: column; align-items: flex-end; gap: 0.1rem; }
+.documento-tipo { font-size: 1.1rem; font-weight: 700; text-transform: uppercase; }
+.documento-pequeno { font-size: 0.78rem; color: #444; }
+.documento-pie { margin-top: 1.5rem; text-align: center; }
+.documento-tabla { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+.documento-tabla th, .documento-tabla td { border: 1px solid #bbb; padding: 0.3rem 0.5rem; text-align: left; }
+.documento-tabla th { background: #f0f0f0; }
+.documento-totales { margin: 1rem 0 0 auto; width: 280px; }
+.documento-totales div { display: flex; justify-content: space-between; padding: 0.15rem 0; }
+.documento-totales .total { border-top: 1px solid #111; font-weight: 700; }
+.documento-totales .saldo { font-weight: 700; }
+.documento-firmas { display: flex; justify-content: space-between; gap: 3rem; margin-top: 3.5rem; text-align: center; }
+.documento-firmas > div { flex: 1; }
+.linea-firma { display: block; border-top: 1px solid #111; margin-bottom: 0.3rem; }
+
+@media print {
+  .topbar,
+  .sidebar,
+  .sidebar-backdrop,
+  .acciones-impresion {
+    display: none !important;
+  }
+
+  .layout-body,
+  .main-content {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  body {
+    background: #fff !important;
+  }
+
+  .documento {
+    max-width: none;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+  }
+
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+}
+
+/* ─── Utilidades que sustituyen estilos escritos en las plantillas (#37) ─── */
+
+.filter-group-alineado {
+  align-self: flex-end;
+  margin-bottom: 2px;
+}
+
+.filtro-trabajador {
+  max-width: 240px;
+}
+
+.mt-sm {
+  margin-top: 0.35rem;
+}
+
+.texto-xs {
+  font-size: 0.75rem;
+}
+
+.texto-secundario-bloque {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.nota-modal {
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.nota-con-icono {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 1rem;
+}
+
+.acciones-fila {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.field-hint-pegado {
+  margin-top: -0.5rem;
+}
+
+.field-hint-primero {
+  margin-top: 0;
+}
+
+.field-hint-tabla {
+  padding: 0 1.25rem 1rem;
+}
+
+/* Colores del dinero: siguen al tema (los hex a mano no lo hacían) */
+.monto-positivo {
+  color: var(--success);
+}
+
+.monto-negativo {
+  color: var(--danger);
+}
+
+/* Barra de saldo de un rollo: el ancho se calcula en la plantilla; el color, por nivel */
+.barra-progreso {
+  width: 100%;
+  height: 6px;
+  margin-top: 4px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--surface-3);
+}
+
+.barra-progreso-relleno {
+  height: 100%;
+  background: var(--success);
+}
+
+.barra-progreso-relleno.nivel-bajo {
+  background: var(--warning);
+}
+
+.barra-progreso-relleno.nivel-critico {
+  background: var(--danger);
+}
+
+/* Acción destructiva (observar un cobro): mismo patrón que .btn-success */
+.btn-primary.btn-danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+.btn-primary.btn-danger:hover {
+  filter: brightness(0.92);
+}
+
+/* Clases que las plantillas ya usaban y no tenían estilo */
+.cliente-datos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.6rem 1rem;
+  margin: 0.85rem 0;
+}
+
+.cliente-datos span {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.filtros-auditoria {
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1rem;
+}
+
+.documento-bloque {
+  break-inside: avoid;
+}
+
+.modal-cerrar {
+  flex-shrink: 0;
+}
+
+.fila-observada {
+  opacity: 0.65;
+}
+
+.monto-tachado {
+  text-decoration: line-through;
 }

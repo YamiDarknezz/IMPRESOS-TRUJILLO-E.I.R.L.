@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { ApiService } from './api.service';
-import { ETIQUETA_METODO, MetodoPago, RespuestaItem, ResumenFinanzas } from '../models';
+import { CuentasPorCobrar, ETIQUETA_METODO, MetodoPago, RespuestaItem, ResumenFinanzas } from '../models';
 import { hoyISO, primerDiaDelMesISO } from '../../shared/utilidades/fechas';
 import { guardarPreferencia, leerPreferencia } from '../../shared/utilidades/almacenamiento';
 
@@ -18,6 +18,8 @@ export class FinanzasService {
   readonly desde = signal(leerPreferencia(CLAVE_DESDE) || primerDiaDelMesISO());
   readonly hasta = signal(leerPreferencia(CLAVE_HASTA) || hoyISO());
   readonly trabajador = signal<number | null>(null);
+  /** Vía de ingreso a la que se limita el reporte; vacío = todas (#69). */
+  readonly canal = signal('');
 
   /** Desglose por método de pago, con etiquetas legibles. */
   readonly porMetodo = computed(() => {
@@ -43,6 +45,14 @@ export class FinanzasService {
     }
   }
 
+  /** Deuda por cliente con su antigüedad (#72). Solo la ve la supervisión. */
+  async cuentasPorCobrar(soloProformas = true): Promise<CuentasPorCobrar> {
+    const res = await this.api.get<RespuestaItem<CuentasPorCobrar>>(
+      `/api/finanzas/cuentas-por-cobrar?solo_proformas=${soloProformas}`
+    );
+    return res.data;
+  }
+
   setMesActual(): void {
     this.desde.set(primerDiaDelMesISO());
     this.hasta.set(hoyISO());
@@ -66,6 +76,7 @@ export class FinanzasService {
     if (this.desde()) params.set('desde', this.desde());
     if (this.hasta()) params.set('hasta', this.hasta());
     if (this.trabajador()) params.set('trabajador', String(this.trabajador()));
+    if (this.canal()) params.set('canal_ingreso', this.canal());
 
     const texto = params.toString();
     return texto ? `?${texto}` : '';

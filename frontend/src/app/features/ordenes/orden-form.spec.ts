@@ -31,6 +31,7 @@ function ordenExistente(sobrescribe: Partial<Orden> = {}): Orden {
     id_documento: 'C-0009',
     codigo: 'C-0009',
     tipo_documento: 'contrato',
+    canal_ingreso: 'otro',
     unidad_negocio: 'imprenta',
     cliente_id: 1,
     cliente: 'Juan Pérez',
@@ -226,6 +227,16 @@ describe('OrdenFormComponent', () => {
   });
 
   describe('materiales estimados', () => {
+    // Issue #109: al elegir material se ve dónde está guardado.
+    it('ubicacionDe() devuelve dónde está el material, o vacío si no se registró', () => {
+      const componente = TestBed.createComponent(OrdenFormComponent).componentInstance;
+      inventarioFalso.materiales.set([{ ...material, ubicacion_estante: ' Estante 2 ' }, { ...material, id: 2 }]);
+
+      expect(componente.ubicacionDe(1)).toBe('Estante 2');
+      expect(componente.ubicacionDe(2)).toBe('');
+      expect(componente.ubicacionDe(99)).toBe('');
+    });
+
     it('agregarMaterial(): agrega el material elegido', () => {
       const fixture = TestBed.createComponent(OrdenFormComponent);
       const componente = fixture.componentInstance;
@@ -280,6 +291,51 @@ describe('OrdenFormComponent', () => {
       expect(ordenesFalso.crear).not.toHaveBeenCalled();
     });
 
+    // Issue #69: el canal es un dato que después no se puede reconstruir.
+    it('exige elegir el canal por el que entró el pedido', async () => {
+      const fixture = TestBed.createComponent(OrdenFormComponent);
+      await fixture.componentInstance.guardar();
+      expect(fixture.componentInstance.errores()['canalIngreso']).toBeTruthy();
+    });
+
+    it('con el canal elegido, no hay error de canal y viaja en el pedido', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const fixture = TestBed.createComponent(OrdenFormComponent);
+      const componente = fixture.componentInstance;
+      componente.actualizar('clienteId', 1);
+      componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'llamada');
+      componente.actualizar('fechaEntrega', '2026-12-31');
+      componente.actualizar('precioTotal', 100);
+      componente.actualizar('adelanto', 50);
+
+      await componente.guardar();
+
+      expect(componente.errores()['canalIngreso']).toBeUndefined();
+      expect(ordenesFalso.crear).toHaveBeenCalledWith(expect.objectContaining({ canal_ingreso: 'llamada' }));
+      confirmSpy.mockRestore();
+    });
+
+    // Issue #110
+    it('la descripción del adelanto viaja recortada en el pedido', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const componente = TestBed.createComponent(OrdenFormComponent).componentInstance;
+      componente.actualizar('clienteId', 1);
+      componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'whatsapp');
+      componente.actualizar('fechaEntrega', '2026-12-31');
+      componente.actualizar('precioTotal', 100);
+      componente.actualizar('adelanto', 50);
+      componente.actualizar('adelantoDescripcion', '  Para el diseño ');
+
+      await componente.guardar();
+
+      expect(ordenesFalso.crear).toHaveBeenCalledWith(
+        expect.objectContaining({ adelanto_descripcion: 'Para el diseño' })
+      );
+      confirmSpy.mockRestore();
+    });
+
     // #30: el backend rechaza un descuento mayor al subtotal; la interfaz ahora
     // lo dice antes, en vez de mostrar el total negativo y fallar al guardar.
     it('un descuento mayor al subtotal se marca en el formulario', async () => {
@@ -288,6 +344,7 @@ describe('OrdenFormComponent', () => {
       const componente = fixture.componentInstance;
       componente.actualizar('clienteId', 1);
       componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'whatsapp');
       componente.actualizar('fechaEntrega', '2026-12-31');
       componente.actualizar('precioTotal', 100);
       componente.actualizar('adelanto', 50);
@@ -307,6 +364,7 @@ describe('OrdenFormComponent', () => {
       const componente = fixture.componentInstance;
       componente.actualizar('clienteId', 1);
       componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'whatsapp');
       componente.actualizar('fechaEntrega', '2026-12-31');
       componente.actualizar('precioTotal', 100);
       componente.actualizar('adelanto', 50);
@@ -323,6 +381,7 @@ describe('OrdenFormComponent', () => {
       const componente = fixture.componentInstance;
       componente.actualizar('clienteId', 1);
       componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'whatsapp');
       componente.actualizar('fechaEntrega', '2026-12-31');
       componente.actualizar('precioTotal', 100);
 
@@ -339,6 +398,7 @@ describe('OrdenFormComponent', () => {
       const componente = fixture.componentInstance;
       componente.actualizar('clienteId', 1);
       componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'whatsapp');
       componente.actualizar('fechaEntrega', '2026-12-31');
       componente.actualizar('precioTotal', 100);
       componente.actualizar('adelanto', 10);
@@ -349,12 +409,44 @@ describe('OrdenFormComponent', () => {
       expect(ordenesFalso.crear).not.toHaveBeenCalled();
     });
 
+    // Issue #72: la proforma es el documento de los clientes de confianza y de los
+    // que pagan a plazo; no exige adelanto, el contrato sí.
+    it('una proforma no necesita adelanto, aunque el cliente no sea corporativo', async () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const componente = TestBed.createComponent(OrdenFormComponent).componentInstance;
+      componente.actualizar('clienteId', 1); // persona
+      componente.actualizar('tipoDocumento', 'proforma');
+      componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'llamada');
+      componente.actualizar('fechaEntrega', '2026-12-31');
+      componente.actualizar('precioTotal', 100);
+      componente.actualizar('adelanto', 0);
+
+      await componente.guardar();
+
+      expect(componente.exentoDeAdelanto()).toBe(true);
+      expect(componente.adelantoMinimo()).toBe(0);
+      expect(componente.errores()['adelanto']).toBeUndefined();
+      expect(ordenesFalso.crear).toHaveBeenCalledWith(expect.objectContaining({ tipo_documento: 'proforma', adelanto_pago: 0 }));
+    });
+
+    it('un contrato sigue exigiendo el adelanto mínimo', async () => {
+      const componente = TestBed.createComponent(OrdenFormComponent).componentInstance;
+      componente.actualizar('clienteId', 1);
+      componente.actualizar('tipoDocumento', 'contrato');
+      componente.actualizar('precioTotal', 100);
+
+      expect(componente.exentoDeAdelanto()).toBe(false);
+      expect(componente.adelantoMinimo()).toBe(50);
+    });
+
     it('un cliente corporativo no necesita adelanto', async () => {
       const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
       const fixture = TestBed.createComponent(OrdenFormComponent);
       const componente = fixture.componentInstance;
       componente.actualizar('clienteId', 2); // corporativo
       componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'whatsapp');
       componente.actualizar('fechaEntrega', '2026-12-31');
       componente.actualizar('precioTotal', 100);
 
@@ -371,6 +463,7 @@ describe('OrdenFormComponent', () => {
       const componente = fixture.componentInstance;
       componente.actualizar('clienteId', 2);
       componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'whatsapp');
       componente.actualizar('fechaEntrega', '2026-12-31');
       componente.actualizar('precioTotal', 100);
 
@@ -386,6 +479,7 @@ describe('OrdenFormComponent', () => {
       const componente = fixture.componentInstance;
       componente.actualizar('clienteId', 2);
       componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'whatsapp');
       componente.actualizar('fechaEntrega', '2026-12-31');
       componente.actualizar('precioTotal', 100);
 
@@ -405,6 +499,7 @@ describe('OrdenFormComponent', () => {
       const componente = fixture.componentInstance;
       componente.actualizar('clienteId', 2);
       componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'whatsapp');
       componente.actualizar('fechaEntrega', '2026-12-31');
       componente.actualizar('precioTotal', 100);
       componente.actualizar('asignadoA', 7);

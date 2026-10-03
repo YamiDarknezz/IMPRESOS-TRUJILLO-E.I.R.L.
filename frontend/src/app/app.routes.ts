@@ -32,6 +32,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/ordenes/orden-form').then(m => m.OrdenFormComponent),
       },
       {
+        path: 'ordenes/:id/imprimir',
+        loadComponent: () =>
+          import('./features/ordenes/orden-imprimir').then(m => m.OrdenImprimirComponent),
+      },
+      {
         path: 'ordenes/:id/editar',
         canActivate: [rolesGuard('admin', 'subgerente', 'secretaria')],
         loadComponent: () => import('./features/ordenes/orden-form').then(m => m.OrdenFormComponent),
@@ -47,6 +52,14 @@ export const routes: Routes = [
       {
         path: 'finanzas',
         loadComponent: () => import('./features/finanzas/finanzas').then(m => m.FinanzasComponent),
+      },
+      {
+        path: 'cuentas-por-cobrar',
+        canActivate: [rolesGuard('admin', 'subgerente')],
+        loadComponent: () =>
+          import('./features/cuentas-por-cobrar/cuentas-por-cobrar').then(
+            m => m.CuentasPorCobrarComponent
+          ),
       },
       {
         path: 'clientes',

@@ -1,10 +1,10 @@
 """Esquemas de inventario."""
 from typing import Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
-from app.models.enums import TipoFormatoMaterial
-from app.schemas.comunes import exigir_no_negativo, exigir_positivo, exigir_texto
+from app.models.enums import MetodoPago, TipoFormatoMaterial
+from app.schemas.comunes import exigir_no_negativo, exigir_positivo, exigir_texto, limpiar
 
 
 class MaterialCreateData(BaseModel):
@@ -105,7 +105,11 @@ class ConsumoPiezaCreateData(BaseModel):
     trabajo_descripcion: str = Field(max_length=250)
     cantidad_consumida: float
     orden_id: Optional[int] = None
+    # El cobro del corte es dinero real (#57): exige método para que entre a
+    # Caja/Finanzas con su desglose. Se registra UNA vez por trabajo.
     monto_cobrado: float = 0.0
+    metodo_pago: Optional[MetodoPago] = None
+    referencia: str = Field(default="", max_length=120)
     merma_desperdicio: float = 0.0
     nota: str = ""
 
@@ -123,3 +127,14 @@ class ConsumoPiezaCreateData(BaseModel):
     @classmethod
     def _valores_no_negativos(cls, v: float) -> float:
         return exigir_no_negativo(v)
+
+    @field_validator("referencia")
+    @classmethod
+    def _limpiar_referencia(cls, v: str) -> str:
+        return limpiar(v)
+
+    @model_validator(mode="after")
+    def _cobro_exige_metodo(self) -> "ConsumoPiezaCreateData":
+        if self.monto_cobrado > 0 and self.metodo_pago is None:
+            raise ValueError("Indica el método de pago del monto cobrado.")
+        return self

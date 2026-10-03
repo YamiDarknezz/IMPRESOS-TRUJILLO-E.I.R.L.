@@ -1,0 +1,54 @@
+<app-modal titulo="⚡ Venta Rápida en Mostrador" claseTitulo="modal-title text-success" [conBotonCerrar]="true" [cerrarAlClicFuera]="false" (cerrar)="cerrar()">
+  <div class="modal-body">
+    <div class="form-group">
+      <label class="form-label">Descripción del servicio o artículo *</label>
+      <input type="text" [ngModel]="descripcion()" (ngModelChange)="descripcion.set($event)"
+             name="vrDescripcion" class="form-input"
+             placeholder="Ej: 10 Fotocopias a color, Fotocheck con mica...">
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Monto Total (S/) *</label>
+        <input type="number" step="0.50" min="0.10" [ngModel]="monto()" (ngModelChange)="monto.set($event)"
+               name="vrMonto" class="form-input" placeholder="0.00">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Método de Pago</label>
+        <select [ngModel]="metodo()" (ngModelChange)="metodo.set($event)" name="vrMetodo" class="form-input">
+          @for (m of metodos(); track m) {
+            <option [value]="m">{{ etiquetaMetodo()[m] }}</option>
+          }
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Unidad de Negocio</label>
+        <select [ngModel]="unidad()" (ngModelChange)="unidad.set($event)" name="vrUnidad" class="form-input">
+          @for (u of unidades; track u) {
+            <option [value]="u">{{ etiquetaUnidad[u] }}</option>
+          }
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cliente (opcional)</label>
+        <input type="text" [ngModel]="cliente()" (ngModelChange)="cliente.set($event)"
+               name="vrCliente" class="form-input" placeholder="Cliente Mostrador">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Referencia / Celular (opcional)</label>
+      <input type="text" [ngModel]="referencia()" (ngModelChange)="referencia.set($event)"
+             name="vrReferencia" class="form-input" placeholder="Ej: Yape 987654321...">
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn-secondary" (click)="cerrar()" [disabled]="guardando()">Cancelar</button>
+    <button class="btn-primary btn-success" (click)="guardar()" [disabled]="guardando()">
+      {{ guardando() ? 'Cobrando...' : 'Cobrar y Finalizar Venta' }}
+    </button>
+  </div>
+</app-modal>

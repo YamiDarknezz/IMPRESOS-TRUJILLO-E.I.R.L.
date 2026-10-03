@@ -18,19 +18,24 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auditoria import registrar
-from app.core.errores import Conflicto, ErrorDeNegocio, NoEncontrado
+from app.core.errores import Conflicto, ErrorDeNegocio, NoEncontrado, PermisoDenegado
 from app.core.fechas import ahora_utc
 from app.models import (
     ConsumoPieza,
+    EstadoOrden,
     EstadoPieza,
     Material,
+    MetodoPago,
     MotivoMovimiento,
     MovimientoStock,
+    Orden,
     PiezaLoteMaterial,
+    Rol,
     TipoEventoAuditoria,
     Usuario,
 )
 from app.schemas.inventario import ConsumoPiezaCreateData, PiezaLoteCreateData
+from app.schemas.orden import VentaRapidaData
 
 
 @dataclass(frozen=True)
@@ -274,6 +279,53 @@ async def obtener_pieza(sesion: AsyncSession, pieza_id: int) -> PiezaLoteMateria
     return pieza
 
 
+async def _cobrar_corte(
+    sesion: AsyncSession,
+    pieza: PiezaLoteMaterial,
+    orden: Optional[Orden],
+    data: ConsumoPiezaCreateData,
+    monto: Decimal,
+    usuario: Usuario,
+) -> Orden:
+    """
+    Registra el cobro de un corte como dinero real (#57).
+
+    Con orden asociada se registra como pago de esa orden (baja su saldo); sin
+    orden, como venta rápida de mostrador. En ambos casos el monto entra UNA
+    sola vez a Caja y Finanzas, en vez de quedar solo como "Recaudado".
+    """
+    if usuario.rol not in (Rol.ADMIN, Rol.SUBGERENTE, Rol.SECRETARIA, Rol.OPERARIO):
+        raise PermisoDenegado(
+            "Solo el personal de venta o mostrador puede registrar un cobro en un corte."
+        )
+
+    # Import local: `ordenes_service` importa este módulo; arriba sería circular.
+    from app.services import ordenes_service
+
+    if orden is not None:
+        await ordenes_service.confirmar_pago(
+            sesion,
+            orden.id,
+            data.metodo_pago,
+            data.referencia,
+            usuario,
+            monto=float(monto),
+            descripcion=f"Corte de {pieza.codigo_identificador}: {data.trabajo_descripcion}"[:200],
+        )
+        return orden
+
+    return await ordenes_service.crear_venta_rapida(
+        sesion,
+        VentaRapidaData(
+            descripcion=data.trabajo_descripcion,
+            monto_total=float(monto),
+            metodo_pago=data.metodo_pago or MetodoPago.EFECTIVO,
+            referencia=data.referencia,
+        ),
+        usuario,
+    )
+
+
 async def registrar_consumo_pieza(
     sesion: AsyncSession,
     pieza_id: int,
@@ -297,12 +349,31 @@ async def registrar_consumo_pieza(
     if pieza.estado == EstadoPieza.AGOTADO:
         raise ErrorDeNegocio("Esta pieza o rollo ya se encuentra agotado.")
 
+    # El vínculo con el pedido (#71) se valida: un id que no existe reventaba
+    # contra la llave foránea y un pedido cancelado no consume material.
+    orden = None
+    if data.orden_id is not None:
+        orden = await sesion.get(Orden, data.orden_id)
+        if orden is None:
+            raise ErrorDeNegocio("La orden indicada no existe.")
+        if orden.estado == EstadoOrden.CANCELADA:
+            raise ErrorDeNegocio(
+                f"La orden {orden.codigo} está cancelada: no se le puede asignar un corte."
+            )
+
     cantidad = _redondear(_decimal(data.cantidad_consumida))
     if cantidad > _decimal(pieza.saldo_restante):
         raise ErrorDeNegocio(
             f"El consumo solicitado ({cantidad} {pieza.unidad_medida}) supera el saldo disponible "
             f"({pieza.saldo_restante} {pieza.unidad_medida})."
         )
+
+    # Un corte cobrado es dinero real: se registra antes de mover el saldo para
+    # que un rechazo (orden ya pagada, monto mayor al saldo, sin permiso) no
+    # deje el inventario descontado sin su cobro.
+    monto_cobrado = _redondear(_decimal(data.monto_cobrado))
+    if monto_cobrado > 0:
+        orden = await _cobrar_corte(sesion, pieza, orden, data, monto_cobrado, usuario)
 
     saldo_anterior = _decimal(pieza.saldo_restante)
     saldo_nuevo = _redondear(saldo_anterior - cantidad)
@@ -317,13 +388,15 @@ async def registrar_consumo_pieza(
 
     consumo = ConsumoPieza(
         pieza=pieza,
-        orden_id=data.orden_id,
+        # Se asigna la relación (no solo el id): serializar el corte nuevo lee
+        # `consumo.orden`, y una carga perezosa en async revienta.
+        orden=orden,
         usuario_id=usuario.id,
         trabajo_descripcion=data.trabajo_descripcion,
         cantidad_consumida=cantidad,
         saldo_anterior=saldo_anterior,
         saldo_nuevo=saldo_nuevo,
-        monto_cobrado=_redondear(_decimal(data.monto_cobrado)),
+        monto_cobrado=monto_cobrado,
         merma_desperdicio=_redondear(_decimal(data.merma_desperdicio)),
         fecha=ahora,
         nota=data.nota,
@@ -371,3 +444,17 @@ async def registrar_consumo_pieza(
         valores_nuevos={"saldo_restante": float(saldo_nuevo)},
     )
     return consumo
+
+
+async def consumos_de_orden(sesion: AsyncSession, orden_id: int) -> list[ConsumoPieza]:
+    """Los cortes de rollo o plancha asignados a un pedido, del más antiguo al más reciente (#71)."""
+    return list(
+        (
+            await sesion.execute(
+                select(ConsumoPieza)
+                .where(ConsumoPieza.orden_id == orden_id)
+                .order_by(ConsumoPieza.fecha, ConsumoPieza.id)
+            )
+        ).scalars()
+    )
+

@@ -105,8 +105,9 @@ def serializar_pieza(pieza) -> dict[str, Any]:
         "fecha_ingreso": iso(pieza.fecha_ingreso),
         "fecha_termino": iso(pieza.fecha_termino),
         "nota": pieza.nota,
+        # Rendimiento del rollo (#57): lo cobrado por sus cortes ya entró a
+        # Caja/Finanzas. La ganancia neta es análisis y vive en el módulo BI.
         "total_recaudado": num(pieza.total_recaudado),
-        "ganancia_neta": num(pieza.ganancia_neta),
         "consumos": [serializar_consumo(c) for c in (pieza.consumos or [])],
     }
 
@@ -117,6 +118,12 @@ def serializar_consumo(consumo) -> dict[str, Any]:
         "pieza_id": consumo.pieza_id,
         "orden_id": consumo.orden_id,
         "orden_codigo": consumo.orden.codigo if consumo.orden else None,
+        "pieza_codigo": consumo.pieza.codigo_identificador if consumo.pieza else "",
+        "material_nombre": consumo.pieza.material.nombre
+        if consumo.pieza and consumo.pieza.material
+        else "",
+        "unidad_medida": consumo.pieza.unidad_medida if consumo.pieza else "",
+        "saldo_restante_pieza": num(consumo.pieza.saldo_restante) if consumo.pieza else 0.0,
         "trabajo_descripcion": consumo.trabajo_descripcion,
         "cantidad_consumida": num(consumo.cantidad_consumida),
         "saldo_anterior": num(consumo.saldo_anterior),
@@ -214,6 +221,7 @@ def _serializar_pago(pago, comprobantes_del_pago=None) -> dict[str, Any]:
         "metodo": pago.metodo.value,
         "tipo": pago.tipo.value,
         "referencia": pago.referencia,
+        "descripcion": pago.descripcion or "",
         "registrado_por": pago.registrado_por,
         "estado_pago": pago.estado_pago.value if pago.estado_pago else "conforme",
         "motivo_observacion": pago.motivo_observacion.value if pago.motivo_observacion else None,
@@ -263,8 +271,10 @@ def serializar_orden(orden) -> dict[str, Any]:
         "id_documento": orden.codigo,
         "codigo": orden.codigo,
         "tipo_documento": orden.tipo_documento.value,
+        "canal_ingreso": orden.canal_ingreso.value,
         "cliente_id": orden.cliente_id,
         "cliente": orden.cliente.nombre if orden.cliente else "",
+        "cliente_corporativo": bool(orden.cliente and orden.cliente.es_corporativo),
         "direccion": orden.direccion,
         "telefono": orden.telefono,
         "descripcion": orden.descripcion,
@@ -274,6 +284,18 @@ def serializar_orden(orden) -> dict[str, Any]:
         "fecha_entrega": orden.fecha_entrega.isoformat() if orden.fecha_entrega else None,
         "finalizada_en": iso(orden.finalizada_en),
         "entregada_en": iso(orden.entregada_en),
+        # Entregada y todavía con deuda (#72): sale sola del saldo, así que deja de
+        # ser verdad en cuanto el cliente paga. La autorización, en cambio, queda.
+        "entregada_con_saldo": orden.estado.value == "entregada" and not orden.pagado_totalmente,
+        "entrega_autorizada": (
+            {
+                "por": orden.autorizador_entrega.nombre if orden.autorizador_entrega else "",
+                "en": iso(orden.entrega_autorizada_en),
+                "motivo": orden.entrega_motivo,
+            }
+            if orden.entrega_autorizada_por is not None
+            else None
+        ),
         "creado_por": orden.creado_por,
         "asignado_a": orden.asignado_a,
         "asignado": orden.asignado.nombre if orden.asignado else "",
@@ -325,6 +347,9 @@ def serializar_cierre(cierre) -> dict[str, Any]:
         "monto_yape": num(cierre.monto_yape),
         "monto_transferencia": num(cierre.monto_transferencia),
         "total": num(cierre.total),
+        "monto_gastos": num(cierre.monto_gastos),
+        # Lo cobrado menos lo gastado ese día (#112).
+        "neto": round(num(cierre.total) - num(cierre.monto_gastos), 2),
         "estado": cierre.estado.value,
         "validado_por": cierre.validado_por,
         "validador": cierre.validador.nombre if cierre.validador else "",

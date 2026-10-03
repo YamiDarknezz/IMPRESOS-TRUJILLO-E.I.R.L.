@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { ApiService } from './api.service';
 import { InventarioService } from './inventario.service';
 import {
+  CanalIngreso,
   ESTADOS_CERRADOS,
   ESTADOS_PIPELINE,
   EstadoOrden,
@@ -12,6 +13,7 @@ import {
   RespuestaItem,
   TipoDocumento,
   UnidadNegocio,
+  RollosDeOrden,
   VentaRapidaData,
 } from '../models';
 import { ListaRemota } from './lista-remota';
@@ -41,6 +43,7 @@ export interface DatosOrden {
   asignado_a: number | null;
   descripcion: string;
   tipo_documento: TipoDocumento;
+  canal_ingreso: CanalIngreso;
   unidad_negocio: UnidadNegocio;
   fecha_entrega: string;
   incluye_igv: boolean;
@@ -52,6 +55,8 @@ export interface DatosOrden {
   precio_total: number | null;
   adelanto_pago: number;
   metodo_pago: MetodoPago;
+  /** Para qué es el adelanto (#110). */
+  adelanto_descripcion: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -131,44 +136,86 @@ export class OrdenesService {
   }
 
   /** Registra el cobro y devuelve la orden: de ahí sale el pago al que se adjunta. */
-  async confirmarPago(idOrden: number, metodo: MetodoPago, referencia = ''): Promise<Orden> {
+  async confirmarPago(
+    idOrden: number,
+    metodo: MetodoPago,
+    referencia = '',
+    descripcion = ''
+  ): Promise<Orden> {
     const res = await this.api.post<RespuestaItem<Orden>>(
       `/api/ordenes/${idOrden}/confirmar-pago`,
-      { metodo_pago: metodo, referencia }
+      { metodo_pago: metodo, referencia, descripcion }
     );
     await this.lista.recargar();
     return res.data;
   }
 
+  /** Pide una orden al servidor: la vista de impresión se puede abrir sin pasar por el listado (#68). */
+  async obtener(idOrden: number): Promise<Orden> {
+    const res = await this.api.get<RespuestaItem<Orden>>(`/api/ordenes/${idOrden}`);
+    return res.data;
+  }
+
+  /** Cortes de rollo o plancha asignados a un pedido (#71). */
+  rollosDeOrden(idOrden: number): Promise<RollosDeOrden> {
+    return this.api.get<RollosDeOrden>(`/api/ordenes/${idOrden}/rollos`);
+  }
+
   async crearVentaRapida(data: VentaRapidaData): Promise<Orden> {
     const res = await this.api.post<RespuestaItem<Orden>>('/api/ordenes/caja-rapida', data);
-    await this.lista.recargar();
+    await Promise.all([this.lista.recargar(), this.cargarMetricas()]);
     return res.data;
+  }
+
+  /**
+   * Reemplaza la orden por una copia con los cambios. Mutar el objeto dentro
+   * del arreglo no avisa al signal: la lista filtrada (un `computed`) seguía
+   * mostrando la orden bajo el filtro anterior (#29).
+   */
+  private parchear(idOrden: number, cambios: Partial<Orden>): void {
+    this.lista.items.update(lista =>
+      lista.map(o => (o.id === idOrden ? { ...o, ...cambios } : o))
+    );
   }
 
   /**
    * Cambia la etapa mostrando el resultado de inmediato y revirtiendo si el
    * servidor lo rechaza. Mueve solo un campo, así que no hace falta recargar
-   * toda la lista.
+   * toda la lista; sí las métricas, que cuentan órdenes por etapa.
    */
   async cambiarEstado(orden: Orden, estado: EstadoOrden): Promise<void> {
     const anterior = orden.estado;
-    orden.estado = estado;
+    this.parchear(orden.id, { estado });
     try {
       await this.api.post(`/api/ordenes/${orden.id}/estado`, { estado });
     } catch (error) {
-      orden.estado = anterior;
+      this.parchear(orden.id, { estado: anterior });
       throw error;
     }
+    void this.cargarMetricas();
+  }
+
+  /**
+   * Entrega una proforma antes de que pague (#72).
+   * Lo autoriza un supervisor con un motivo; no es optimista porque el
+   * servidor puede rechazarla y la orden cambia de saldo y de autorización.
+   */
+  async entregarConSaldo(orden: Orden, motivo: string): Promise<void> {
+    await this.api.post(`/api/ordenes/${orden.id}/estado`, {
+      estado: 'entregada',
+      autorizar_saldo: true,
+      motivo,
+    });
+    await Promise.all([this.lista.recargar(), this.cargarMetricas()]);
   }
 
   async asignar(orden: Orden, idUsuario: number | null): Promise<void> {
     const anterior = orden.asignado_a;
-    orden.asignado_a = idUsuario;
+    this.parchear(orden.id, { asignado_a: idUsuario });
     try {
       await this.api.post(`/api/ordenes/${orden.id}/asignar`, { asignado_a: idUsuario });
     } catch (error) {
-      orden.asignado_a = anterior;
+      this.parchear(orden.id, { asignado_a: anterior });
       throw error;
     }
   }
@@ -199,12 +246,16 @@ export function claseEstado(estado: EstadoOrden): string {
 /** Filtra la lista por etapa, texto libre y rango de fechas de creación. */
 export function filtrarOrdenes(
   ordenes: Orden[],
-  opciones: { estado?: string; texto?: string; desde?: string; hasta?: string },
+  opciones: { estado?: string; texto?: string; desde?: string; hasta?: string; canal?: string },
 ): Orden[] {
   const texto = (opciones.texto ?? '').toLowerCase().trim();
 
   return ordenes.filter(orden => {
     if (opciones.estado && opciones.estado !== 'todos' && orden.estado !== opciones.estado) {
+      return false;
+    }
+
+    if (opciones.canal && orden.canal_ingreso !== opciones.canal) {
       return false;
     }
 

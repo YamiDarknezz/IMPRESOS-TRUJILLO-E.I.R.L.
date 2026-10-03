@@ -9,7 +9,7 @@ from app.core.database import obtener_sesion
 from app.core.fechas import a_fecha_peru, ahora_utc
 from app.core.security import personal_venta, supervision, usuario_actual
 from app.models import Rol, UnidadNegocio, Usuario
-from app.schemas import CerrarCajaData, CongelarCajaData, ObservarPagoData
+from app.schemas import CerrarCajaData, CongelarCajaData, GastoCajaData, ObservarPagoData
 from app.services import caja_service
 from app.services.serializadores import serializar_cierre
 
@@ -93,3 +93,25 @@ async def observar_pago(
         sesion, pago_id, data.motivo, data.nota, usuario
     )
     return {"status": "success", "data": resultado}
+
+
+@router.post("/gastos")
+async def registrar_gasto(
+    data: GastoCajaData,
+    usuario: Annotated[Usuario, Depends(personal_venta)],
+    sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
+):
+    """Anota un gasto que salió de la caja (tinta, papel, banner...)."""
+    gasto = await caja_service.registrar_gasto(sesion, data, usuario)
+    return {"status": "success", "data": caja_service.serializar_gasto(gasto)}
+
+
+@router.delete("/gastos/{gasto_id}")
+async def eliminar_gasto(
+    gasto_id: int,
+    usuario: Annotated[Usuario, Depends(supervision)],
+    sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
+):
+    """Corrige un gasto mal anotado; solo supervisión y queda en la auditoría."""
+    return {"status": "success", "data": await caja_service.eliminar_gasto(sesion, gasto_id, usuario)}
+

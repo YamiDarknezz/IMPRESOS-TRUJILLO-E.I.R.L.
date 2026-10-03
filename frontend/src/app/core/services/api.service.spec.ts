@@ -32,6 +32,14 @@ describe('ApiService', () => {
     await promesa;
   });
 
+  it('envía la cookie de sesión en las peticiones (withCredentials)', async () => {
+    const promesa = api.get('/api/unidades');
+    const req = httpMock.expectOne(`${environment.apiUrl}/api/unidades`);
+    expect(req.request.withCredentials).toBe(true);
+    req.flush({ status: 'success', data: [] });
+    await promesa;
+  });
+
   it('hace POST con el cuerpo indicado', async () => {
     const promesa = api.post('/api/unidades', { nombre: 'Kilogramo', abreviatura: 'kg' });
     const req = httpMock.expectOne(`${environment.apiUrl}/api/unidades`);

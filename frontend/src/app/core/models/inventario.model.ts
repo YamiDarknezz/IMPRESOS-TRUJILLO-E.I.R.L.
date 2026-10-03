@@ -1,3 +1,5 @@
+import { MetodoPago } from './comunes.model';
+
 export type TipoFormatoMaterial =
   | 'continuo_rollo'
   | 'plancha_rigida'
@@ -51,6 +53,11 @@ export interface ConsumoPieza {
   pieza_id: number;
   orden_id?: number | null;
   orden_codigo?: string | null;
+  /** Qué rollo, de qué material y cuánto le queda; los trae el listado de cortes de un pedido (#71). */
+  pieza_codigo?: string;
+  material_nombre?: string;
+  unidad_medida?: string;
+  saldo_restante_pieza?: number;
   trabajo_descripcion: string;
   cantidad_consumida: number;
   saldo_anterior: number;
@@ -80,8 +87,8 @@ export interface PiezaLoteMaterial {
   fecha_ingreso: string;
   fecha_termino?: string | null;
   nota: string;
+  /** Lo cobrado por sus cortes (#57): ya contabilizado en Caja/Finanzas. */
   total_recaudado: number;
-  ganancia_neta: number;
   consumos?: ConsumoPieza[];
 }
 
@@ -103,7 +110,16 @@ export interface ConsumoPiezaCreateData {
   trabajo_descripcion: string;
   cantidad_consumida: number;
   orden_id?: number | null;
+  /** Cobro del corte (#57): si es mayor a 0, exige método y entra a Caja. */
   monto_cobrado?: number;
+  metodo_pago?: MetodoPago;
+  referencia?: string;
   merma_desperdicio?: number;
   nota?: string;
+}
+
+/** Lo que se llevó un pedido de rollos y planchas, y el total por material (#71). */
+export interface RollosDeOrden {
+  data: ConsumoPieza[];
+  resumen: { material: string; unidad: string; cantidad: number }[];
 }

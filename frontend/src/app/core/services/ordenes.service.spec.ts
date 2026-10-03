@@ -1,3 +1,4 @@
+import { computed } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ApiService } from './api.service';
 import { InventarioService } from './inventario.service';
@@ -18,6 +19,7 @@ function ordenBase(sobrescribe: Partial<Orden> = {}): Orden {
     id_documento: 'C-0001',
     codigo: 'C-0001',
     tipo_documento: 'contrato',
+    canal_ingreso: 'otro',
     unidad_negocio: 'imprenta',
     cliente_id: 1,
     cliente: 'Juan Pérez',
@@ -87,11 +89,12 @@ describe('OrdenesService', () => {
   it('confirmarPago() manda método y referencia, y recarga solo las órdenes', async () => {
     apiFalsa.post.mockResolvedValue({ status: 'success', data: {} });
 
-    await servicio.confirmarPago(1, 'yape', 'OP-123');
+    await servicio.confirmarPago(1, 'yape', 'OP-123', 'Segundo abono');
 
     expect(apiFalsa.post).toHaveBeenCalledWith('/api/ordenes/1/confirmar-pago', {
       metodo_pago: 'yape',
       referencia: 'OP-123',
+      descripcion: 'Segundo abono',
     });
     expect(inventarioFalso.recargar).not.toHaveBeenCalled();
   });
@@ -109,43 +112,115 @@ describe('OrdenesService', () => {
     expect(resultado).toEqual(creada);
   });
 
+  it('crearVentaRapida() refresca también las tarjetas del panel', async () => {
+    apiFalsa.post.mockResolvedValue({ status: 'success', data: ordenBase({ id: 9 }) });
+    apiFalsa.get.mockClear();
+
+    await servicio.crearVentaRapida({ descripcion: 'Venta mostrador', monto_total: 20 });
+
+    expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes/metricas');
+  });
+
+  it('entregarConSaldo() manda la autorización con el motivo y recarga órdenes y métricas (#72)', async () => {
+    apiFalsa.post.mockResolvedValue({ status: 'success', data: {} });
+    apiFalsa.get.mockClear();
+
+    await servicio.entregarConSaldo(ordenBase({ id: 4 }), 'Orden de compra');
+
+    expect(apiFalsa.post).toHaveBeenCalledWith('/api/ordenes/4/estado', {
+      estado: 'entregada',
+      autorizar_saldo: true,
+      motivo: 'Orden de compra',
+    });
+    expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes/metricas');
+    expect(apiFalsa.get).toHaveBeenCalledWith(expect.stringContaining('/api/ordenes?'));
+  });
+
+  it('entregarConSaldo() propaga el rechazo del servidor sin recargar', async () => {
+    apiFalsa.post.mockRejectedValue(new Error('Solo un supervisor'));
+    apiFalsa.get.mockClear();
+
+    await expect(servicio.entregarConSaldo(ordenBase(), 'x')).rejects.toThrow('Solo un supervisor');
+    expect(apiFalsa.get).not.toHaveBeenCalled();
+  });
+
   describe('cambiarEstado() (optimista, revierte si el servidor rechaza)', () => {
-    it('actualiza el estado local de inmediato', async () => {
-      apiFalsa.post.mockResolvedValue({ status: 'success', data: {} });
+    function conListaCargada(...ordenes: Orden[]): Promise<void> {
+      apiFalsa.get.mockResolvedValue({ status: 'success', data: ordenes, total: ordenes.length });
+      return servicio.cargar();
+    }
+
+    it('actualiza el estado en la lista de inmediato', async () => {
       const orden = ordenBase({ estado: 'pendiente' });
+      await conListaCargada(orden);
+      apiFalsa.post.mockResolvedValue({ status: 'success', data: {} });
 
       await servicio.cambiarEstado(orden, 'en_diseno');
 
-      expect(orden.estado).toBe('en_diseno');
+      expect(servicio.ordenes()[0].estado).toBe('en_diseno');
       expect(apiFalsa.post).toHaveBeenCalledWith('/api/ordenes/1/estado', { estado: 'en_diseno' });
     });
 
+    // Issue #29: antes se mutaba el objeto dentro del arreglo y el signal no
+    // avisaba, así que la lista filtrada seguía mostrando la etapa anterior.
+    it('reemplaza la orden por una copia: el filtro por etapa se vuelve a calcular', async () => {
+      const orden = ordenBase({ estado: 'en_produccion' });
+      await conListaCargada(orden);
+      const filtradas = computed(() =>
+        filtrarOrdenes(servicio.ordenes(), { estado: 'en_produccion', texto: '', desde: '', hasta: '' })
+      );
+      expect(filtradas()).toHaveLength(1);
+      apiFalsa.post.mockResolvedValue({ status: 'success', data: {} });
+
+      await servicio.cambiarEstado(orden, 'finalizada');
+
+      expect(filtradas()).toHaveLength(0);
+      expect(servicio.ordenes()[0]).not.toBe(orden);
+      expect(orden.estado).toBe('en_produccion');
+    });
+
+    it('tras el cambio vuelve a pedir las métricas del panel', async () => {
+      const orden = ordenBase();
+      await conListaCargada(orden);
+      apiFalsa.post.mockResolvedValue({ status: 'success', data: {} });
+      apiFalsa.get.mockClear();
+
+      await servicio.cambiarEstado(orden, 'en_diseno');
+
+      expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes/metricas');
+    });
+
     it('si el servidor rechaza, revierte al estado anterior y propaga el error', async () => {
-      apiFalsa.post.mockRejectedValue(new Error('Transición no permitida'));
       const orden = ordenBase({ estado: 'pendiente' });
+      await conListaCargada(orden);
+      apiFalsa.post.mockRejectedValue(new Error('Transición no permitida'));
 
       await expect(servicio.cambiarEstado(orden, 'entregada')).rejects.toThrow('Transición no permitida');
-      expect(orden.estado).toBe('pendiente');
+      expect(servicio.ordenes()[0].estado).toBe('pendiente');
     });
   });
 
   describe('asignar() (optimista, revierte si el servidor rechaza)', () => {
-    it('actualiza el asignado local de inmediato', async () => {
-      apiFalsa.post.mockResolvedValue({ status: 'success', data: {} });
+    it('actualiza el asignado en la lista de inmediato', async () => {
       const orden = ordenBase({ asignado_a: null });
+      apiFalsa.get.mockResolvedValue({ status: 'success', data: [orden], total: 1 });
+      await servicio.cargar();
+      apiFalsa.post.mockResolvedValue({ status: 'success', data: {} });
 
       await servicio.asignar(orden, 5);
 
-      expect(orden.asignado_a).toBe(5);
+      expect(servicio.ordenes()[0].asignado_a).toBe(5);
       expect(apiFalsa.post).toHaveBeenCalledWith('/api/ordenes/1/asignar', { asignado_a: 5 });
     });
 
     it('si el servidor rechaza, revierte al asignado anterior', async () => {
-      apiFalsa.post.mockRejectedValue(new Error('No autorizado'));
       const orden = ordenBase({ asignado_a: 3 });
+      apiFalsa.get.mockResolvedValue({ status: 'success', data: [orden], total: 1 });
+      await servicio.cargar();
+      apiFalsa.post.mockRejectedValue(new Error('No autorizado'));
 
       await expect(servicio.asignar(orden, 5)).rejects.toThrow('No autorizado');
-      expect(orden.asignado_a).toBe(3);
+      expect(servicio.ordenes()[0].asignado_a).toBe(3);
     });
   });
 
@@ -260,6 +335,16 @@ describe('funciones puras de órdenes', () => {
   });
 
   describe('filtrarOrdenes()', () => {
+    // Issue #69
+    it('filtra por canal de ingreso, y sin canal no filtra', () => {
+      const ordenes = [
+        ordenBase({ id: 1, canal_ingreso: 'whatsapp' }),
+        ordenBase({ id: 2, canal_ingreso: 'llamada' }),
+      ];
+      expect(filtrarOrdenes(ordenes, { canal: 'whatsapp' }).map(o => o.id)).toEqual([1]);
+      expect(filtrarOrdenes(ordenes, { canal: '' }).map(o => o.id)).toEqual([1, 2]);
+    });
+
     const ordenes: Orden[] = [
       ordenBase({ id: 1, estado: 'pendiente', cliente: 'Juan Pérez', id_documento: 'C-0001', fecha_creacion: '2026-09-01' }),
       ordenBase({ id: 2, estado: 'entregada', cliente: 'María López', id_documento: 'C-0002', fecha_creacion: '2026-09-15' }),

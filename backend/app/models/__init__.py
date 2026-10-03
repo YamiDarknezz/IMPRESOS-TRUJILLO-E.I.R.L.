@@ -5,10 +5,11 @@ completo con solo hacer `from app.models import Base`.
 """
 from app.models.base import Base
 from app.models.auditoria import Auditoria
-from app.models.caja import CierreCaja
+from app.models.caja import CierreCaja, GastoCaja
 from app.models.cliente import Cliente
 from app.models.comprobante import Comprobante
 from app.models.enums import (
+    CanalIngreso,
     EstadoCierre,
     EstadoOrden,
     EstadoPago,
@@ -38,6 +39,7 @@ __all__ = [
     "Cliente",
     "Comprobante",
     "ConsumoPieza",
+    "GastoCaja",
     "Material",
     "MovimientoStock",
     "Orden",
@@ -56,6 +58,7 @@ __all__ = [
     "MetodoPago",
     "MotivoMovimiento",
     "MotivoObservacionPago",
+    "CanalIngreso",
     "Rol",
     "TipoCliente",
     "TipoDocumento",
