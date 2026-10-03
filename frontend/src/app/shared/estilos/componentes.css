@@ -1275,6 +1275,20 @@ select.date-filter-input:focus {
 /* Modal ancho (antes: style="max-width:850px;") */
 .modal-content.modal-content-lg { max-width: 850px; }
 
+
+/* ─── Finanzas: clases que reemplazan estilos inline (Issue #37) ────────── */
+
+/* Select compacto (mismo que style="max-width:240px") */
+.search-input.search-input-sm { max-width: 240px; }
+
+/* Texto de ayuda en stat-card (mismo que style="font-size:0.75rem; color:#6b7280; display:block; margin-top:2px;") */
+.stat-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  display: block;
+  margin-top: 2px;
+}
+
 /* ─── Pestañas (inventario) ──────────────────────────────────────────────── */
 .tabs-nav {
   display: flex;

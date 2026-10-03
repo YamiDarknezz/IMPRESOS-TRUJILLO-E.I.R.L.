@@ -19,8 +19,8 @@
   </div>
 
   @if (sesion.esSupervisor()) {
-    <select [ngModel]="trabajador()" name="finTrabajador" class="search-input"
-            style="max-width:240px" (ngModelChange)="cambiarTrabajador($event)">
+<select [ngModel]="trabajador()" name="finTrabajador" class="search-input search-input-sm"
+        (ngModelChange)="cambiarTrabajador($event)">
       <option [ngValue]="null">Todos los trabajadores</option>
       @for (u of sesion.usuarios(); track u.id) {
         <option [ngValue]="u.id">{{ nombreVisible(u) }}</option>
@@ -103,7 +103,7 @@
         </span>
         <span class="stat-value">{{ datos.total_ordenes }}</span>
         @if (datos.total_ordenes_canceladas; as canceladas) {
-          <span style="font-size:0.75rem; color:#6b7280; display:block; margin-top:2px;"
+          <span class="stat-hint"
                 title="Las órdenes canceladas no generan ingresos ni contratos">
             ({{ canceladas }} cancelada{{ canceladas > 1 ? 's' : '' }} excluida{{ canceladas > 1 ? 's' : '' }})
           </span>
@@ -113,8 +113,8 @@
   </div>
 
   <!-- ═══ Por método de pago ══════════════════════════════════════════════ -->
-  <div class="card" style="padding:1.25rem 1.5rem; margin-bottom:1.5rem">
-    <h4 class="section-title" style="margin-top:0">Ingresos por método de pago</h4>
+  <div class="card card-compacta mb-seccion">
+    <h4 class="section-title mt-0">Ingresos por método de pago</h4>
     @if (porMetodo().length === 0) {
       <p class="text-muted">Sin ingresos en el rango.</p>
     } @else {
@@ -130,8 +130,8 @@
   </div>
 
   <!-- ═══ Por unidad de negocio (caja dual) ═══════════════════════════════ -->
-  <div class="card" style="padding:1.25rem 1.5rem; margin-bottom:1.5rem">
-    <h4 class="section-title" style="margin-top:0">Desglose por unidad de negocio</h4>
+  <div class="card card-compacta mb-seccion">
+    <h4 class="section-title mt-0">Desglose por unidad de negocio</h4>
     <div class="metodo-grid">
       @for (unidad of unidadesNegocio; track unidad) {
         <div class="metodo-box">
@@ -149,7 +149,7 @@
   <!-- ═══ Por trabajador (supervisión) ═════════════════════════════════════ -->
   @if (datos.es_supervisor) {
     <div class="table-card card">
-      <div class="toolbar" style="padding:1rem 1.25rem 0">
+      <div class="toolbar toolbar-compacta">
         <span class="toolbar-title">Generado por trabajador</span>
       </div>
 
