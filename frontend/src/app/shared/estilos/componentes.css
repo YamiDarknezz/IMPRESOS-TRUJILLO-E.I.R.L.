@@ -1250,6 +1250,31 @@ select.date-filter-input:focus {
 .modal-body .form-row { display: flex; gap: 1rem; margin-bottom: 1rem; }
 .modal-body .form-row .form-group { flex: 1; margin-bottom: 0; }
 
+/* ─── Inventario: clases que reemplazan estilos inline (Issue #37) ──────── */
+
+/* Badge compacto (mismo que el inline font-size:0.75rem) */
+.badge.badge-sm { font-size: 0.75rem; }
+
+/* Grupo de acciones en toolbar (antes: style="display:flex; gap:0.5rem;") */
+.toolbar-actions { display: flex; gap: 0.5rem; }
+
+/* Barra de progreso de rollos/planchas */
+.progreso-riel {
+  background: var(--surface-3);
+  border-radius: 4px;
+  height: 6px;
+  width: 100%;
+  margin-top: 4px;
+  overflow: hidden;
+}
+.progreso-relleno { height: 100%; }
+
+/* Input que ocupa toda la fila del form-grid */
+.input-group.grid-full { grid-column: 1 / -1; }
+
+/* Modal ancho (antes: style="max-width:850px;") */
+.modal-content.modal-content-lg { max-width: 850px; }
+
 /* ─── Pestañas (inventario) ──────────────────────────────────────────────── */
 .tabs-nav {
   display: flex;

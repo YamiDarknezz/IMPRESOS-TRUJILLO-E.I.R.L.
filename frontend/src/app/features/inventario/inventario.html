@@ -65,7 +65,7 @@
                 <tr>
                   <td><strong>{{ mat.nombre }}</strong></td>
                   <td>
-                    <span class="badge badge-neutral" style="font-size:0.75rem;">
+                    <span class="badge badge-neutral badge-sm">
                       {{ mat.tipo_formato === 'continuo_rollo' ? 'Rollo' : (mat.tipo_formato === 'plancha_rigida' ? 'Plancha' : (mat.tipo_formato === 'quimico_tinta' ? 'Tinta' : 'Unidad')) }}
                     </span>
                   </td>
@@ -322,7 +322,7 @@
 @if (pestanaActiva() === 'piezas') {
   <div class="toolbar toolbar-wrap">
     <span class="toolbar-title">{{ piezas().length }} piezas/rollos en seguimiento</span>
-    <div style="display:flex; gap:0.5rem;">
+    <div class="toolbar-actions">
       <button class="btn-secondary btn-sm" (click)="cargarPiezas()">↻ Actualizar</button>
       @if (sesion.esSupervisor()) {
         <button class="btn-primary btn-sm" (click)="abrirNuevaPieza()">+ Nuevo Rollo / Plancha</button>
@@ -367,19 +367,20 @@
                 </td>
                 <td>
                   <strong>{{ p.saldo_restante }}</strong> / {{ p.capacidad_inicial }} {{ p.unidad_medida }}
-                  <div style="background:var(--surface-3); border-radius:4px; height:6px; width:100%; margin-top:4px; overflow:hidden;">
-                    <div [style.width.%]="(p.saldo_restante / p.capacidad_inicial) * 100"
-                         [style.background]="(p.saldo_restante / p.capacidad_inicial) < 0.1 ? 'var(--danger)' : ((p.saldo_restante / p.capacidad_inicial) <= 0.3 ? 'var(--warning)' : 'var(--success)')"
-                         style="height:100%;"></div>
-                  </div>
+                <div class="progreso-riel">
+                  <div [style.width.%]="(p.saldo_restante / p.capacidad_inicial) * 100"
+                    [style.background]="(p.saldo_restante / p.capacidad_inicial) < 0.1 ? 'var(--danger)' : ((p.saldo_restante / p.capacidad_inicial) <= 0.3 ? 'var(--warning)' : 'var(--success)')"
+                     class="progreso-relleno"></div>
+                   </div>
                 </td>
                 <td>S/ {{ p.costo_adquisicion | number:'1.2-2' }}</td>
-                <td><strong style="color:#16a34a;">S/ {{ p.total_recaudado | number:'1.2-2' }}</strong></td>
-                <td>
-                  <strong [style.color]="p.ganancia_neta >= 0 ? '#16a34a' : '#ef4444'">
-                    S/ {{ p.ganancia_neta | number:'1.2-2' }}
-                  </strong>
-                </td>
+                <td><strong class="text-success">S/ {{ p.total_recaudado | number:'1.2-2' }}</strong></td>
+<td>
+  <strong [class.text-success]="p.ganancia_neta >= 0"
+          [class.text-danger]="p.ganancia_neta < 0">
+    S/ {{ p.ganancia_neta | number:'1.2-2' }}
+  </strong>
+</td>
                 <td>{{ p.ubicacion || '—' }}</td>
                 <td>
                   <span class="badge" [ngClass]="p.estado === 'disponible' ? 'badge-neutral' : (p.estado === 'en_uso' ? 'badge-warning' : 'badge-danger')">
@@ -562,7 +563,7 @@
       </p>
 
       <div class="form-grid">
-        <div class="input-group" style="grid-column: 1 / -1;">
+        <div class="input-group grid-full">
           <label>Descripción del Trabajo / Cliente *</label>
           <input type="text" [ngModel]="formConsumo().trabajo_descripcion"
                  (ngModelChange)="actualizarConsumo('trabajo_descripcion', $event)"
@@ -608,7 +609,7 @@
 <!-- ═══ Modal: Detalle de Cortes / Trazabilidad por Rollo/Plancha ═══════════ -->
 @if (piezaDetalle(); as pd) {
   <div class="modal-overlay" (click)="cerrarDetallePieza()">
-    <div class="modal-content" style="max-width:850px;" (click)="$event.stopPropagation()">
+    <div class="modal-content modal-content-lg" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <h3>Historial de Cortes: {{ pd.codigo_identificador }}</h3>
         <button class="btn-icon" (click)="cerrarDetallePieza()">✕</button>
@@ -616,8 +617,9 @@
       <p class="modal-subtitle">
         Material: <strong>{{ pd.material_nombre }}</strong> ·
         Costo: <strong>S/ {{ pd.costo_adquisicion | number:'1.2-2' }}</strong> ·
-        Recaudado: <strong style="color:#16a34a;">S/ {{ pd.total_recaudado | number:'1.2-2' }}</strong> ·
-        Ganancia Neta: <strong [style.color]="pd.ganancia_neta >= 0 ? '#16a34a' : '#ef4444'">S/ {{ pd.ganancia_neta | number:'1.2-2' }}</strong>
+        Recaudado: <strong class="text-success">S/ {{ pd.total_recaudado | number:'1.2-2' }}</strong> ·
+        Ganancia Neta: <strong [class.text-success]="pd.ganancia_neta >= 0"
+                      [class.text-danger]="pd.ganancia_neta < 0">S/ {{ pd.ganancia_neta | number:'1.2-2' }}</strong>
       </p>
 
       @if ((pd.consumos?.length ?? 0) === 0) {
@@ -644,7 +646,7 @@
                   <td>{{ c.cantidad_consumida }} {{ pd.unidad_medida }}</td>
                   <td>{{ c.saldo_anterior }}</td>
                   <td><strong>{{ c.saldo_nuevo }}</strong></td>
-                  <td><strong style="color:#16a34a;">S/ {{ c.monto_cobrado | number:'1.2-2' }}</strong></td>
+                  <td><strong class="text-success">S/ {{ c.monto_cobrado | number:'1.2-2' }}</strong></td>
                   <td>{{ c.merma_desperdicio || 0 }}</td>
                 </tr>
               }
