@@ -444,4 +444,34 @@ describe('InventarioComponent', () => {
       expect(componente.proyeccionPieza()).toBeNull();
     });
   });
+
+  // Issue #109: la ubicación se ve y se puede filtrar.
+  describe('ubicación (#109)', () => {
+    const enAlmacen: MaterialInventario = { ...lona, id: 2, nombre: 'Vinilo', ubicacion_estante: 'Almacén' };
+
+    it('materialesFiltrados() respeta el filtro de ubicación', () => {
+      inventarioFalso.materiales.set([lona, enAlmacen]);
+      const componente = TestBed.createComponent(InventarioComponent).componentInstance;
+      expect(componente.ubicaciones()).toEqual(['A-1', 'Almacén']);
+
+      componente.filtroUbicacion.set('Almacén');
+      expect(componente.materialesFiltrados()).toEqual([enAlmacen]);
+
+      componente.filtroUbicacion.set('');
+      expect(componente.materialesFiltrados()).toEqual([lona, enAlmacen]);
+    });
+
+    it('piezasFiltradas() busca también por ubicación', async () => {
+      inventarioFalso.listarPiezas.mockResolvedValue([
+        piezaBase({ id: 1, ubicacion: 'Estante 2' }),
+        piezaBase({ id: 2, codigo_identificador: 'PL-02', ubicacion: 'Almacén' }),
+      ]);
+      const componente = TestBed.createComponent(InventarioComponent).componentInstance;
+      await componente.cargarPiezas();
+
+      componente.busquedaPiezas.set('almacén');
+
+      expect(componente.piezasFiltradas().map(p => p.id)).toEqual([2]);
+    });
+  });
 });

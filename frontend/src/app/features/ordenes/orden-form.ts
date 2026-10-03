@@ -294,6 +294,11 @@ export class OrdenFormComponent {
 
   // ── Materiales estimados ─────────────────────────────────────────────────
 
+  /** Dónde está guardado un material, para ir a buscarlo (#109). */
+  ubicacionDe(idMaterial: number): string {
+    return this.materiales().find(m => m.id === idMaterial)?.ubicacion_estante?.trim() ?? '';
+  }
+
   agregarMaterial(): void {
     const material = this.materiales().find(m => String(m.id) === this.materialSelId());
     const cantidad = this.materialSelCantidad();

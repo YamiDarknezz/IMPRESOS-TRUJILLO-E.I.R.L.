@@ -227,6 +227,16 @@ describe('OrdenFormComponent', () => {
   });
 
   describe('materiales estimados', () => {
+    // Issue #109: al elegir material se ve dónde está guardado.
+    it('ubicacionDe() devuelve dónde está el material, o vacío si no se registró', () => {
+      const componente = TestBed.createComponent(OrdenFormComponent).componentInstance;
+      inventarioFalso.materiales.set([{ ...material, ubicacion_estante: ' Estante 2 ' }, { ...material, id: 2 }]);
+
+      expect(componente.ubicacionDe(1)).toBe('Estante 2');
+      expect(componente.ubicacionDe(2)).toBe('');
+      expect(componente.ubicacionDe(99)).toBe('');
+    });
+
     it('agregarMaterial(): agrega el material elegido', () => {
       const fixture = TestBed.createComponent(OrdenFormComponent);
       const componente = fixture.componentInstance;

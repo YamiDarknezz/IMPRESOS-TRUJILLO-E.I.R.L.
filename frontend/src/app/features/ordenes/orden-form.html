@@ -210,6 +210,7 @@
           @for (mat of materiales(); track mat.id) {
             <option [value]="mat.id">
               {{ mat.nombre }} — Stock: {{ mat.stock_actual }} {{ mat.unidad }}
+              @if (mat.ubicacion_estante) { · Ubicación: {{ mat.ubicacion_estante }} }
             </option>
           }
         </select>
@@ -227,7 +228,12 @@
       <ul class="material-list">
         @for (mat of form().materiales; track $index) {
           <li>
-            <span>{{ mat.cantidad }} {{ mat.unidad || '' }} × {{ mat.nombre }}</span>
+            <span>
+              {{ mat.cantidad }} {{ mat.unidad || '' }} × {{ mat.nombre }}
+              @if (ubicacionDe(mat.id_material); as ubicacion) {
+                <small class="text-muted">· Ubicación: {{ ubicacion }}</small>
+              }
+            </span>
             <button type="button" class="delete-btn" (click)="quitarMaterial($index)" title="Quitar material" aria-label="Quitar material">
               <app-icon name="x" [size]="13" />
             </button>

@@ -5,7 +5,9 @@ import { FormsModule } from '@angular/forms';
 import {
   InventarioService,
   filtrarMateriales,
+  filtrarPiezas,
   tieneStockBajo,
+  ubicacionesEnUso,
 } from '../../core/services/inventario.service';
 import { UnidadesService } from '../../core/services/unidades.service';
 import { OrdenesService, estaEnPipeline } from '../../core/services/ordenes.service';
@@ -88,9 +90,17 @@ export class InventarioComponent {
 
   readonly pestanaActiva = signal<'materiales' | 'piezas'>('materiales');
   readonly busqueda = signal('');
+  /** Ubicación a la que se limita la lista; vacío = todas (#109). */
+  readonly filtroUbicacion = signal('');
+  readonly ubicaciones = computed(() => ubicacionesEnUso(this.materiales()));
+
   readonly materialesFiltrados = computed(() =>
-    filtrarMateriales(this.materiales(), this.busqueda())
+    filtrarMateriales(this.materiales(), this.busqueda(), this.filtroUbicacion())
   );
+
+  /** Búsqueda en la pestaña de rollos y planchas (código, material o ubicación). */
+  readonly busquedaPiezas = signal('');
+  readonly piezasFiltradas = computed(() => filtrarPiezas(this.piezas(), this.busquedaPiezas()));
 
   // ── Rollos y Planchas Pre-establecidas ──────────────────────────────────
   readonly piezas = signal<PiezaLoteMaterial[]>([]);

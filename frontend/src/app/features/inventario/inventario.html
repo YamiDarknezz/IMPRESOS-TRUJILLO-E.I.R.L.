@@ -22,13 +22,24 @@
         <span class="search-icon"><app-icon name="search" [size]="15" /></span>
         <input type="text" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)"
                name="busquedaInventario" class="search-input"
-               placeholder="Buscar material por nombre...">
+               placeholder="Buscar por nombre o ubicación...">
         @if (busqueda()) {
           <button class="search-clear" (click)="busqueda.set('')" title="Limpiar búsqueda" aria-label="Limpiar búsqueda">
             <app-icon name="x" [size]="13" />
           </button>
         }
       </div>
+
+      @if (ubicaciones().length > 0) {
+        <select class="search-input filtro-canal" [ngModel]="filtroUbicacion()"
+                (ngModelChange)="filtroUbicacion.set($event)" name="filtroUbicacion"
+                aria-label="Filtrar por ubicación">
+          <option value="">Todas las ubicaciones</option>
+          @for (u of ubicaciones(); track u) {
+            <option [value]="u">{{ u }}</option>
+          }
+        </select>
+      }
 
       @if (sesion.esSupervisor()) {
         <button class="btn-primary" (click)="alternarFormulario()">+ Nuevo Material</button>
@@ -317,6 +328,12 @@
 @if (pestanaActiva() === 'piezas') {
   <div class="toolbar toolbar-wrap">
     <span class="toolbar-title">{{ piezas().length }} piezas/rollos en seguimiento</span>
+    <div class="search-box">
+      <span class="search-icon"><app-icon name="search" [size]="15" /></span>
+      <input type="text" [ngModel]="busquedaPiezas()" (ngModelChange)="busquedaPiezas.set($event)"
+             name="busquedaPiezas" class="search-input"
+             placeholder="Buscar por código, material o ubicación...">
+    </div>
     <div style="display:flex; gap:0.5rem;">
       <button class="btn-secondary btn-sm" (click)="cargarPiezas()">↻ Actualizar</button>
       @if (sesion.esSupervisor()) {
@@ -332,6 +349,11 @@
         @if (sesion.esSupervisor()) {
           <button class="btn-primary btn-sm" (click)="abrirNuevaPieza()">+ Registrar primer rollo o plancha</button>
         }
+      </div>
+    } @else if (piezasFiltradas().length === 0) {
+      <div class="empty-state">
+        <p>No se encontró "{{ busquedaPiezas() }}" entre los rollos y planchas.</p>
+        <button class="btn-secondary btn-sm" (click)="busquedaPiezas.set('')">Limpiar búsqueda</button>
       </div>
     } @else {
       <div class="table-wrapper">
@@ -351,7 +373,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (p of piezas(); track p.id) {
+            @for (p of piezasFiltradas(); track p.id) {
               <tr>
                 <td><code>{{ p.codigo_identificador }}</code></td>
                 <td><strong>{{ p.material_nombre }}</strong></td>
@@ -609,6 +631,7 @@
     </p>
 
     <p class="modal-subtitle">
+      Ubicación: <strong>{{ pd.ubicacion || 'sin registrar' }}</strong> ·
       Saldo: <strong>{{ pd.saldo_restante }} {{ pd.unidad_medida }}</strong>
       @if (proyeccionPieza(); as proyeccion) {
         · Promedio por corte: <strong>{{ proyeccion.promedio }} {{ pd.unidad_medida }}</strong>
