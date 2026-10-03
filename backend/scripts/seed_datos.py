@@ -25,6 +25,7 @@ from app.core.config import settings  # noqa: E402
 from app.core.database import FabricaSesiones  # noqa: E402
 from app.core.security import hash_password  # noqa: E402
 from app.models import (  # noqa: E402
+    CanalIngreso,
     Cliente,
     EstadoOrden,
     Material,
@@ -38,8 +39,9 @@ from app.models import (  # noqa: E402
     UnidadNegocio,
     Usuario,
 )
+from app.schemas.inventario import ConsumoPiezaCreateData, PiezaLoteCreateData  # noqa: E402
 from app.schemas.orden import MaterialEstimado, OrdenCreateData  # noqa: E402
-from app.services import ordenes_service  # noqa: E402
+from app.services import inventario_service, ordenes_service  # noqa: E402
 
 CLAVE_DEMO = "Demo12345"
 PREFIJO_DEMO = "[Demo]"
@@ -248,6 +250,8 @@ async def _sembrar_ordenes_demo(
             precio=180,
             adelanto=90,
             unidad_negocio=UnidadNegocio.GIGANTOGRAFIAS,
+            canal_ingreso=CanalIngreso.WHATSAPP,
+            adelanto_descripcion="Adelanto del 50 % por la gigantografía",
             items=[
                 {
                     "descripcion": "Gigantografía 3x2 m",
@@ -272,11 +276,46 @@ async def _sembrar_ordenes_demo(
             adelanto=65,
             asignado_a=operario1.id,
             unidad_negocio=UnidadNegocio.IMPRENTA,
+            canal_ingreso=CanalIngreso.LLAMADA,
+            adelanto_descripcion="Adelanto del banner con ojalillos",
         ),
         admin,
     )
     await ordenes_service.cambiar_estado(
         sesion, orden_produccion.id, EstadoOrden.EN_PRODUCCION, operario1
+    )
+
+    # Un rollo de lona con cortes: uno asignado al pedido en producción y otro
+    # suelto, para poder ver el seguimiento de rollos por pedido (#71).
+    rollo = await inventario_service.registrar_pieza(
+        sesion,
+        PiezaLoteCreateData(
+            material_id=lona.id,
+            codigo_identificador="ROLL-DEMO-01",
+            capacidad_inicial=30,
+            unidad_medida="m2",
+            costo_adquisicion=150,
+            ancho_m=1.5,
+            ubicacion="Estante 2",
+        ),
+        admin,
+    )
+    await inventario_service.registrar_consumo_pieza(
+        sesion,
+        rollo.id,
+        ConsumoPiezaCreateData(
+            trabajo_descripcion="Banner publicitario 2x1 m con ojalillos",
+            cantidad_consumida=4,
+            orden_id=orden_produccion.id,
+            monto_cobrado=130,
+        ),
+        operario1,
+    )
+    await inventario_service.registrar_consumo_pieza(
+        sesion,
+        rollo.id,
+        ConsumoPiezaCreateData(trabajo_descripcion="Pendón de mostrador", cantidad_consumida=2.5),
+        operario1,
     )
 
     # 3) Finalizada con saldo pendiente: demuestra el candado de entrega.
@@ -290,6 +329,7 @@ async def _sembrar_ordenes_demo(
             adelanto=60,
             asignado_a=operario2.id,
             unidad_negocio=UnidadNegocio.IMPRENTA,
+            canal_ingreso=CanalIngreso.PRESENCIAL,
         ),
         admin,
     )

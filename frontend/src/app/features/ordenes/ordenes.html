@@ -288,6 +288,12 @@
                     </button>
                   }
                   <button class="btn-icon"
+                          title="Rollos y planchas usados en el pedido"
+                          aria-label="Rollos y planchas usados en el pedido"
+                          (click)="abrirRollos(orden)">
+                    <app-icon name="package-check" [size]="14" />
+                  </button>
+                  <button class="btn-icon"
                           title="Historial de pagos de la orden"
                           aria-label="Historial de pagos de la orden"
                           (click)="abrirHistorial(orden)">
@@ -519,6 +525,54 @@
 
     <div class="form-actions">
       <button type="button" class="btn-secondary" (click)="cerrarHistorial()">Cerrar</button>
+    </div>
+  </app-modal>
+}
+
+<!-- ═══ Modal: rollos y planchas usados por el pedido (#71) ════════════════ -->
+@if (ordenRollos(); as orden) {
+  <app-modal titulo="Rollos usados en el pedido" claseContenido="modal-ancho" [conBotonCerrar]="true" (cerrar)="cerrarRollos()">
+    <span modal-cabecera class="modal-orden-id">{{ orden.id_documento }}</span>
+    <p class="modal-subtitle">{{ orden.cliente }} · {{ orden.descripcion }}</p>
+
+    @if (cargandoRollos()) {
+      <p class="text-muted">Cargando...</p>
+    } @else if (rollos(); as datos) {
+      @if (datos.data.length === 0) {
+        <p class="text-muted">
+          Todavía no se asignó ningún corte de rollo o plancha a este pedido. Se asigna al
+          registrar el corte en Inventario.
+        </p>
+      } @else {
+        <p class="modal-subtitle">
+          @for (r of datos.resumen; track r.material) {
+            <span class="bloque">Total de <strong>{{ r.material }}</strong>: {{ r.cantidad }} {{ r.unidad }}</span>
+          }
+        </p>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr><th>Fecha</th><th>Rollo / Plancha</th><th>Material</th><th>Usó</th><th>Le queda</th><th>Trabajo</th></tr>
+            </thead>
+            <tbody>
+              @for (c of datos.data; track c.id) {
+                <tr>
+                  <td>{{ formatearFecha(c.fecha) }}</td>
+                  <td><code class="id-chip">{{ c.pieza_codigo }}</code></td>
+                  <td>{{ c.material_nombre }}</td>
+                  <td>{{ c.cantidad_consumida }} {{ c.unidad_medida }}</td>
+                  <td>{{ c.saldo_restante_pieza }} {{ c.unidad_medida }}</td>
+                  <td>{{ c.trabajo_descripcion }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+
+    <div class="form-actions">
+      <button type="button" class="btn-secondary" (click)="cerrarRollos()">Cerrar</button>
     </div>
   </app-modal>
 }

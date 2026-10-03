@@ -398,3 +398,43 @@ async def test_gasto_de_caja_exige_monto_positivo_en_postgres(sesion_pg, entorno
             )
             await sesion_pg.flush()
 
+
+async def test_corte_asignado_a_un_pedido_se_serializa_sin_cargas_perezosas_en_postgres(
+    sesion_pg, entorno_pg
+):
+    """
+    #71: serializar un corte recién creado lee `consumo.orden` y la pieza. En
+    SQLite una carga perezosa pasa sin avisar; en PostgreSQL con asyncpg
+    revienta con MissingGreenlet (le pasó tres veces a este proyecto).
+    """
+    from app.schemas.inventario import ConsumoPiezaCreateData, PiezaLoteCreateData
+    from app.services import inventario_service
+    from app.services.serializadores import serializar_consumo
+
+    admin, material, cliente = entorno_pg["admin"], entorno_pg["material"], entorno_pg["cliente"]
+    orden = await ordenes_service.crear_orden(
+        sesion_pg, datos_orden(material.id, cliente_id=cliente.id), admin
+    )
+    pieza = await inventario_service.registrar_pieza(
+        sesion_pg,
+        PiezaLoteCreateData(
+            material_id=material.id, codigo_identificador=f"R71-{SUFIJO}", capacidad_inicial=5,
+            unidad_medida="m",
+        ),
+        admin,
+    )
+
+    consumo = await inventario_service.registrar_consumo_pieza(
+        sesion_pg,
+        pieza.id,
+        ConsumoPiezaCreateData(trabajo_descripcion="Banner", cantidad_consumida=2, orden_id=orden.id),
+        admin,
+    )
+    fila = serializar_consumo(consumo)
+
+    assert fila["orden_codigo"] == orden.codigo
+    assert fila["pieza_codigo"] == f"R71-{SUFIJO}"
+    assert fila["saldo_restante_pieza"] == 3
+    delante = await inventario_service.consumos_de_orden(sesion_pg, orden.id)
+    assert [c.id for c in delante] == [consumo.id]
+

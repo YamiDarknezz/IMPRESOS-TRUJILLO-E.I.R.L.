@@ -367,3 +367,107 @@ async def test_solo_la_supervision_quita_un_gasto_y_queda_en_la_auditoria(
 async def test_quitar_un_gasto_inexistente_da_404(cliente_api, admin):
     respuesta = await cliente_api.delete("/api/caja/gastos/9999", headers=cabecera_token(admin))
     assert respuesta.status_code == 404
+
+
+# ══ #71 · Seguimiento de rollos por pedido ════════════════════════════════
+
+async def _rollo(cliente_api, usuario, material, codigo="ROLL-71", capacidad=50):
+    respuesta = await cliente_api.post(
+        "/api/inventario/piezas",
+        json={
+            "material_id": material.id, "codigo_identificador": codigo,
+            "capacidad_inicial": capacidad, "unidad_medida": "m", "costo_adquisicion": 100,
+        },
+        headers=cabecera_token(usuario),
+    )
+    assert respuesta.status_code == 200, respuesta.text
+    return respuesta.json()["data"]
+
+
+async def _corte(cliente_api, usuario, pieza, cantidad=5, **extra):
+    return await cliente_api.post(
+        f"/api/inventario/piezas/{pieza['id']}/consumos",
+        json={"trabajo_descripcion": "Banner 2x1", "cantidad_consumida": cantidad} | extra,
+        headers=cabecera_token(usuario),
+    )
+
+
+async def test_un_corte_se_asigna_a_un_pedido_y_se_ve_en_la_orden(cliente_api, admin, material):
+    orden = await _crear(cliente_api, admin, material)
+    rollo = await _rollo(cliente_api, admin, material)
+
+    corte = await _corte(cliente_api, admin, rollo, cantidad=8, orden_id=orden["id"])
+    assert corte.status_code == 200, corte.text
+    assert corte.json()["data"]["orden_codigo"] == orden["codigo"]
+
+    respuesta = await cliente_api.get(f"/api/ordenes/{orden['id']}/rollos", headers=cabecera_token(admin))
+    cuerpo = respuesta.json()
+    [fila] = cuerpo["data"]
+    assert fila["pieza_codigo"] == "ROLL-71"
+    assert fila["material_nombre"] == material.nombre
+    assert fila["cantidad_consumida"] == 8
+    assert fila["saldo_restante_pieza"] == 42
+    assert cuerpo["resumen"] == [{"material": material.nombre, "unidad": "m", "cantidad": 8}]
+
+
+async def test_el_resumen_suma_los_cortes_del_mismo_material(cliente_api, admin, material):
+    orden = await _crear(cliente_api, admin, material)
+    rollo = await _rollo(cliente_api, admin, material)
+    await _corte(cliente_api, admin, rollo, cantidad=3, orden_id=orden["id"])
+    await _corte(cliente_api, admin, rollo, cantidad=4.5, orden_id=orden["id"])
+    # Un corte de otro pedido no se mezcla.
+    await _corte(cliente_api, admin, rollo, cantidad=10)
+
+    cuerpo = (
+        await cliente_api.get(f"/api/ordenes/{orden['id']}/rollos", headers=cabecera_token(admin))
+    ).json()
+
+    assert len(cuerpo["data"]) == 2
+    assert cuerpo["resumen"][0]["cantidad"] == 7.5
+
+
+async def test_un_pedido_sin_cortes_devuelve_una_lista_vacia(cliente_api, admin, material):
+    orden = await _crear(cliente_api, admin, material)
+    cuerpo = (
+        await cliente_api.get(f"/api/ordenes/{orden['id']}/rollos", headers=cabecera_token(admin))
+    ).json()
+    assert cuerpo["data"] == []
+    assert cuerpo["resumen"] == []
+
+
+async def test_el_corte_con_una_orden_inexistente_se_rechaza_con_un_mensaje(
+    cliente_api, admin, material
+):
+    rollo = await _rollo(cliente_api, admin, material)
+    respuesta = await _corte(cliente_api, admin, rollo, orden_id=9999)
+    assert respuesta.status_code == 400
+    assert "no existe" in respuesta.json()["detail"]
+
+
+async def test_no_se_asigna_un_corte_a_un_pedido_cancelado(cliente_api, admin, material):
+    orden = await _crear(cliente_api, admin, material)
+    await cliente_api.post(f"/api/ordenes/{orden['id']}/cancelar", headers=cabecera_token(admin))
+    rollo = await _rollo(cliente_api, admin, material)
+
+    respuesta = await _corte(cliente_api, admin, rollo, orden_id=orden["id"])
+
+    assert respuesta.status_code == 400
+    assert "cancelada" in respuesta.json()["detail"]
+    # Y el rollo no perdió material por el intento.
+    detalle = await cliente_api.get(f"/api/inventario/piezas/{rollo['id']}", headers=cabecera_token(admin))
+    assert detalle.json()["data"]["saldo_restante"] == 50
+
+
+async def test_el_corte_sin_pedido_sigue_funcionando(cliente_api, admin, material):
+    rollo = await _rollo(cliente_api, admin, material)
+    corte = await _corte(cliente_api, admin, rollo, cantidad=2)
+    assert corte.status_code == 200
+    assert corte.json()["data"]["orden_codigo"] is None
+
+
+async def test_un_operario_no_ve_los_rollos_de_un_pedido_ajeno(
+    cliente_api, sesion, admin, operario, material
+):
+    ajena = await _crear(cliente_api, admin, material, asignado_a=admin.id)
+    respuesta = await cliente_api.get(f"/api/ordenes/{ajena['id']}/rollos", headers=cabecera_token(operario))
+    assert respuesta.status_code == 403

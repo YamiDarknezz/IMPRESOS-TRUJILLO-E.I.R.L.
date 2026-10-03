@@ -23,6 +23,7 @@ import {
   MaterialComplecion,
   MetodoPago,
   Orden,
+  RollosDeOrden,
 } from '../../core/models';
 import { formatearFecha } from '../../shared/utilidades/fechas';
 import { mensajeDeError } from '../../shared/utilidades/errores';
@@ -120,6 +121,11 @@ export class OrdenesComponent {
   readonly metodoPago = signal<MetodoPago>('efectivo');
   readonly referenciaPago = signal('');
   readonly descripcionPago = signal('');
+
+  /** Pedido cuyos cortes de rollo se están mirando, con lo que devolvió el servidor (#71). */
+  readonly ordenRollos = signal<Orden | null>(null);
+  readonly rollos = signal<RollosDeOrden | null>(null);
+  readonly cargandoRollos = signal(false);
 
   /** Orden cuyo historial de pagos se está mirando (#110). */
   readonly ordenHistorial = signal<Orden | null>(null);
@@ -294,6 +300,25 @@ export class OrdenesComponent {
     this.referenciaPago.set('');
     this.descripcionPago.set('');
     this.limpiarAdjuntosCobro();
+  }
+
+  async abrirRollos(orden: Orden): Promise<void> {
+    this.ordenRollos.set(orden);
+    this.rollos.set(null);
+    this.cargandoRollos.set(true);
+    try {
+      this.rollos.set(await this.ordenesService.rollosDeOrden(orden.id));
+    } catch (e) {
+      this.ordenRollos.set(null);
+      alert(mensajeDeError(e, 'No se pudieron cargar los rollos del pedido.'));
+    } finally {
+      this.cargandoRollos.set(false);
+    }
+  }
+
+  cerrarRollos(): void {
+    this.ordenRollos.set(null);
+    this.rollos.set(null);
   }
 
   abrirHistorial(orden: Orden): void {

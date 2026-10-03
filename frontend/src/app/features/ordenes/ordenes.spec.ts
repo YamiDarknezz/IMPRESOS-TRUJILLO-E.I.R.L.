@@ -49,6 +49,7 @@ describe('OrdenesComponent', () => {
     porCobrar: ReturnType<typeof signal<number>>;
     cargar: ReturnType<typeof vi.fn>;
     recargar: ReturnType<typeof vi.fn>;
+    rollosDeOrden: ReturnType<typeof vi.fn>;
     cambiarEstado: ReturnType<typeof vi.fn>;
     asignar: ReturnType<typeof vi.fn>;
     cancelar: ReturnType<typeof vi.fn>;
@@ -72,6 +73,7 @@ describe('OrdenesComponent', () => {
       porCobrar: signal(0),
       cargar: vi.fn().mockResolvedValue(undefined),
       recargar: vi.fn().mockResolvedValue(undefined),
+      rollosDeOrden: vi.fn().mockResolvedValue({ data: [], resumen: [] }),
       cambiarEstado: vi.fn().mockResolvedValue(undefined),
       asignar: vi.fn().mockResolvedValue(undefined),
       cancelar: vi.fn().mockResolvedValue(undefined),
@@ -146,6 +148,42 @@ describe('OrdenesComponent', () => {
 
       (modal.querySelector('.modal-footer .btn-secondary') as HTMLButtonElement).click();
       expect(componente.ventaRapidaAbierta()).toBe(false);
+    });
+  });
+
+  describe('rollos usados por el pedido (#71)', () => {
+    it('abrirRollos() pide los cortes del pedido y los guarda', async () => {
+      const respuesta = { data: [], resumen: [{ material: 'Lona', unidad: 'm', cantidad: 8 }] };
+      ordenesFalso.rollosDeOrden.mockResolvedValue(respuesta);
+      const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
+      const orden = ordenBase();
+
+      await componente.abrirRollos(orden);
+
+      expect(ordenesFalso.rollosDeOrden).toHaveBeenCalledWith(1);
+      expect(componente.ordenRollos()).toBe(orden);
+      expect(componente.rollos()).toEqual(respuesta);
+      expect(componente.cargandoRollos()).toBe(false);
+    });
+
+    it('si falla, avisa y no deja el modal a medias', async () => {
+      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+      ordenesFalso.rollosDeOrden.mockRejectedValue(new Error('sin red'));
+      const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
+
+      await componente.abrirRollos(ordenBase());
+
+      expect(alertSpy).toHaveBeenCalledTimes(1);
+      expect(componente.ordenRollos()).toBeNull();
+      alertSpy.mockRestore();
+    });
+
+    it('cerrarRollos() limpia el pedido y los datos', async () => {
+      const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
+      await componente.abrirRollos(ordenBase());
+      componente.cerrarRollos();
+      expect(componente.ordenRollos()).toBeNull();
+      expect(componente.rollos()).toBeNull();
     });
   });
 

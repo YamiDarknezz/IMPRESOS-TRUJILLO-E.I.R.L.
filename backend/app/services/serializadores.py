@@ -117,6 +117,12 @@ def serializar_consumo(consumo) -> dict[str, Any]:
         "pieza_id": consumo.pieza_id,
         "orden_id": consumo.orden_id,
         "orden_codigo": consumo.orden.codigo if consumo.orden else None,
+        "pieza_codigo": consumo.pieza.codigo_identificador if consumo.pieza else "",
+        "material_nombre": consumo.pieza.material.nombre
+        if consumo.pieza and consumo.pieza.material
+        else "",
+        "unidad_medida": consumo.pieza.unidad_medida if consumo.pieza else "",
+        "saldo_restante_pieza": num(consumo.pieza.saldo_restante) if consumo.pieza else 0.0,
         "trabajo_descripcion": consumo.trabajo_descripcion,
         "cantidad_consumida": num(consumo.cantidad_consumida),
         "saldo_anterior": num(consumo.saldo_anterior),

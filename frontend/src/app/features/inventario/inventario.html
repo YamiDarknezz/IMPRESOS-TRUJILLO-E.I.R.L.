@@ -541,7 +541,22 @@
     </p>
 
     <div class="form-grid">
-      <div class="input-group" style="grid-column: 1 / -1;">
+      <div class="input-group campo-completo">
+        <label>Pedido (opcional)</label>
+        <select [ngModel]="formConsumo().orden_id ?? ''" name="ordenDelCorte"
+                (ngModelChange)="elegirOrdenDelCorte($event)">
+          <option value="">— Sin pedido —</option>
+          @for (o of ordenesEnCurso(); track o.id) {
+            <option [value]="o.id">{{ o.id_documento }} · {{ o.cliente }} · {{ o.descripcion }}</option>
+          }
+        </select>
+        <span class="field-hint">Asignarlo permite saber cuánto material se llevó cada pedido.</span>
+        @if (avisoDeSaldo(); as aviso) {
+          <span class="field-hint" [class.field-error]="aviso.tipo === 'alerta'">{{ aviso.texto }}</span>
+        }
+      </div>
+
+      <div class="input-group campo-completo">
         <label>Descripción del Trabajo / Cliente *</label>
         <input type="text" [ngModel]="formConsumo().trabajo_descripcion"
                (ngModelChange)="actualizarConsumo('trabajo_descripcion', $event)"
@@ -593,6 +608,14 @@
       Ganancia Neta: <strong [style.color]="pd.ganancia_neta >= 0 ? '#16a34a' : '#ef4444'">S/ {{ pd.ganancia_neta | number:'1.2-2' }}</strong>
     </p>
 
+    <p class="modal-subtitle">
+      Saldo: <strong>{{ pd.saldo_restante }} {{ pd.unidad_medida }}</strong>
+      @if (proyeccionPieza(); as proyeccion) {
+        · Promedio por corte: <strong>{{ proyeccion.promedio }} {{ pd.unidad_medida }}</strong>
+        · Alcanza para unos <strong>{{ proyeccion.cortesRestantes }}</strong> cortes más
+      }
+    </p>
+
     @if ((pd.consumos?.length ?? 0) === 0) {
       <p class="text-muted">Aún no se han registrado consumos en este rollo o plancha.</p>
     } @else {
@@ -602,6 +625,7 @@
             <tr>
               <th>Fecha</th>
               <th>Trabajo / Cliente</th>
+              <th>Pedido</th>
               <th>Consumo</th>
               <th>Saldo Anterior</th>
               <th>Saldo Nuevo</th>
@@ -614,6 +638,7 @@
               <tr>
                 <td class="fecha-cell">{{ formatearFecha(c.fecha, true) }}</td>
                 <td><strong>{{ c.trabajo_descripcion }}</strong></td>
+                <td>{{ c.orden_codigo || '—' }}</td>
                 <td>{{ c.cantidad_consumida }} {{ pd.unidad_medida }}</td>
                 <td>{{ c.saldo_anterior }}</td>
                 <td><strong>{{ c.saldo_nuevo }}</strong></td>

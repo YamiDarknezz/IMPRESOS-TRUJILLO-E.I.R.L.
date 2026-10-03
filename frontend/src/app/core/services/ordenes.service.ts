@@ -13,6 +13,7 @@ import {
   RespuestaItem,
   TipoDocumento,
   UnidadNegocio,
+  RollosDeOrden,
   VentaRapidaData,
 } from '../models';
 import { ListaRemota } from './lista-remota';
@@ -147,6 +148,11 @@ export class OrdenesService {
     );
     await this.lista.recargar();
     return res.data;
+  }
+
+  /** Cortes de rollo o plancha asignados a un pedido (#71). */
+  rollosDeOrden(idOrden: number): Promise<RollosDeOrden> {
+    return this.api.get<RollosDeOrden>(`/api/ordenes/${idOrden}/rollos`);
   }
 
   async crearVentaRapida(data: VentaRapidaData): Promise<Orden> {

@@ -26,8 +26,8 @@ from app.schemas import (
     OrdenCreateData,
     VentaRapidaData,
 )
-from app.services import comprobantes_service, ordenes_service
-from app.services.serializadores import serializar_comprobante, serializar_orden
+from app.services import comprobantes_service, inventario_service, ordenes_service
+from app.services.serializadores import serializar_comprobante, serializar_consumo, serializar_orden
 
 router = APIRouter(prefix="/api/ordenes", tags=["Órdenes"])
 
@@ -74,6 +74,37 @@ async def obtener_orden(
 ):
     orden = await ordenes_service.obtener(sesion, id_orden, usuario)
     return {"status": "success", "data": serializar_orden(orden)}
+
+
+@router.get("/{id_orden}/rollos")
+async def rollos_de_la_orden(
+    id_orden: int,
+    usuario: Annotated[Usuario, Depends(usuario_actual)],
+    sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
+):
+    """
+    Qué rollos o planchas se usaron en este pedido y cuánto (#71).
+
+    Responde "¿cuánto material se llevó este pedido y cuánto le queda al rollo?"
+    sin buscar en el cuaderno. Se aplica la misma visibilidad que al ver la orden.
+    """
+    orden = await ordenes_service.obtener(sesion, id_orden, usuario)
+    consumos = await inventario_service.consumos_de_orden(sesion, orden.id)
+
+    por_material: dict[str, dict] = {}
+    for consumo in consumos:
+        fila = serializar_consumo(consumo)
+        resumen = por_material.setdefault(
+            fila["material_nombre"],
+            {"material": fila["material_nombre"], "unidad": fila["unidad_medida"], "cantidad": 0.0},
+        )
+        resumen["cantidad"] = round(resumen["cantidad"] + fila["cantidad_consumida"], 2)
+
+    return {
+        "status": "success",
+        "data": [serializar_consumo(c) for c in consumos],
+        "resumen": list(por_material.values()),
+    }
 
 
 @router.post("")
