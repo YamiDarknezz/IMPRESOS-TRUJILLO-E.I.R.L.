@@ -1304,6 +1304,16 @@ select.date-filter-input:focus {
   border-bottom: 1px solid var(--border-soft);
 }
 
+/* ─── Clientes: clases que reemplazan estilos inline (Issue #37) ────────── */
+
+/* Subtítulo con ícono alineado (mismo que style="margin-top:1rem; display:flex; align-items:center; gap:0.4rem") */
+.modal-subtitle.modal-subtitle-icono {
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 /* ─── Checkbox con texto (clientes, orden-form) ──────────────────────────── */
 .input-group .checkbox-label {
   display: flex;
