@@ -479,3 +479,45 @@ async def test_entrega_con_saldo_autorizada_y_cuentas_por_cobrar_en_postgres(ses
     assert fila["ordenes"][0]["dias"] == 0
     assert fila["ordenes"][0]["entrega_autorizada_por"] == admin.nombre
 
+
+async def test_corte_cobrado_entra_a_caja_y_serializa_en_postgres(sesion_pg, entorno_pg):
+    """
+    #57: un corte cobrado sin pedido crea su venta rápida (pago conforme), el
+    corte serializado la referencia y el monto aparece en el arqueo real.
+    """
+    from app.schemas.inventario import ConsumoPiezaCreateData, PiezaLoteCreateData
+    from app.services import inventario_service
+    from app.services.serializadores import serializar_consumo
+
+    admin, material = entorno_pg["admin"], entorno_pg["material"]
+    pieza = await inventario_service.registrar_pieza(
+        sesion_pg,
+        PiezaLoteCreateData(
+            material_id=material.id,
+            codigo_identificador=f"R57-{SUFIJO}",
+            capacidad_inicial=5,
+            unidad_medida="m",
+            costo_adquisicion=100,
+        ),
+        admin,
+    )
+
+    consumo = await inventario_service.registrar_consumo_pieza(
+        sesion_pg,
+        pieza.id,
+        ConsumoPiezaCreateData(
+            trabajo_descripcion="Stickers UV DTF",
+            cantidad_consumida=1,
+            monto_cobrado=30,
+            metodo_pago=MetodoPago.EFECTIVO,
+        ),
+        admin,
+    )
+
+    fila = serializar_consumo(consumo)
+    assert fila["orden_codigo"] is not None
+    assert fila["monto_cobrado"] == 30
+
+    resumen = await caja_service.resumen_dia(sesion_pg, a_fecha_peru(ahora_utc()))
+    assert resumen["total"]["efectivo"] == 30
+

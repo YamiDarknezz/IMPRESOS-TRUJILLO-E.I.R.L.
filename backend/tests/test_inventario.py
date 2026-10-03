@@ -2,12 +2,24 @@
 from decimal import Decimal
 
 import pytest
+from pydantic import ValidationError
 from sqlalchemy import select
 
-from app.core.errores import ErrorDeNegocio
-from app.models import Auditoria, MotivoMovimiento, TipoEventoAuditoria
+from app.core.errores import ErrorDeNegocio, PermisoDenegado
+from app.core.security import hash_password
+from app.models import (
+    Auditoria,
+    EstadoOrden,
+    MetodoPago,
+    MotivoMovimiento,
+    Orden,
+    PagoOrden,
+    Rol,
+    TipoEventoAuditoria,
+    Usuario,
+)
 from app.schemas import MaterialEstimado
-from app.services import ordenes_service
+from app.services import caja_service, ordenes_service
 from app.services.inventario_service import (
     AjusteStock,
     aplicar_ajustes,
@@ -148,6 +160,7 @@ async def test_trazabilidad_rollos_uv_dtf_y_ganancia(sesion, admin, material):
         trabajo_descripcion="Stickers UV DTF Barbería Trujillo",
         cantidad_consumida=1.50,
         monto_cobrado=45.0,
+        metodo_pago=MetodoPago.EFECTIVO,
         nota="Impresión sin fallas",
     )
     consumo1 = await inventario_service.registrar_consumo_pieza(
@@ -164,6 +177,7 @@ async def test_trazabilidad_rollos_uv_dtf_y_ganancia(sesion, admin, material):
         trabajo_descripcion="Producción Etiquetas Distribuidora Norte",
         cantidad_consumida=98.50,
         monto_cobrado=1500.0,
+        metodo_pago=MetodoPago.YAPE,
         merma_desperdicio=0.50,
     )
     consumo2 = await inventario_service.registrar_consumo_pieza(
@@ -219,6 +233,7 @@ async def test_plancha_rigida_predimensionada_area(sesion, admin, material):
             trabajo_descripcion="Corte láser marcos decorativos",
             cantidad_consumida=0.98,
             monto_cobrado=70.0,
+            metodo_pago=MetodoPago.EFECTIVO,
         ),
         admin,
     )
@@ -365,3 +380,231 @@ async def test_ajustar_stock_por_api_deja_auditoria(cliente_api, sesion, admin, 
     assert len(entradas) == 1
     assert entradas[0].valores_anteriores == {"stock_actual": 10.0}
     assert entradas[0].valores_nuevos == {"stock_actual": 3.0}
+
+
+# ══ Issue #57: el cobro de un corte es dinero real (Caja/Finanzas) ══════════
+
+def test_corte_con_monto_exige_metodo_de_pago():
+    from app.schemas.inventario import ConsumoPiezaCreateData
+
+    with pytest.raises(ValidationError, match="método de pago"):
+        ConsumoPiezaCreateData(
+            trabajo_descripcion="Corte sin método",
+            cantidad_consumida=1.0,
+            monto_cobrado=20.0,
+        )
+
+
+async def test_corte_con_monto_y_orden_registra_el_pago_de_la_orden(
+    sesion, admin, material, cliente
+):
+    """
+    #57: un corte cobrado y ligado a un pedido es un pago de esa orden: baja
+    su saldo y entra al arqueo de Caja, en vez de quedar solo como "Recaudado".
+    """
+    from app.core.fechas import a_fecha_peru, ahora_utc
+    from app.schemas.inventario import ConsumoPiezaCreateData, PiezaLoteCreateData
+    from app.services import inventario_service
+
+    # Total 100 con adelanto de 50 -> saldo 50.
+    orden = await ordenes_service.crear_orden(
+        sesion, datos_orden(material.id, cliente_id=cliente.id), admin
+    )
+
+    pieza = await inventario_service.registrar_pieza(
+        sesion,
+        PiezaLoteCreateData(
+            material_id=material.id,
+            codigo_identificador="ROLL-57-A",
+            capacidad_inicial=50.0,
+            unidad_medida="m",
+            costo_adquisicion=100.0,
+        ),
+        admin,
+    )
+
+    consumo = await inventario_service.registrar_consumo_pieza(
+        sesion,
+        pieza.id,
+        ConsumoPiezaCreateData(
+            trabajo_descripcion="Stickers UV DTF",
+            cantidad_consumida=2.0,
+            orden_id=orden.id,
+            monto_cobrado=50.0,
+            metodo_pago=MetodoPago.YAPE,
+        ),
+        admin,
+    )
+
+    assert consumo.orden_id == orden.id
+    assert float(orden.saldo_pendiente) == 0
+    assert orden.pagado_totalmente is True
+
+    pagos = (
+        await sesion.execute(select(PagoOrden).where(PagoOrden.orden_id == orden.id))
+    ).scalars().all()
+    assert len(pagos) == 2  # adelanto + cobro del corte
+    pago_corte = next(p for p in pagos if p.metodo == MetodoPago.YAPE)
+    assert float(pago_corte.monto) == 50
+    assert "Corte de ROLL-57-A" in pago_corte.descripcion
+
+    resumen = await caja_service.resumen_dia(sesion, a_fecha_peru(ahora_utc()))
+    assert resumen["total"]["total"] == 100  # 50 adelanto + 50 corte
+    assert resumen["total"]["yape"] == 50
+
+
+async def test_corte_sin_orden_crea_venta_rapida_y_entra_a_caja(sesion, admin, material):
+    """
+    #57: sin pedido asociado, el cobro del corte es una venta de mostrador
+    (venta rápida) que también entra al arqueo.
+    """
+    from app.core.fechas import a_fecha_peru, ahora_utc
+    from app.schemas.inventario import ConsumoPiezaCreateData, PiezaLoteCreateData
+    from app.services import inventario_service
+
+    pieza = await inventario_service.registrar_pieza(
+        sesion,
+        PiezaLoteCreateData(
+            material_id=material.id,
+            codigo_identificador="ROLL-57-B",
+            capacidad_inicial=50.0,
+            unidad_medida="m",
+            costo_adquisicion=100.0,
+        ),
+        admin,
+    )
+
+    consumo = await inventario_service.registrar_consumo_pieza(
+        sesion,
+        pieza.id,
+        ConsumoPiezaCreateData(
+            trabajo_descripcion="Stickers de mostrador",
+            cantidad_consumida=1.0,
+            monto_cobrado=45.0,
+            metodo_pago=MetodoPago.EFECTIVO,
+        ),
+        admin,
+    )
+
+    assert consumo.orden_id is not None
+    venta = await sesion.get(Orden, consumo.orden_id)
+    assert venta.estado == EstadoOrden.ENTREGADA
+    assert venta.pagado_totalmente is True
+    assert float(venta.total) == 45
+
+    resumen = await caja_service.resumen_dia(sesion, a_fecha_peru(ahora_utc()))
+    assert resumen["total"]["efectivo"] == 45
+    assert resumen["total"]["total"] == 45
+
+
+async def test_corte_sin_monto_no_registra_pagos(sesion, admin, material):
+    """Un corte sin cobro sigue siendo solo inventario: no inventa dinero."""
+    from app.schemas.inventario import ConsumoPiezaCreateData, PiezaLoteCreateData
+    from app.services import inventario_service
+
+    pieza = await inventario_service.registrar_pieza(
+        sesion,
+        PiezaLoteCreateData(
+            material_id=material.id,
+            codigo_identificador="ROLL-57-C",
+            capacidad_inicial=50.0,
+            unidad_medida="m",
+        ),
+        admin,
+    )
+
+    await inventario_service.registrar_consumo_pieza(
+        sesion,
+        pieza.id,
+        ConsumoPiezaCreateData(trabajo_descripcion="Corte interno", cantidad_consumida=1.0),
+        admin,
+    )
+
+    assert (await sesion.execute(select(PagoOrden))).scalars().all() == []
+    assert (await sesion.execute(select(Orden))).scalars().all() == []
+
+
+async def test_trabajo_de_dos_rollos_cobra_una_sola_vez(sesion, admin, material):
+    """
+    #57: un trabajo UV DTF consume rollo A y B, pero el negocio lo cobra UNA
+    vez. El monto va en un corte; el otro va en 0 y no genera otro pago.
+    """
+    from app.schemas.inventario import ConsumoPiezaCreateData, PiezaLoteCreateData
+    from app.services import inventario_service
+
+    rollos = []
+    for codigo in ("ROLL-57-A2", "ROLL-57-B2"):
+        rollos.append(
+            await inventario_service.registrar_pieza(
+                sesion,
+                PiezaLoteCreateData(
+                    material_id=material.id,
+                    codigo_identificador=codigo,
+                    capacidad_inicial=50.0,
+                    unidad_medida="m",
+                ),
+                admin,
+            )
+        )
+
+    await inventario_service.registrar_consumo_pieza(
+        sesion,
+        rollos[0].id,
+        ConsumoPiezaCreateData(
+            trabajo_descripcion="Trabajo A+B",
+            cantidad_consumida=1.5,
+            monto_cobrado=50.0,
+            metodo_pago=MetodoPago.EFECTIVO,
+        ),
+        admin,
+    )
+    await inventario_service.registrar_consumo_pieza(
+        sesion,
+        rollos[1].id,
+        ConsumoPiezaCreateData(trabajo_descripcion="Trabajo A+B", cantidad_consumida=1.0),
+        admin,
+    )
+
+    pagos = (await sesion.execute(select(PagoOrden))).scalars().all()
+    assert len(pagos) == 1
+    assert float(pagos[0].monto) == 50
+    assert len((await sesion.execute(select(Orden))).scalars().all()) == 1
+
+
+async def test_corte_cobrado_exige_rol_de_venta(sesion, admin, material):
+    """Cobrar no es una operación de taller: la diseñadora no registra dinero."""
+    from app.schemas.inventario import ConsumoPiezaCreateData, PiezaLoteCreateData
+    from app.services import inventario_service
+
+    disenadora = Usuario(
+        nombre="Diseñadora Prueba",
+        email="disenadora@impresos.test",
+        password_hash=hash_password("secreto123"),
+        rol=Rol.DISENADORA,
+    )
+    sesion.add(disenadora)
+    await sesion.flush()
+
+    pieza = await inventario_service.registrar_pieza(
+        sesion,
+        PiezaLoteCreateData(
+            material_id=material.id,
+            codigo_identificador="ROLL-57-D",
+            capacidad_inicial=50.0,
+            unidad_medida="m",
+        ),
+        admin,
+    )
+
+    with pytest.raises(PermisoDenegado, match="venta o mostrador"):
+        await inventario_service.registrar_consumo_pieza(
+            sesion,
+            pieza.id,
+            ConsumoPiezaCreateData(
+                trabajo_descripcion="Corte cobrado",
+                cantidad_consumida=1.0,
+                monto_cobrado=20.0,
+                metodo_pago=MetodoPago.EFECTIVO,
+            ),
+            disenadora,
+        )

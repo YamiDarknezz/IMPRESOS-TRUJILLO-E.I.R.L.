@@ -15,6 +15,8 @@ import { SesionService } from '../../core/services/sesion.service';
 import {
   ConsumoPieza,
   ConsumoPiezaCreateData,
+  ETIQUETA_METODO,
+  METODOS_PAGO,
   MaterialInventario,
   MovimientoStock,
   PiezaLoteCreateData,
@@ -126,9 +128,15 @@ export class InventarioComponent {
     trabajo_descripcion: '',
     cantidad_consumida: 1,
     monto_cobrado: 0,
+    metodo_pago: undefined,
+    referencia: '',
     merma_desperdicio: 0,
     nota: '',
   });
+
+  /** Opciones del cobro por corte (#57): el monto entra a Caja con su método. */
+  readonly metodosPago = METODOS_PAGO;
+  readonly etiquetaMetodo = ETIQUETA_METODO;
 
   readonly mostrarFormulario = signal(false);
   readonly form = signal<FormularioMaterial>(formularioVacio());
@@ -468,6 +476,8 @@ export class InventarioComponent {
       trabajo_descripcion: '',
       cantidad_consumida: 1,
       monto_cobrado: 0,
+      metodo_pago: undefined,
+      referencia: '',
       merma_desperdicio: 0,
       nota: '',
     });
@@ -497,6 +507,10 @@ export class InventarioComponent {
     }
     if (f.cantidad_consumida > pieza.saldo_restante) {
       alert(`La cantidad solicitada supera el saldo disponible (${pieza.saldo_restante} ${pieza.unidad_medida}).`);
+      return;
+    }
+    if ((f.monto_cobrado ?? 0) > 0 && !f.metodo_pago) {
+      alert('Selecciona el método de pago del cobro.');
       return;
     }
 

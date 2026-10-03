@@ -365,8 +365,7 @@
               <th>Medidas</th>
               <th>Capacidad / Saldo</th>
               <th>Costo (S/)</th>
-              <th>Recaudado (S/)</th>
-              <th>Ganancia Neta (S/)</th>
+              <th title="Ya contabilizado en Caja/Finanzas">Cobrado (S/)</th>
               <th>Ubicación</th>
               <th>Estado</th>
               <th>Acciones</th>
@@ -393,11 +392,6 @@
                 </td>
                 <td>S/ {{ p.costo_adquisicion | number:'1.2-2' }}</td>
                 <td><strong class="monto-positivo">S/ {{ p.total_recaudado | number:'1.2-2' }}</strong></td>
-                <td>
-                  <strong [class.monto-positivo]="p.ganancia_neta >= 0" [class.monto-negativo]="p.ganancia_neta < 0">
-                    S/ {{ p.ganancia_neta | number:'1.2-2' }}
-                  </strong>
-                </td>
                 <td>{{ p.ubicacion || '—' }}</td>
                 <td>
                   <span class="badge" [ngClass]="p.estado === 'disponible' ? 'badge-neutral' : (p.estado === 'en_uso' ? 'badge-warning' : 'badge-danger')">
@@ -596,6 +590,18 @@
         <label>Monto Cobrado (S/)</label>
         <input type="number" [ngModel]="formConsumo().monto_cobrado"
                (ngModelChange)="actualizarConsumo('monto_cobrado', $event)" min="0" step="0.50">
+        <span class="field-hint">Con cobro, entra a Caja/Finanzas. En un trabajo A+B regístralo una sola vez.</span>
+      </div>
+
+      <div class="input-group">
+        <label>Método de Pago del Cobro</label>
+        <select [ngModel]="formConsumo().metodo_pago || ''" name="metodoPagoCorte"
+                (ngModelChange)="actualizarConsumo('metodo_pago', $event || undefined)">
+          <option value="">Sin cobro / elegir...</option>
+          @for (m of metodosPago; track m) {
+            <option [value]="m">{{ etiquetaMetodo[m] }}</option>
+          }
+        </select>
       </div>
 
       <div class="input-group">
@@ -627,8 +633,8 @@
     <p class="modal-subtitle">
       Material: <strong>{{ pd.material_nombre }}</strong> ·
       Costo: <strong>S/ {{ pd.costo_adquisicion | number:'1.2-2' }}</strong> ·
-      Recaudado: <strong class="monto-positivo">S/ {{ pd.total_recaudado | number:'1.2-2' }}</strong> ·
-      Ganancia Neta: <strong [class.monto-positivo]="pd.ganancia_neta >= 0" [class.monto-negativo]="pd.ganancia_neta < 0">S/ {{ pd.ganancia_neta | number:'1.2-2' }}</strong>
+      Cobrado: <strong class="monto-positivo">S/ {{ pd.total_recaudado | number:'1.2-2' }}</strong>
+      <span class="field-hint">ya contabilizado en Caja/Finanzas</span>
     </p>
 
     <p class="modal-subtitle">
