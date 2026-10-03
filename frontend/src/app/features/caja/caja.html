@@ -5,7 +5,7 @@
       <input type="date" [ngModel]="fecha()" name="cajaFecha" class="date-filter-input"
              (ngModelChange)="cambiarFecha($event)">
     </div>
-    <div class="filter-group" style="align-self:flex-end; margin-bottom:2px;">
+    <div class="filter-group filter-group-alineado">
       <button type="button" class="filter-btn" [class.active]="esHoy()" (click)="irAHoy()">Hoy</button>
       <button type="button" class="filter-btn" [class.active]="esAyer()" (click)="irAAyer()">Ayer</button>
     </div>
@@ -118,8 +118,8 @@
   </div>
 
   <!-- ═══ Caja dual: Imprenta vs Gigantografías ═══════════════════════════ -->
-  <div class="card" style="padding:1.25rem 1.5rem; margin-bottom:1.5rem">
-    <h4 class="section-title" style="margin-top:0">Caja dual (RN-05)</h4>
+  <div class="card card-seccion">
+    <h4 class="section-title section-title-primero">Caja dual (RN-05)</h4>
     <div class="metodo-grid">
       @for (u of unidades; track u) {
         <div class="metodo-box">
@@ -142,7 +142,7 @@
   <!-- ═══ Pagos Observados / Auditados (si existen) ════════════════════════ -->
   @if ((datos.observados?.length ?? 0) > 0) {
     <div class="table-card card card-alerta">
-      <div class="toolbar toolbar-alerta">
+      <div class="toolbar toolbar-encabezado">
         <span class="toolbar-title text-danger">
           ⚠ Pagos Observados / Anulados en Arqueo (Total deducido: S/ {{ datos.total_observado | number:'1.2-2' }})
         </span>
@@ -179,8 +179,8 @@
   }
 
   <!-- ═══ Arqueo por usuario ══════════════════════════════════════════════ -->
-  <div class="table-card card" style="margin-bottom:1.5rem">
-    <div class="toolbar" style="padding:1rem 1.25rem 0">
+  <div class="table-card card card-seccion-tabla">
+    <div class="toolbar toolbar-encabezado">
       <span class="toolbar-title">Arqueo por usuario</span>
     </div>
     @if (datos.por_usuario.length === 0) {
@@ -188,7 +188,7 @@
         <p>Sin cobros registrados en la fecha ({{ formatearFecha(fecha()) }}).</p>
         @if (esHoy()) {
           <p class="text-hint">¿Buscando los cobros del cierre o jornada anterior?</p>
-          <button type="button" class="btn-secondary btn-sm" (click)="irAAyer()" style="margin-top:0.35rem;">
+          <button type="button" class="btn-secondary btn-sm mt-sm" (click)="irAAyer()">
             Ver cobros de ayer
           </button>
         }
@@ -221,7 +221,7 @@
 
   <!-- ═══ Gastos del día (#112) ═══════════════════════════════════════════ -->
   <div class="table-card card card-seccion-tabla">
-    <div class="toolbar toolbar-alerta">
+    <div class="toolbar toolbar-encabezado">
       <span class="toolbar-title">Gastos del día</span>
     </div>
     @if ((datos.gastos?.length ?? 0) === 0) {
@@ -256,8 +256,8 @@
   </div>
 
   <!-- ═══ Cierres registrados ═════════════════════════════════════════════ -->
-  <div class="table-card card" style="margin-bottom:1.5rem">
-    <div class="toolbar" style="padding:1rem 1.25rem 0">
+  <div class="table-card card card-seccion-tabla">
+    <div class="toolbar toolbar-encabezado">
       <span class="toolbar-title">Cierres registrados</span>
     </div>
     @if (cierres().length === 0) {
@@ -318,7 +318,7 @@
 
   <!-- ═══ Detalle de cobros ═══════════════════════════════════════════════ -->
   <div class="table-card card">
-    <div class="toolbar" style="padding:1rem 1.25rem 0">
+    <div class="toolbar toolbar-encabezado">
       <span class="toolbar-title">Detalle de cobros del día</span>
     </div>
     @if (datos.detalle.length === 0) {
@@ -341,7 +341,7 @@
           </thead>
           <tbody>
             @for (item of datos.detalle; track item.orden + item.fecha + (item.pago_id ?? '')) {
-              <tr [style.opacity]="item.estado_pago === 'observado' ? '0.65' : '1'">
+              <tr [class.fila-observada]="item.estado_pago === 'observado'">
                 <td class="fecha-cell">{{ formatearFecha(item.fecha, true) }}</td>
                 <td><code class="id-chip">{{ item.orden }}</code></td>
                 <td>{{ item.cliente || '—' }}</td>
@@ -349,7 +349,7 @@
                 <td>{{ item.tipo }}</td>
                 <td>{{ etiquetaDeMetodo(item.metodo) }}</td>
                 <td>
-                  <strong [style.textDecoration]="item.estado_pago === 'observado' ? 'line-through' : 'none'">
+                  <strong [class.monto-tachado]="item.estado_pago === 'observado'">
                     S/ {{ item.monto | number:'1.2-2' }}
                   </strong>
                 </td>
@@ -369,7 +369,7 @@
                         ⚠ Observar
                       </button>
                     } @else if (item.estado_pago === 'observado') {
-                      <small class="text-muted" style="font-size:0.75rem;">Deducido de caja</small>
+                      <small class="text-muted texto-xs">Deducido de caja</small>
                     }
                   </div>
                 </td>
@@ -386,14 +386,14 @@
 @if (pagoAObservar(); as pago) {
   <app-modal titulo="Auditar / Observar Cobro" claseTitulo="modal-title text-danger" [conBotonCerrar]="true" [cerrarAlClicFuera]="false" (cerrar)="cerrarModalObservar()">
     <div class="modal-body">
-      <p style="font-size:0.9rem; margin-bottom:1rem;">
+      <p class="nota-modal">
         Se observará el pago de <strong>S/ {{ pago.monto | number:'1.2-2' }}</strong>
         ({{ etiquetaDeMetodo(pago.metodo) }}) de la orden <code>{{ pago.orden }}</code>.
         <br>
         <em class="text-danger">Este monto se restará del arqueo de caja y se reabrirá la deuda al cliente (bloqueando la entrega).</em>
       </p>
 
-      <div class="form-group" style="margin-bottom:1rem;">
+      <div class="form-group">
         <label class="form-label">Motivo de observación</label>
         <select [ngModel]="motivoObservacion()" (ngModelChange)="motivoObservacion.set($event)" class="form-input">
           @for (m of motivosObservacion(); track m.id) {
@@ -411,7 +411,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" (click)="cerrarModalObservar()" [disabled]="guardando()">Cancelar</button>
-      <button class="btn-danger" (click)="guardarObservacion()" [disabled]="guardando()">
+      <button class="btn-primary btn-danger" (click)="guardarObservacion()" [disabled]="guardando()">
         {{ guardando() ? 'Observando...' : 'Confirmar y Deducir de Caja' }}
       </button>
     </div>

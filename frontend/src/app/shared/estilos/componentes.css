@@ -813,7 +813,7 @@ div.actions-cell {
   margin-bottom: 1.5rem;
 }
 
-.toolbar-alerta {
+.toolbar-encabezado {
   padding: 1rem 1.25rem 0;
 }
 
@@ -1622,4 +1622,141 @@ select.date-filter-input:focus {
     size: A4;
     margin: 15mm;
   }
+}
+
+/* ─── Utilidades que sustituyen estilos escritos en las plantillas (#37) ─── */
+
+.filter-group-alineado {
+  align-self: flex-end;
+  margin-bottom: 2px;
+}
+
+.filtro-trabajador {
+  max-width: 240px;
+}
+
+.mt-sm {
+  margin-top: 0.35rem;
+}
+
+.texto-xs {
+  font-size: 0.75rem;
+}
+
+.texto-secundario-bloque {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.nota-modal {
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.nota-con-icono {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 1rem;
+}
+
+.acciones-fila {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.field-hint-pegado {
+  margin-top: -0.5rem;
+}
+
+.field-hint-primero {
+  margin-top: 0;
+}
+
+.field-hint-tabla {
+  padding: 0 1.25rem 1rem;
+}
+
+/* Colores del dinero: siguen al tema (los hex a mano no lo hacían) */
+.monto-positivo {
+  color: var(--success);
+}
+
+.monto-negativo {
+  color: var(--danger);
+}
+
+/* Barra de saldo de un rollo: el ancho se calcula en la plantilla; el color, por nivel */
+.barra-progreso {
+  width: 100%;
+  height: 6px;
+  margin-top: 4px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--surface-3);
+}
+
+.barra-progreso-relleno {
+  height: 100%;
+  background: var(--success);
+}
+
+.barra-progreso-relleno.nivel-bajo {
+  background: var(--warning);
+}
+
+.barra-progreso-relleno.nivel-critico {
+  background: var(--danger);
+}
+
+/* Acción destructiva (observar un cobro): mismo patrón que .btn-success */
+.btn-primary.btn-danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+.btn-primary.btn-danger:hover {
+  filter: brightness(0.92);
+}
+
+/* Clases que las plantillas ya usaban y no tenían estilo */
+.cliente-datos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.6rem 1rem;
+  margin: 0.85rem 0;
+}
+
+.cliente-datos span {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.filtros-auditoria {
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1rem;
+}
+
+.documento-bloque {
+  break-inside: avoid;
+}
+
+.modal-cerrar {
+  flex-shrink: 0;
+}
+
+.fila-observada {
+  opacity: 0.65;
+}
+
+.monto-tachado {
+  text-decoration: line-through;
 }
