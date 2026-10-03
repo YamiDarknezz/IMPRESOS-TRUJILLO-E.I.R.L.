@@ -518,6 +518,10 @@ async def test_corte_cobrado_entra_a_caja_y_serializa_en_postgres(sesion_pg, ent
     assert fila["orden_codigo"] is not None
     assert fila["monto_cobrado"] == 30
 
+    # La base del CI ya trae los datos demo del seed: se ubica el cobro por su
+    # orden en vez de comparar el total del día.
     resumen = await caja_service.resumen_dia(sesion_pg, a_fecha_peru(ahora_utc()))
-    assert resumen["total"]["efectivo"] == 30
+    cobro = next(f for f in resumen["detalle"] if f["orden_id"] == consumo.orden_id)
+    assert cobro["monto"] == 30
+    assert cobro["metodo"] == "efectivo"
 
