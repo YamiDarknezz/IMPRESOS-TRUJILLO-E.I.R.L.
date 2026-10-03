@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -7,6 +7,7 @@ import { SesionService, nombreVisible } from '../../core/services/sesion.service
 import { ETIQUETA_UNIDAD, UNIDADES_NEGOCIO } from '../../core/models';
 import { descargarCSV } from '../../shared/utilidades/csv';
 import { mensajeDeError } from '../../shared/utilidades/errores';
+import { canalesIngreso, etiquetasCanal } from '../../core/estado/catalogos';
 import { IconComponent } from '../../shared/componentes/icon/icon.component';
 
 @Component({
@@ -26,6 +27,8 @@ export class FinanzasComponent {
   readonly desde = this.finanzasService.desde;
   readonly hasta = this.finanzasService.hasta;
   readonly trabajador = this.finanzasService.trabajador;
+  readonly canal = this.finanzasService.canal;
+  readonly canales = computed(() => canalesIngreso());
 
   readonly nombreVisible = nombreVisible;
   readonly etiquetaUnidad = ETIQUETA_UNIDAD;
@@ -46,6 +49,12 @@ export class FinanzasComponent {
   /** Cambia el trabajador filtrado (el select manda número o null). */
   cambiarTrabajador(valor: number | null): void {
     this.trabajador.set(valor);
+    this.cargar();
+  }
+
+  /** Cambia la vía de ingreso filtrada ('' = todas). */
+  cambiarCanal(valor: string): void {
+    this.canal.set(valor);
     this.cargar();
   }
 

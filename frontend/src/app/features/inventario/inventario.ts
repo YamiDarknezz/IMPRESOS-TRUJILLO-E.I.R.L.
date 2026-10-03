@@ -5,9 +5,12 @@ import { FormsModule } from '@angular/forms';
 import {
   InventarioService,
   filtrarMateriales,
+  filtrarPiezas,
   tieneStockBajo,
+  ubicacionesEnUso,
 } from '../../core/services/inventario.service';
 import { UnidadesService } from '../../core/services/unidades.service';
+import { OrdenesService, estaEnPipeline } from '../../core/services/ordenes.service';
 import { SesionService } from '../../core/services/sesion.service';
 import {
   ConsumoPieza,
@@ -64,6 +67,7 @@ export class InventarioComponent {
   readonly etiquetaMovimiento = etiquetaMovimiento;
   private inventarioService = inject(InventarioService);
   unidadesService = inject(UnidadesService);
+  private ordenesService = inject(OrdenesService);
   sesion = inject(SesionService);
 
   readonly materiales = this.inventarioService.materiales;
@@ -86,9 +90,17 @@ export class InventarioComponent {
 
   readonly pestanaActiva = signal<'materiales' | 'piezas'>('materiales');
   readonly busqueda = signal('');
+  /** Ubicación a la que se limita la lista; vacío = todas (#109). */
+  readonly filtroUbicacion = signal('');
+  readonly ubicaciones = computed(() => ubicacionesEnUso(this.materiales()));
+
   readonly materialesFiltrados = computed(() =>
-    filtrarMateriales(this.materiales(), this.busqueda())
+    filtrarMateriales(this.materiales(), this.busqueda(), this.filtroUbicacion())
   );
+
+  /** Búsqueda en la pestaña de rollos y planchas (código, material o ubicación). */
+  readonly busquedaPiezas = signal('');
+  readonly piezasFiltradas = computed(() => filtrarPiezas(this.piezas(), this.busquedaPiezas()));
 
   // ── Rollos y Planchas Pre-establecidas ──────────────────────────────────
   readonly piezas = signal<PiezaLoteMaterial[]>([]);
@@ -144,6 +156,7 @@ export class InventarioComponent {
   constructor() {
     this.inventarioService.cargar();
     this.unidadesService.cargar();
+    this.ordenesService.cargar();
     this.cargarPiezas();
   }
 
@@ -375,9 +388,83 @@ export class InventarioComponent {
     }
   }
 
+  /** Pedidos en curso: a ellos se asigna el corte (#71). */
+  readonly ordenesEnCurso = computed(() => this.ordenesService.ordenes().filter(estaEnPipeline));
+
+  /**
+   * Qué reservó el pedido elegido del material de este rollo, frente al saldo.
+   * Solo se compara cuando la unidad es la misma: un rollo en metros lineales
+   * contra una reserva en m² no se puede restar sin saber el ancho.
+   */
+  readonly avisoDeSaldo = computed(() => {
+    const pieza = this.piezaConsumo();
+    const idOrden = this.formConsumo().orden_id;
+    const orden = idOrden ? this.ordenesService.ordenes().find(o => o.id === idOrden) : null;
+    if (!pieza || !orden) return null;
+
+    const reservado = orden.materiales?.estimados?.find(m => m.id_material === pieza.material_id);
+    if (!reservado) {
+      return {
+        tipo: 'info' as const,
+        texto: `El pedido ${orden.id_documento} no reservó ${pieza.material_nombre}.`,
+      };
+    }
+    const mismaUnidad = !!reservado.unidad && reservado.unidad === pieza.unidad_medida;
+    if (!mismaUnidad) {
+      return {
+        tipo: 'info' as const,
+        texto:
+          `El pedido reservó ${reservado.cantidad} ${reservado.unidad ?? ''} de ${pieza.material_nombre}; ` +
+          `al rollo le quedan ${pieza.saldo_restante} ${pieza.unidad_medida} (unidades distintas: compáralo a mano).`,
+      };
+    }
+    return reservado.cantidad > pieza.saldo_restante
+      ? {
+          tipo: 'alerta' as const,
+          texto:
+            `El saldo del rollo (${pieza.saldo_restante} ${pieza.unidad_medida}) no alcanza para lo que ` +
+            `reservó el pedido (${reservado.cantidad} ${reservado.unidad}).`,
+        }
+      : {
+          tipo: 'info' as const,
+          texto:
+            `El pedido reservó ${reservado.cantidad} ${reservado.unidad}; ` +
+            `al rollo le quedan ${pieza.saldo_restante} ${pieza.unidad_medida}.`,
+        };
+  });
+
+  /** Elige (o quita) el pedido del corte; si no hay descripción todavía, usa la del pedido. */
+  elegirOrdenDelCorte(valor: string): void {
+    const idOrden = valor ? Number(valor) : null;
+    const orden = idOrden ? this.ordenesService.ordenes().find(o => o.id === idOrden) : null;
+    this.formConsumo.update(f => ({
+      ...f,
+      orden_id: idOrden,
+      trabajo_descripcion:
+        !f.trabajo_descripcion.trim() && orden ? orden.descripcion.slice(0, 250) : f.trabajo_descripcion,
+    }));
+  }
+
+  /**
+   * Cuántos cortes más le quedan al rollo al ritmo de los que ya tuvo.
+   * Es una estimación con el promedio de cortes: sirve para decidir cuándo pedir otro.
+   */
+  readonly proyeccionPieza = computed(() => {
+    const pieza = this.piezaDetalle();
+    const cortes = pieza?.consumos ?? [];
+    if (!pieza || cortes.length === 0 || pieza.saldo_restante <= 0) return null;
+    const promedio = cortes.reduce((suma, c) => suma + c.cantidad_consumida, 0) / cortes.length;
+    if (promedio <= 0) return null;
+    return {
+      promedio: Math.round(promedio * 100) / 100,
+      cortesRestantes: Math.floor(pieza.saldo_restante / promedio),
+    };
+  });
+
   abrirConsumo(pieza: PiezaLoteMaterial): void {
     this.piezaConsumo.set(pieza);
     this.formConsumo.set({
+      orden_id: null,
       trabajo_descripcion: '',
       cantidad_consumida: 1,
       monto_cobrado: 0,

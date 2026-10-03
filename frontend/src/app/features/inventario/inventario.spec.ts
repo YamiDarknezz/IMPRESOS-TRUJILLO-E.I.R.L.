@@ -3,8 +3,9 @@ import { signal } from '@angular/core';
 import { InventarioService } from '../../core/services/inventario.service';
 import { UnidadesService } from '../../core/services/unidades.service';
 import { SesionService } from '../../core/services/sesion.service';
+import { OrdenesService } from '../../core/services/ordenes.service';
 import { InventarioComponent } from './inventario';
-import { MaterialInventario, PiezaLoteMaterial, Unidad } from '../../core/models';
+import { MaterialInventario, Orden, PiezaLoteMaterial, Unidad } from '../../core/models';
 
 const m2: Unidad = { id: 6, nombre: 'Metro cuadrado', abreviatura: 'm2', activo: true };
 
@@ -52,6 +53,7 @@ describe('InventarioComponent', () => {
     registrarPieza: ReturnType<typeof vi.fn>;
     registrarConsumoPieza: ReturnType<typeof vi.fn>;
   };
+  let ordenesFalso: { ordenes: ReturnType<typeof signal<Orden[]>>; cargar: ReturnType<typeof vi.fn> };
   let unidadesFalso: {
     unidades: ReturnType<typeof signal<Unidad[]>>;
     todas: ReturnType<typeof signal<Unidad[]>>;
@@ -71,6 +73,7 @@ describe('InventarioComponent', () => {
       registrarPieza: vi.fn().mockResolvedValue(piezaBase()),
       registrarConsumoPieza: vi.fn().mockResolvedValue({}),
     };
+    ordenesFalso = { ordenes: signal<Orden[]>([]), cargar: vi.fn().mockResolvedValue(undefined) };
     unidadesFalso = {
       unidades: signal([m2]),
       // El catálogo completo (con las desactivadas) lo usa la edición de un
@@ -84,6 +87,7 @@ describe('InventarioComponent', () => {
       providers: [
         { provide: InventarioService, useValue: inventarioFalso },
         { provide: UnidadesService, useValue: unidadesFalso },
+        { provide: OrdenesService, useValue: ordenesFalso },
         { provide: SesionService, useValue: { esSupervisor: signal(true) } },
       ],
     });
@@ -325,5 +329,149 @@ describe('InventarioComponent', () => {
 
     it('historial de cortes de una pieza: Escape lo cierra', () =>
       abrir(c => c.piezaDetalle.set(piezaBase({ consumos: [] })), c => c.piezaDetalle()));
+  });
+
+  // Issue #71: los cortes se asignan a un pedido y avisan si el saldo no alcanza.
+  describe('corte asignado a un pedido (#71)', () => {
+    function pedido(sobrescribe: Partial<Orden> = {}): Orden {
+      return {
+        id: 7, id_documento: 'ORD-000007', codigo: 'ORD-000007', tipo_documento: 'contrato',
+        canal_ingreso: 'otro', unidad_negocio: 'imprenta', cliente_id: 1, cliente: 'Juan', direccion: '',
+        telefono: '', descripcion: 'Banner del evento', estado: 'en_produccion', fecha_creacion: '2026-09-01',
+        fecha_entrega: '2026-12-31', creado_por: 1, asignado_a: null, asignado: '', incluye_igv: false,
+        subtotal: 100, igv: 0, items: [],
+        materiales: { estimados: [{ id_material: 1, nombre: 'Lona banner 13 oz', cantidad: 6, unidad: 'm' }] },
+        ...sobrescribe,
+      };
+    }
+
+    function abierto() {
+      const componente = TestBed.createComponent(InventarioComponent).componentInstance;
+      componente.abrirConsumo(piezaBase({ saldo_restante: 4, unidad_medida: 'm' }));
+      return componente;
+    }
+
+    it('al crearse, carga también los pedidos', () => {
+      TestBed.createComponent(InventarioComponent);
+      expect(ordenesFalso.cargar).toHaveBeenCalledTimes(1);
+    });
+
+    it('solo ofrece pedidos en curso', () => {
+      ordenesFalso.ordenes.set([pedido(), pedido({ id: 8, estado: 'entregada' }), pedido({ id: 9, estado: 'cancelada' })]);
+      const componente = TestBed.createComponent(InventarioComponent).componentInstance;
+      expect(componente.ordenesEnCurso().map(o => o.id)).toEqual([7]);
+    });
+
+    it('elegir el pedido llena la descripción del trabajo solo si estaba vacía', () => {
+      ordenesFalso.ordenes.set([pedido()]);
+      const componente = abierto();
+
+      componente.elegirOrdenDelCorte('7');
+      expect(componente.formConsumo().orden_id).toBe(7);
+      expect(componente.formConsumo().trabajo_descripcion).toBe('Banner del evento');
+
+      componente.actualizarConsumo('trabajo_descripcion', 'Mi propio texto');
+      componente.elegirOrdenDelCorte('7');
+      expect(componente.formConsumo().trabajo_descripcion).toBe('Mi propio texto');
+
+      componente.elegirOrdenDelCorte('');
+      expect(componente.formConsumo().orden_id).toBeNull();
+    });
+
+    it('avisa cuando el saldo del rollo no alcanza para lo que reservó el pedido', () => {
+      ordenesFalso.ordenes.set([pedido()]); // reservó 6 m y al rollo le quedan 4 m
+      const componente = abierto();
+      componente.elegirOrdenDelCorte('7');
+
+      expect(componente.avisoDeSaldo()?.tipo).toBe('alerta');
+      expect(componente.avisoDeSaldo()?.texto).toContain('no alcanza');
+    });
+
+    it('si el saldo alcanza, solo informa', () => {
+      ordenesFalso.ordenes.set([pedido({ materiales: { estimados: [{ id_material: 1, nombre: 'Lona', cantidad: 3, unidad: 'm' }] } })]);
+      const componente = abierto();
+      componente.elegirOrdenDelCorte('7');
+      expect(componente.avisoDeSaldo()?.tipo).toBe('info');
+    });
+
+    it('con unidades distintas no compara: informa y pide revisar a mano', () => {
+      ordenesFalso.ordenes.set([pedido({ materiales: { estimados: [{ id_material: 1, nombre: 'Lona', cantidad: 6, unidad: 'm2' }] } })]);
+      const componente = abierto();
+      componente.elegirOrdenDelCorte('7');
+      expect(componente.avisoDeSaldo()?.tipo).toBe('info');
+      expect(componente.avisoDeSaldo()?.texto).toContain('unidades distintas');
+    });
+
+    it('si el pedido no reservó este material, lo dice', () => {
+      ordenesFalso.ordenes.set([pedido({ materiales: { estimados: [] } })]);
+      const componente = abierto();
+      componente.elegirOrdenDelCorte('7');
+      expect(componente.avisoDeSaldo()?.texto).toContain('no reservó');
+    });
+
+    it('sin pedido elegido no hay aviso', () => {
+      expect(abierto().avisoDeSaldo()).toBeNull();
+    });
+
+    it('guardarConsumo() manda el pedido elegido', async () => {
+      ordenesFalso.ordenes.set([pedido()]);
+      const componente = abierto();
+      componente.elegirOrdenDelCorte('7');
+      componente.actualizarConsumo('cantidad_consumida', 2);
+
+      await componente.guardarConsumo();
+
+      expect(inventarioFalso.registrarConsumoPieza).toHaveBeenCalledWith(
+        1, expect.objectContaining({ orden_id: 7, cantidad_consumida: 2 })
+      );
+    });
+
+    it('proyecta cuántos cortes más le quedan al rollo al ritmo de los anteriores', () => {
+      const componente = TestBed.createComponent(InventarioComponent).componentInstance;
+      componente.piezaDetalle.set(piezaBase({
+        saldo_restante: 10,
+        consumos: [
+          { id: 1, pieza_id: 1, trabajo_descripcion: 'a', cantidad_consumida: 2, saldo_anterior: 20, saldo_nuevo: 18, monto_cobrado: 0, merma_desperdicio: 0, fecha: '2026-09-01', nota: '' },
+          { id: 2, pieza_id: 1, trabajo_descripcion: 'b', cantidad_consumida: 3, saldo_anterior: 18, saldo_nuevo: 15, monto_cobrado: 0, merma_desperdicio: 0, fecha: '2026-09-02', nota: '' },
+        ],
+      }));
+      expect(componente.proyeccionPieza()).toEqual({ promedio: 2.5, cortesRestantes: 4 });
+    });
+
+    it('sin cortes o sin saldo no hay proyección', () => {
+      const componente = TestBed.createComponent(InventarioComponent).componentInstance;
+      componente.piezaDetalle.set(piezaBase({ consumos: [] }));
+      expect(componente.proyeccionPieza()).toBeNull();
+    });
+  });
+
+  // Issue #109: la ubicación se ve y se puede filtrar.
+  describe('ubicación (#109)', () => {
+    const enAlmacen: MaterialInventario = { ...lona, id: 2, nombre: 'Vinilo', ubicacion_estante: 'Almacén' };
+
+    it('materialesFiltrados() respeta el filtro de ubicación', () => {
+      inventarioFalso.materiales.set([lona, enAlmacen]);
+      const componente = TestBed.createComponent(InventarioComponent).componentInstance;
+      expect(componente.ubicaciones()).toEqual(['A-1', 'Almacén']);
+
+      componente.filtroUbicacion.set('Almacén');
+      expect(componente.materialesFiltrados()).toEqual([enAlmacen]);
+
+      componente.filtroUbicacion.set('');
+      expect(componente.materialesFiltrados()).toEqual([lona, enAlmacen]);
+    });
+
+    it('piezasFiltradas() busca también por ubicación', async () => {
+      inventarioFalso.listarPiezas.mockResolvedValue([
+        piezaBase({ id: 1, ubicacion: 'Estante 2' }),
+        piezaBase({ id: 2, codigo_identificador: 'PL-02', ubicacion: 'Almacén' }),
+      ]);
+      const componente = TestBed.createComponent(InventarioComponent).componentInstance;
+      await componente.cargarPiezas();
+
+      componente.busquedaPiezas.set('almacén');
+
+      expect(componente.piezasFiltradas().map(p => p.id)).toEqual([2]);
+    });
   });
 });

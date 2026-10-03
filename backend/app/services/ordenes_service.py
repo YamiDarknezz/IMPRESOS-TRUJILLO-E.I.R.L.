@@ -22,6 +22,7 @@ from app.core.config import settings
 from app.core.errores import Conflicto, ErrorDeNegocio, NoEncontrado, PermisoDenegado
 from app.core.fechas import a_fecha_peru, ahora_utc
 from app.models import (
+    CanalIngreso,
     CierreCaja,
     Cliente,
     EstadoCierre,
@@ -164,9 +165,18 @@ def exigir_etapa(orden: Orden, usuario: Usuario) -> None:
         raise PermisoDenegado("Solo puedes avanzar órdenes asignadas a ti.")
 
 
-def validar_transicion(actual: EstadoOrden, nuevo: EstadoOrden, pagado_totalmente: bool) -> None:
+def validar_transicion(
+    actual: EstadoOrden,
+    nuevo: EstadoOrden,
+    pagado_totalmente: bool,
+    entrega_con_saldo_autorizada: bool = False,
+) -> None:
     """
     Verifica que mover la orden de `actual` a `nuevo` sea legítimo.
+
+    `entrega_con_saldo_autorizada` es la única excepción a RN-02 (#72): un
+    supervisor autorizó entregar a un cliente corporativo antes de que pague.
+    Quien llama es quien comprueba que la autorización sea válida.
 
     Las prohibiciones no son arbitrarias: cada una protege el inventario o una
     regla de cobro. Lanza ErrorDeNegocio con el motivo si no vale.
@@ -198,7 +208,7 @@ def validar_transicion(actual: EstadoOrden, nuevo: EstadoOrden, pagado_totalment
             "Una orden ya finalizada no puede volver al proceso de producción."
         )
 
-    if nuevo == EstadoOrden.ENTREGADA and not pagado_totalmente:
+    if nuevo == EstadoOrden.ENTREGADA and not pagado_totalmente and not entrega_con_saldo_autorizada:
         # El cliente no se lleva el trabajo sin haber pagado el total.
         raise ErrorDeNegocio(
             "No se puede entregar una orden que no está pagada en su totalidad. "
@@ -251,10 +261,13 @@ async def listar(
     estado: Optional[EstadoOrden] = None,
     limite: int = 200,
     desplazamiento: int = 0,
+    canal_ingreso: Optional[CanalIngreso] = None,
 ) -> list[Orden]:
     consulta = select(Orden).order_by(Orden.creado_en.desc())
     if estado is not None:
         consulta = consulta.where(Orden.estado == estado)
+    if canal_ingreso is not None:
+        consulta = consulta.where(Orden.canal_ingreso == canal_ingreso)
     consulta = _aplicar_alcance(consulta, usuario).limit(limite).offset(desplazamiento)
 
     return list((await sesion.execute(consulta)).scalars())
@@ -264,11 +277,14 @@ async def contar(
     sesion: AsyncSession,
     usuario: Usuario,
     estado: Optional[EstadoOrden] = None,
+    canal_ingreso: Optional[CanalIngreso] = None,
 ) -> int:
     """Cuántas órdenes cumplen el filtro (para 'mostrando N de M' y el panel)."""
     consulta = select(func.count()).select_from(Orden)
     if estado is not None:
         consulta = consulta.where(Orden.estado == estado)
+    if canal_ingreso is not None:
+        consulta = consulta.where(Orden.canal_ingreso == canal_ingreso)
     consulta = _aplicar_alcance(consulta, usuario)
     return int((await sesion.execute(consulta)).scalar_one())
 
@@ -459,6 +475,10 @@ async def _sincronizar_adelanto(
 
         primero.monto = nuevo
         primero.metodo = data.metodo_pago
+        # Solo si el cliente de la API lo mandó: no se borra una descripción
+        # ya registrada por editar otra cosa de la orden.
+        if "adelanto_descripcion" in data.model_fields_set:
+            primero.descripcion = data.adelanto_descripcion
         # Si hubiera más de un adelanto registrado, se conserva el primero.
         for sobrante in adelantos[1:]:
             orden.pagos.remove(sobrante)
@@ -471,6 +491,7 @@ async def _sincronizar_adelanto(
                 metodo=data.metodo_pago,
                 tipo=TipoPago.ADELANTO,
                 registrado_por=usuario.id,
+                descripcion=data.adelanto_descripcion,
             )
         )
 
@@ -512,6 +533,7 @@ async def crear_orden(sesion: AsyncSession, data: OrdenCreateData, usuario: Usua
 
     orden = Orden(
         tipo_documento=data.tipo_documento,
+        canal_ingreso=data.canal_ingreso,
         # Se asigna la relación (no solo el id) para que la respuesta pueda
         # serializar el nombre sin provocar una carga perezosa en async.
         cliente=cliente,
@@ -572,6 +594,7 @@ async def crear_orden(sesion: AsyncSession, data: OrdenCreateData, usuario: Usua
                 metodo=data.metodo_pago,
                 tipo=TipoPago.ADELANTO,
                 registrado_por=usuario.id,
+                descripcion=data.adelanto_descripcion,
             )
         )
         await sesion.flush()
@@ -611,6 +634,8 @@ async def crear_venta_rapida(
 
     orden = Orden(
         tipo_documento=TipoDocumento.CONTRATO,
+        # Se vende en el mostrador: el cliente está ahí.
+        canal_ingreso=CanalIngreso.PRESENCIAL,
         cliente=cliente,
         direccion="",
         telefono="",
@@ -718,6 +743,10 @@ async def actualizar(sesion: AsyncSession, id_orden: int, data: OrdenCreateData,
     # con cada edición.
     orden.descripcion = data.descripcion
     orden.tipo_documento = data.tipo_documento
+    # Solo si el cliente de la API lo mandó: un PATCH de antes de #69 no debe
+    # pisar el canal ya registrado con el valor por defecto.
+    if "canal_ingreso" in data.model_fields_set:
+        orden.canal_ingreso = data.canal_ingreso
     orden.unidad_negocio = data.unidad_negocio
     orden.fecha_entrega = data.fecha_entrega
     orden.incluye_igv = data.incluye_igv
@@ -836,10 +865,37 @@ async def asignar(sesion: AsyncSession, id_orden: int, usuario_destino: Optional
     return orden
 
 
+def _exigir_autorizacion_de_entrega_con_saldo(
+    orden: Orden, usuario: Usuario, motivo: str
+) -> None:
+    """
+    Condiciones para entregar antes de pagar (#72). Las tres, siempre:
+    cliente corporativo, un rol de supervisión y el motivo escrito.
+    """
+    if not (orden.cliente and orden.cliente.es_corporativo):
+        raise ErrorDeNegocio(
+            "Solo los clientes corporativos pueden recibir el trabajo antes de pagar."
+        )
+    if usuario.rol not in (Rol.ADMIN, Rol.SUBGERENTE):
+        raise PermisoDenegado("Solo un supervisor puede autorizar una entrega con saldo pendiente.")
+    if not motivo:
+        raise ErrorDeNegocio("Indica el motivo para autorizar la entrega con saldo pendiente.")
+
+
 async def cambiar_estado(
-    sesion: AsyncSession, id_orden: int, nuevo: EstadoOrden, usuario: Usuario
+    sesion: AsyncSession,
+    id_orden: int,
+    nuevo: EstadoOrden,
+    usuario: Usuario,
+    autorizar_saldo: bool = False,
+    motivo: str = "",
 ) -> Orden:
-    """Avanza (o corrige) la etapa de producción de una orden."""
+    """
+    Avanza (o corrige) la etapa de producción de una orden.
+
+    Entregar con saldo pendiente solo es posible con `autorizar_saldo`, y queda
+    en la orden y en la auditoría (#72): cliente corporativo, supervisor y motivo.
+    """
     orden = await _obtener_para_escritura(sesion, id_orden)
     exigir_etapa(orden, usuario)
 
@@ -847,19 +903,50 @@ async def cambiar_estado(
     if actual == nuevo:
         return orden
 
-    validar_transicion(actual, nuevo, orden.pagado_totalmente)
+    con_saldo = (
+        nuevo == EstadoOrden.ENTREGADA and not orden.pagado_totalmente and autorizar_saldo
+    )
+    if con_saldo:
+        # Solo se pide autorización si de verdad hace falta: pedirla para una
+        # orden ya pagada no tiene sentido ni debe dejar rastro de excepción.
+        _exigir_autorizacion_de_entrega_con_saldo(orden, usuario, motivo)
+
+    validar_transicion(
+        actual, nuevo, orden.pagado_totalmente, entrega_con_saldo_autorizada=con_saldo
+    )
     orden.estado = nuevo
     if nuevo == EstadoOrden.ENTREGADA:
         orden.entregada_en = ahora_utc()
+    if con_saldo:
+        orden.entrega_autorizada_por = usuario.id
+        orden.autorizador_entrega = usuario
+        orden.entrega_autorizada_en = ahora_utc()
+        orden.entrega_motivo = motivo
 
+    detalle = f"Estado: {actual.value} -> {nuevo.value}"
+    if con_saldo:
+        detalle += (
+            f". ENTREGA CON SALDO PENDIENTE de S/ {_redondear(_decimal(orden.saldo_pendiente))} "
+            f"autorizada por {usuario.nombre}: {motivo}"
+        )
     _auditar_orden(
         sesion,
         usuario,
         "cambio_estado",
         orden,
-        f"Estado: {actual.value} -> {nuevo.value}",
+        detalle,
         anteriores={"estado": actual.value},
-        nuevos={"estado": nuevo.value},
+        nuevos={"estado": nuevo.value}
+        | (
+            {
+                "entrega_con_saldo": True,
+                "saldo_pendiente": float(orden.saldo_pendiente),
+                "autorizado_por": usuario.id,
+                "motivo": motivo,
+            }
+            if con_saldo
+            else {}
+        ),
     )
     await sesion.flush()
     return orden
@@ -872,6 +959,7 @@ async def confirmar_pago(
     referencia: str,
     usuario: Usuario,
     monto: Optional[float] = None,
+    descripcion: str = "",
 ) -> Orden:
     """
     Registra un cobro contra el saldo pendiente (issue #13).
@@ -908,6 +996,7 @@ async def confirmar_pago(
             tipo=TipoPago.SALDO,
             registrado_por=usuario.id,
             referencia=referencia,
+            descripcion=descripcion,
         )
     )
     await sesion.flush()
@@ -1030,6 +1119,42 @@ async def completar(
     return orden, mermas, devoluciones
 
 
+def historial_de_pagos(ordenes: list[Orden]) -> list[dict]:
+    """
+    Secuencia de pagos de las órdenes dadas, del más reciente al más antiguo (#110).
+
+    Responde "¿cuándo adelantó, cuánto, con qué medio y por qué?" sin abrir
+    WhatsApp. Cada pago conforme trae lo que le faltaba pagar a su orden
+    DESPUÉS de él (`saldo_despues`). Un pago observado o anulado aparece en el
+    historial, pero no cuenta como dinero recibido ni mueve ese saldo.
+    """
+    filas: list[dict] = []
+    for orden in ordenes:
+        acumulado = Decimal("0")
+        for pago in sorted(orden.pagos, key=lambda p: (p.fecha, p.id or 0)):
+            saldo_despues: Optional[float] = None
+            if pago.es_conforme:
+                acumulado += _decimal(pago.monto)
+                saldo_despues = float(calcular_saldo(orden.total, acumulado))
+            filas.append(
+                {
+                    "pago_id": pago.id,
+                    "orden_id": orden.id,
+                    "orden_codigo": orden.codigo,
+                    "fecha": pago.fecha.isoformat() if pago.fecha else None,
+                    "tipo": pago.tipo.value,
+                    "monto": float(_redondear(_decimal(pago.monto))),
+                    "metodo": pago.metodo.value,
+                    "descripcion": pago.descripcion or "",
+                    "referencia": pago.referencia or "",
+                    "estado_pago": pago.estado_pago.value if pago.estado_pago else "conforme",
+                    "saldo_despues": saldo_despues,
+                }
+            )
+    filas.sort(key=lambda fila: fila["fecha"] or "", reverse=True)
+    return filas
+
+
 async def resumen_cliente(sesion: AsyncSession, cliente_id: int) -> dict:
     """Ficha del cliente: historial, facturado y por cobrar (RF del SRS)."""
     cliente = await sesion.get(Cliente, cliente_id)
@@ -1056,11 +1181,21 @@ async def resumen_cliente(sesion: AsyncSession, cliente_id: int) -> dict:
         ),
         Decimal("0"),
     )
+    # Las canceladas quedan fuera: su dinero se devolvió o nunca fue del negocio.
+    vigentes = [orden for orden in ordenes if orden.estado != EstadoOrden.CANCELADA]
+    conformes = [pago for orden in vigentes for pago in orden.pagos if pago.es_conforme]
+    adelantado = sum(
+        (_decimal(p.monto) for p in conformes if p.tipo == TipoPago.ADELANTO), Decimal("0")
+    )
+    pagado = sum((_decimal(p.monto) for p in conformes), Decimal("0"))
     return {
         "cliente_id": cliente_id,
         "total_ordenes": len(ordenes),
         "facturado": _redondear(facturado),
         "por_cobrar": _redondear(por_cobrar),
+        "total_adelantado": _redondear(adelantado),
+        "total_pagado": _redondear(pagado),
+        "historial_pagos": historial_de_pagos(vigentes),
     }
 
 

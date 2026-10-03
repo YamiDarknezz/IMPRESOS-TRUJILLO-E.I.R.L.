@@ -23,10 +23,16 @@ import {
   MaterialComplecion,
   MetodoPago,
   Orden,
+  RollosDeOrden,
 } from '../../core/models';
 import { formatearFecha } from '../../shared/utilidades/fechas';
 import { mensajeDeError } from '../../shared/utilidades/errores';
-import { etiquetasMetodo, metodosPago as metodosDelServidor } from '../../core/estado/catalogos';
+import {
+  canalesIngreso,
+  etiquetasCanal,
+  etiquetasMetodo,
+  metodosPago as metodosDelServidor,
+} from '../../core/estado/catalogos';
 import {
   CapturaElegida,
   capturasDesdeArchivos,
@@ -72,6 +78,8 @@ export class OrdenesComponent {
   // ── Filtros ──────────────────────────────────────────────────────────────
   readonly filtroEstado = signal<FiltroEstado>('todos');
   readonly busqueda = signal('');
+  /** Vía de ingreso a la que se limita la lista; vacío = todas (#69). */
+  readonly filtroCanal = signal('');
   readonly desde = signal('');
   readonly hasta = signal('');
 
@@ -92,6 +100,7 @@ export class OrdenesComponent {
       texto: this.busqueda(),
       desde: this.desde(),
       hasta: this.hasta(),
+      canal: this.filtroCanal(),
     })
   );
 
@@ -111,8 +120,23 @@ export class OrdenesComponent {
   readonly ordenACobrar = signal<Orden | null>(null);
   readonly metodoPago = signal<MetodoPago>('efectivo');
   readonly referenciaPago = signal('');
+  readonly descripcionPago = signal('');
+
+  /** Pedido cuyos cortes de rollo se están mirando, con lo que devolvió el servidor (#71). */
+  readonly ordenRollos = signal<Orden | null>(null);
+  readonly rollos = signal<RollosDeOrden | null>(null);
+  readonly cargandoRollos = signal(false);
+
+  /** Orden de un cliente corporativo que se va a entregar antes de pagar (#72). */
+  readonly ordenAEntregarConSaldo = signal<Orden | null>(null);
+  readonly motivoEntrega = signal('');
+
+  /** Orden cuyo historial de pagos se está mirando (#110). */
+  readonly ordenHistorial = signal<Orden | null>(null);
 
   // Helpers reexpuestos para la plantilla
+  readonly canales = computed(() => canalesIngreso());
+  readonly etiquetaCanal = computed(() => etiquetasCanal());
   readonly etiquetaEstado = ETIQUETA_ESTADO;
   readonly etiquetaMetodo = etiquetasMetodo;
   readonly etiquetaUnidad = ETIQUETA_UNIDAD;
@@ -157,6 +181,20 @@ export class OrdenesComponent {
 
     if (estado === 'entregada') {
       // El backend también lo impide; aquí se avisa antes de intentarlo.
+      if (!orden.finanzas?.pagado_totalmente && orden.cliente_corporativo) {
+        // A los clientes corporativos se les puede entregar antes de pagar,
+        // pero solo con la autorización de un supervisor y su motivo (#72).
+        if (this.sesion.esSupervisor()) {
+          this.motivoEntrega.set('');
+          this.ordenAEntregarConSaldo.set(orden);
+        } else {
+          alert(
+            'Esta orden es de un cliente corporativo y tiene saldo pendiente.\n\n' +
+            'Solo un supervisor puede autorizar entregarla antes de que pague.'
+          );
+        }
+        return;
+      }
       if (!orden.finanzas?.pagado_totalmente) {
         alert(
           'No se puede entregar una orden que no está pagada en su totalidad.\n\n' +
@@ -175,6 +213,31 @@ export class OrdenesComponent {
       await this.ordenesService.cambiarEstado(orden, estado);
     } catch (e) {
       alert(mensajeDeError(e, 'No se pudo cambiar el estado de la orden.'));
+    }
+  }
+
+  cerrarEntregaConSaldo(): void {
+    this.ordenAEntregarConSaldo.set(null);
+    this.motivoEntrega.set('');
+  }
+
+  async confirmarEntregaConSaldo(): Promise<void> {
+    const orden = this.ordenAEntregarConSaldo();
+    const motivo = this.motivoEntrega().trim();
+    if (!orden) return;
+    if (!motivo) {
+      alert('Indica el motivo por el que se entrega antes de que pague.');
+      return;
+    }
+
+    this.guardando.set(true);
+    try {
+      await this.ordenesService.entregarConSaldo(orden, motivo);
+      this.cerrarEntregaConSaldo();
+    } catch (e) {
+      alert(mensajeDeError(e, 'No se pudo autorizar la entrega con saldo.'));
+    } finally {
+      this.guardando.set(false);
     }
   }
 
@@ -278,7 +341,35 @@ export class OrdenesComponent {
     this.ordenACobrar.set(orden);
     this.metodoPago.set(orden.finanzas?.metodo_pago_adelanto ?? 'efectivo');
     this.referenciaPago.set('');
+    this.descripcionPago.set('');
     this.limpiarAdjuntosCobro();
+  }
+
+  async abrirRollos(orden: Orden): Promise<void> {
+    this.ordenRollos.set(orden);
+    this.rollos.set(null);
+    this.cargandoRollos.set(true);
+    try {
+      this.rollos.set(await this.ordenesService.rollosDeOrden(orden.id));
+    } catch (e) {
+      this.ordenRollos.set(null);
+      alert(mensajeDeError(e, 'No se pudieron cargar los rollos del pedido.'));
+    } finally {
+      this.cargandoRollos.set(false);
+    }
+  }
+
+  cerrarRollos(): void {
+    this.ordenRollos.set(null);
+    this.rollos.set(null);
+  }
+
+  abrirHistorial(orden: Orden): void {
+    this.ordenHistorial.set(orden);
+  }
+
+  cerrarHistorial(): void {
+    this.ordenHistorial.set(null);
   }
 
   cerrarCobro(): void {
@@ -295,7 +386,8 @@ export class OrdenesComponent {
       const actualizada = await this.ordenesService.confirmarPago(
         orden.id,
         this.metodoPago(),
-        this.referenciaPago().trim()
+        this.referenciaPago().trim(),
+        this.descripcionPago().trim()
       );
 
       const pendientes = this.adjuntosCobro();

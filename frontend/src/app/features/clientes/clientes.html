@@ -184,10 +184,45 @@
           <span class="cliente-stat-label">Por cobrar</span>
         </div>
       </div>
+
+      <h4 class="section-title">Historial de pagos</h4>
+      @if ((datos.historial_pagos?.length ?? 0) === 0) {
+        <p class="text-muted">Todavía no hay pagos registrados.</p>
+      } @else {
+        <p class="modal-subtitle">
+          Adelantado: S/ {{ datos.total_adelantado ?? 0 | number:'1.2-2' }} ·
+          Pagado en total: S/ {{ datos.total_pagado ?? 0 | number:'1.2-2' }}
+        </p>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr><th>Fecha</th><th>Orden</th><th>Tipo</th><th>Monto</th><th>Medio</th><th>Descripción</th><th>Falta</th></tr>
+            </thead>
+            <tbody>
+              @for (pago of datos.historial_pagos; track pago.pago_id) {
+                <tr [class.row-cancelada]="pago.estado_pago !== 'conforme'">
+                  <td>{{ formatearFecha(pago.fecha) }}</td>
+                  <td><code class="id-chip">{{ pago.orden_codigo }}</code></td>
+                  <td>{{ pago.tipo === 'adelanto' ? 'Adelanto' : 'Abono' }}</td>
+                  <td>S/ {{ pago.monto | number:'1.2-2' }}</td>
+                  <td>{{ etiquetaMetodo()[pago.metodo] || pago.metodo }}</td>
+                  <td>
+                    {{ pago.descripcion || '—' }}
+                    @if (pago.estado_pago !== 'conforme') {
+                      <span class="badge badge-cancelado">{{ pago.estado_pago }}</span>
+                    }
+                  </td>
+                  <td>{{ pago.saldo_despues === null ? '—' : 'S/ ' + (pago.saldo_despues | number:'1.2-2') }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
     }
 
     @if (cliente.notas) {
-      <p class="modal-subtitle" style="margin-top:1rem; display:flex; align-items:center; gap:0.4rem">
+      <p class="modal-subtitle nota-con-icono">
         <app-icon name="file-text" [size]="14" />
         <span>{{ cliente.notas }}</span>
       </p>

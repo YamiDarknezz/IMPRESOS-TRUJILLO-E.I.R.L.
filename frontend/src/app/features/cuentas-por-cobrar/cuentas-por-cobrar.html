@@ -1,0 +1,111 @@
+<div class="toolbar toolbar-wrap">
+  <span class="toolbar-title">Cuentas por cobrar</span>
+
+  <label class="checkbox-label">
+    <input type="checkbox" [ngModel]="soloCorporativos()" name="soloCorporativos"
+           (ngModelChange)="cambiarAlcance($event)">
+    Solo clientes corporativos
+  </label>
+
+  <button class="btn-secondary btn-sm" (click)="cargar()">↻ Actualizar</button>
+  @if (datos()) {
+    <button class="btn-secondary btn-sm" (click)="exportarCSV()"
+            title="Descargar el detalle en CSV (se abre bien en Excel)">
+      ⬇ Exportar CSV
+    </button>
+  }
+</div>
+
+@if (cargando()) {
+  <div class="table-card card">
+    <div class="empty-state">
+      <span class="loader-spinner"></span>
+      <p>Calculando...</p>
+    </div>
+  </div>
+} @else if (datos(); as d) {
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-icon stat-icon-danger"><app-icon name="coins" [size]="20" /></div>
+      <div class="stat-body">
+        <span class="stat-label">Total por cobrar</span>
+        <span class="stat-value stat-color-danger">S/ {{ d.total_pendiente | number:'1.2-2' }}</span>
+        <span class="text-hint">Al {{ formatearFecha(d.fecha_corte) }}</span>
+      </div>
+    </div>
+    @for (t of tramos; track t.clave) {
+      <div class="stat-card">
+        <div class="stat-body">
+          <span class="stat-label">{{ t.etiqueta }}</span>
+          <span class="stat-value" [class.stat-color-danger]="t.clave === 'd90_mas' && d.tramos[t.clave] > 0">
+            S/ {{ d.tramos[t.clave] | number:'1.2-2' }}
+          </span>
+        </div>
+      </div>
+    }
+  </div>
+
+  <div class="table-card card">
+    @if (d.clientes.length === 0) {
+      <div class="empty-state">
+        <span class="empty-icon"><app-icon name="check-circle" [size]="40" /></span>
+        <p>No hay deudas pendientes{{ d.solo_corporativos ? ' de clientes corporativos' : '' }}.</p>
+      </div>
+    } @else {
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              @for (t of tramos; track t.clave) { <th>{{ t.etiqueta }}</th> }
+              <th>Total</th>
+              <th>Detalle</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (cliente of d.clientes; track cliente.cliente_id) {
+              <tr>
+                <td>
+                  <strong>{{ cliente.cliente }}</strong>
+                  @if (cliente.es_corporativo) { <span class="badge badge-neutral">Corporativo</span> }
+                  <small class="text-muted bloque">Deuda más antigua: {{ cliente.dias_mayor_antiguedad }} días</small>
+                </td>
+                @for (t of tramos; track t.clave) {
+                  <td>S/ {{ cliente.tramos[t.clave] | number:'1.2-2' }}</td>
+                }
+                <td><strong>S/ {{ cliente.saldo_pendiente | number:'1.2-2' }}</strong></td>
+                <td>
+                  <button class="btn-secondary btn-sm" (click)="alternar(cliente.cliente_id)"
+                          [attr.aria-expanded]="abiertos().has(cliente.cliente_id)">
+                    {{ abiertos().has(cliente.cliente_id) ? 'Ocultar' : 'Ver ' + cliente.ordenes.length + ' orden(es)' }}
+                  </button>
+                </td>
+              </tr>
+              @if (abiertos().has(cliente.cliente_id)) {
+                @for (orden of cliente.ordenes; track orden.orden_id) {
+                  <tr class="fila-detalle">
+                    <td colspan="2">
+                      <code class="id-chip">{{ orden.codigo }}</code>
+                      <span class="text-muted">{{ orden.estado }}</span>
+                    </td>
+                    <td colspan="2">
+                      Desde {{ formatearFecha(orden.fecha_referencia) }} · {{ orden.dias }} días
+                    </td>
+                    <td colspan="2">
+                      @if (orden.entrega_autorizada_por) {
+                        Autorizó {{ orden.entrega_autorizada_por }}: {{ orden.entrega_motivo }}
+                      } @else {
+                        <span class="text-muted">Sin entrega autorizada</span>
+                      }
+                    </td>
+                    <td>S/ {{ orden.saldo_pendiente | number:'1.2-2' }}</td>
+                  </tr>
+                }
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+}

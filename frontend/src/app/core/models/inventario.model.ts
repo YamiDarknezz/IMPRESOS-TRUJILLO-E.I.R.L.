@@ -51,6 +51,11 @@ export interface ConsumoPieza {
   pieza_id: number;
   orden_id?: number | null;
   orden_codigo?: string | null;
+  /** Qué rollo, de qué material y cuánto le queda; los trae el listado de cortes de un pedido (#71). */
+  pieza_codigo?: string;
+  material_nombre?: string;
+  unidad_medida?: string;
+  saldo_restante_pieza?: number;
   trabajo_descripcion: string;
   cantidad_consumida: number;
   saldo_anterior: number;
@@ -106,4 +111,10 @@ export interface ConsumoPiezaCreateData {
   monto_cobrado?: number;
   merma_desperdicio?: number;
   nota?: string;
+}
+
+/** Lo que se llevó un pedido de rollos y planchas, y el total por material (#71). */
+export interface RollosDeOrden {
+  data: ConsumoPieza[];
+  resumen: { material: string; unidad: string; cantidad: number }[];
 }

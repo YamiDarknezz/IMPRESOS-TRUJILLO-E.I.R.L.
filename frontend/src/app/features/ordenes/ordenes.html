@@ -67,6 +67,14 @@
     }
   </div>
 
+  <select class="search-input filtro-canal" [ngModel]="filtroCanal()" (ngModelChange)="filtroCanal.set($event)"
+          name="filtroCanal" aria-label="Filtrar por canal de ingreso">
+    <option value="">Todos los canales</option>
+    @for (c of canales(); track c.valor) {
+      <option [value]="c.valor">{{ c.etiqueta }}</option>
+    }
+  </select>
+
   <div class="date-filter-group">
     <div class="date-filter-item">
       <label class="date-filter-label">Desde</label>
@@ -160,7 +168,10 @@
                 [class.row-cancelada]="orden.estado === 'cancelada'">
 
               <td><code class="id-chip">{{ orden.id_documento }}</code></td>
-              <td>{{ orden.cliente }}</td>
+              <td>
+                {{ orden.cliente }}
+                <small class="text-muted bloque">vía {{ etiquetaCanal()[orden.canal_ingreso] || orden.canal_ingreso }}</small>
+              </td>
 
               @if (sesion.esSupervisor()) {
                 <td>
@@ -237,6 +248,12 @@
                   <span class="badge" [ngClass]="claseEstado(orden.estado)">
                     {{ etiquetaEstado[orden.estado] }}
                   </span>
+                  @if (orden.entregada_con_saldo) {
+                    <span class="badge badge-warning bloque"
+                          [title]="'Entrega autorizada por ' + (orden.entrega_autorizada?.por ?? '') + ': ' + (orden.entrega_autorizada?.motivo ?? '')">
+                      Con saldo S/ {{ orden.finanzas?.saldo_pendiente | number:'1.2-2' }}
+                    </span>
+                  }
                 }
               </td>
 
@@ -276,6 +293,23 @@
                       <app-icon name="dollar-sign" [size]="14" />
                     </button>
                   }
+                  <a class="btn-icon" [routerLink]="['/ordenes', orden.id, 'imprimir']"
+                     title="Imprimir o guardar el contrato en PDF"
+                     aria-label="Imprimir o guardar el contrato en PDF">
+                    <app-icon name="receipt-text" [size]="14" />
+                  </a>
+                  <button class="btn-icon"
+                          title="Rollos y planchas usados en el pedido"
+                          aria-label="Rollos y planchas usados en el pedido"
+                          (click)="abrirRollos(orden)">
+                    <app-icon name="package-check" [size]="14" />
+                  </button>
+                  <button class="btn-icon"
+                          title="Historial de pagos de la orden"
+                          aria-label="Historial de pagos de la orden"
+                          (click)="abrirHistorial(orden)">
+                    <app-icon name="history" [size]="14" />
+                  </button>
                   @if (orden.comprobantes?.length) {
                     <button class="btn-capturas"
                             [title]="orden.comprobantes?.length + ' captura(s) de pago adjunta(s)'"
@@ -371,6 +405,13 @@
              placeholder="Nro. de operación o voucher">
     </div>
 
+    <div class="input-group">
+      <label>Descripción (opcional)</label>
+      <input type="text" [ngModel]="descripcionPago()" name="descripcionPago"
+             (ngModelChange)="descripcionPago.set($event)" maxlength="200"
+             placeholder="Ej: Segundo abono, mitad del saldo">
+    </div>
+
     <div class="input-group campo-completo">
       <label for="adjuntos-cobro">Captura del pago (opcional)</label>
       <input id="adjuntos-cobro" type="file" accept="image/*,application/pdf" multiple
@@ -451,4 +492,123 @@
 <!-- ═══ Modal: Venta Rápida / Mostrador ═════════════════════════════════════ -->
 @if (ventaRapidaAbierta()) {
   <app-venta-rapida (cerrado)="ventaRapidaAbierta.set(false)" />
+}
+
+<!-- ═══ Modal: historial de pagos de la orden (#110) ══════════════════════ -->
+@if (ordenHistorial(); as orden) {
+  <app-modal titulo="Historial de pagos" claseContenido="modal-ancho" [conBotonCerrar]="true" (cerrar)="cerrarHistorial()">
+    <span modal-cabecera class="modal-orden-id">{{ orden.id_documento }}</span>
+    <p class="modal-subtitle">
+      {{ orden.cliente }} · Total S/ {{ orden.finanzas?.precio_total | number:'1.2-2' }} ·
+      <strong [class.saldo-pendiente]="(orden.finanzas?.saldo_pendiente ?? 0) > 0">
+        Falta cobrar S/ {{ orden.finanzas?.saldo_pendiente | number:'1.2-2' }}
+      </strong>
+    </p>
+
+    @if ((orden.finanzas?.pagos?.length ?? 0) === 0) {
+      <p class="text-muted">Esta orden todavía no tiene pagos registrados.</p>
+    } @else {
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr><th>Fecha</th><th>Tipo</th><th>Monto</th><th>Medio</th><th>Descripción</th><th>Referencia</th></tr>
+          </thead>
+          <tbody>
+            @for (pago of orden.finanzas?.pagos; track pago.id) {
+              <tr [class.row-cancelada]="pago.estado_pago && pago.estado_pago !== 'conforme'">
+                <td>{{ formatearFecha(pago.fecha) }}</td>
+                <td>{{ pago.tipo === 'adelanto' ? 'Adelanto' : 'Abono' }}</td>
+                <td>S/ {{ pago.monto | number:'1.2-2' }}</td>
+                <td>{{ etiquetaMetodo()[pago.metodo] || pago.metodo }}</td>
+                <td>
+                  {{ pago.descripcion || '—' }}
+                  @if (pago.estado_pago && pago.estado_pago !== 'conforme') {
+                    <span class="badge badge-cancelado">{{ pago.estado_pago }}</span>
+                  }
+                </td>
+                <td>{{ pago.referencia || '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    <div class="form-actions">
+      <button type="button" class="btn-secondary" (click)="cerrarHistorial()">Cerrar</button>
+    </div>
+  </app-modal>
+}
+
+<!-- ═══ Modal: rollos y planchas usados por el pedido (#71) ════════════════ -->
+@if (ordenRollos(); as orden) {
+  <app-modal titulo="Rollos usados en el pedido" claseContenido="modal-ancho" [conBotonCerrar]="true" (cerrar)="cerrarRollos()">
+    <span modal-cabecera class="modal-orden-id">{{ orden.id_documento }}</span>
+    <p class="modal-subtitle">{{ orden.cliente }} · {{ orden.descripcion }}</p>
+
+    @if (cargandoRollos()) {
+      <p class="text-muted">Cargando...</p>
+    } @else if (rollos(); as datos) {
+      @if (datos.data.length === 0) {
+        <p class="text-muted">
+          Todavía no se asignó ningún corte de rollo o plancha a este pedido. Se asigna al
+          registrar el corte en Inventario.
+        </p>
+      } @else {
+        <p class="modal-subtitle">
+          @for (r of datos.resumen; track r.material) {
+            <span class="bloque">Total de <strong>{{ r.material }}</strong>: {{ r.cantidad }} {{ r.unidad }}</span>
+          }
+        </p>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr><th>Fecha</th><th>Rollo / Plancha</th><th>Material</th><th>Usó</th><th>Le queda</th><th>Trabajo</th></tr>
+            </thead>
+            <tbody>
+              @for (c of datos.data; track c.id) {
+                <tr>
+                  <td>{{ formatearFecha(c.fecha) }}</td>
+                  <td><code class="id-chip">{{ c.pieza_codigo }}</code></td>
+                  <td>{{ c.material_nombre }}</td>
+                  <td>{{ c.cantidad_consumida }} {{ c.unidad_medida }}</td>
+                  <td>{{ c.saldo_restante_pieza }} {{ c.unidad_medida }}</td>
+                  <td>{{ c.trabajo_descripcion }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+
+    <div class="form-actions">
+      <button type="button" class="btn-secondary" (click)="cerrarRollos()">Cerrar</button>
+    </div>
+  </app-modal>
+}
+
+<!-- ═══ Modal: autorizar la entrega de un cliente corporativo antes de pagar (#72) ═══ -->
+@if (ordenAEntregarConSaldo(); as orden) {
+  <app-modal titulo="Entregar antes de que pague" [conBotonCerrar]="true" [cerrarAlClicFuera]="false" (cerrar)="cerrarEntregaConSaldo()">
+    <span modal-cabecera class="modal-orden-id">{{ orden.id_documento }}</span>
+    <p class="modal-subtitle">
+      "{{ orden.cliente }}" es un cliente corporativo y debe todavía
+      <strong>S/ {{ orden.finanzas?.saldo_pendiente | number:'1.2-2' }}</strong>.
+      Como supervisor puedes autorizar la entrega: queda registrada con tu nombre y el motivo,
+      y la deuda pasa a Cuentas por cobrar.
+    </p>
+    <div class="input-group">
+      <label>Motivo de la autorización *</label>
+      <input type="text" [ngModel]="motivoEntrega()" (ngModelChange)="motivoEntrega.set($event)"
+             name="motivoEntrega" maxlength="200"
+             placeholder="Ej: Orden de compra a 30 días">
+    </div>
+    <div class="form-actions">
+      <button type="button" class="btn-secondary" (click)="cerrarEntregaConSaldo()" [disabled]="guardando()">Cancelar</button>
+      <button type="button" class="btn-primary" (click)="confirmarEntregaConSaldo()" [disabled]="guardando()">
+        {{ guardando() ? 'Autorizando...' : 'Autorizar y entregar' }}
+      </button>
+    </div>
+  </app-modal>
 }

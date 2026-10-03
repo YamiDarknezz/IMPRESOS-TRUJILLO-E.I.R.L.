@@ -19,6 +19,7 @@ function ordenBase(sobrescribe: Partial<Orden> = {}): Orden {
     id_documento: 'C-0001',
     codigo: 'C-0001',
     tipo_documento: 'contrato',
+    canal_ingreso: 'otro',
     unidad_negocio: 'imprenta',
     cliente_id: 1,
     cliente: 'Juan Pérez',
@@ -88,11 +89,12 @@ describe('OrdenesService', () => {
   it('confirmarPago() manda método y referencia, y recarga solo las órdenes', async () => {
     apiFalsa.post.mockResolvedValue({ status: 'success', data: {} });
 
-    await servicio.confirmarPago(1, 'yape', 'OP-123');
+    await servicio.confirmarPago(1, 'yape', 'OP-123', 'Segundo abono');
 
     expect(apiFalsa.post).toHaveBeenCalledWith('/api/ordenes/1/confirmar-pago', {
       metodo_pago: 'yape',
       referencia: 'OP-123',
+      descripcion: 'Segundo abono',
     });
     expect(inventarioFalso.recargar).not.toHaveBeenCalled();
   });
@@ -117,6 +119,29 @@ describe('OrdenesService', () => {
     await servicio.crearVentaRapida({ descripcion: 'Venta mostrador', monto_total: 20 });
 
     expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes/metricas');
+  });
+
+  it('entregarConSaldo() manda la autorización con el motivo y recarga órdenes y métricas (#72)', async () => {
+    apiFalsa.post.mockResolvedValue({ status: 'success', data: {} });
+    apiFalsa.get.mockClear();
+
+    await servicio.entregarConSaldo(ordenBase({ id: 4 }), 'Orden de compra');
+
+    expect(apiFalsa.post).toHaveBeenCalledWith('/api/ordenes/4/estado', {
+      estado: 'entregada',
+      autorizar_saldo: true,
+      motivo: 'Orden de compra',
+    });
+    expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes/metricas');
+    expect(apiFalsa.get).toHaveBeenCalledWith(expect.stringContaining('/api/ordenes?'));
+  });
+
+  it('entregarConSaldo() propaga el rechazo del servidor sin recargar', async () => {
+    apiFalsa.post.mockRejectedValue(new Error('Solo un supervisor'));
+    apiFalsa.get.mockClear();
+
+    await expect(servicio.entregarConSaldo(ordenBase(), 'x')).rejects.toThrow('Solo un supervisor');
+    expect(apiFalsa.get).not.toHaveBeenCalled();
   });
 
   describe('cambiarEstado() (optimista, revierte si el servidor rechaza)', () => {
@@ -310,6 +335,16 @@ describe('funciones puras de órdenes', () => {
   });
 
   describe('filtrarOrdenes()', () => {
+    // Issue #69
+    it('filtra por canal de ingreso, y sin canal no filtra', () => {
+      const ordenes = [
+        ordenBase({ id: 1, canal_ingreso: 'whatsapp' }),
+        ordenBase({ id: 2, canal_ingreso: 'llamada' }),
+      ];
+      expect(filtrarOrdenes(ordenes, { canal: 'whatsapp' }).map(o => o.id)).toEqual([1]);
+      expect(filtrarOrdenes(ordenes, { canal: '' }).map(o => o.id)).toEqual([1, 2]);
+    });
+
     const ordenes: Orden[] = [
       ordenBase({ id: 1, estado: 'pendiente', cliente: 'Juan Pérez', id_documento: 'C-0001', fecha_creacion: '2026-09-01' }),
       ordenBase({ id: 2, estado: 'entregada', cliente: 'María López', id_documento: 'C-0002', fecha_creacion: '2026-09-15' }),

@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from app.core.catalogos import catalogos, parametros
+from app.core.catalogos import catalogos, empresa, parametros
 from app.core.security import usuario_actual
 from app.models import Usuario
 
@@ -20,5 +20,5 @@ async def leer_configuracion(usuario: Annotated[Usuario, Depends(usuario_actual)
     """
     return {
         "status": "success",
-        "data": {"parametros": parametros(), "catalogos": catalogos()},
+        "data": {"parametros": parametros(), "catalogos": catalogos(), "empresa": empresa()},
     }

@@ -5,6 +5,8 @@ import { FormsModule } from '@angular/forms';
 import { ClientesService, DatosCliente, filtrarClientes } from '../../core/services/clientes.service';
 import { Cliente, ResumenCliente, TIPOS_CLIENTE, TipoCliente } from '../../core/models';
 import { SesionService } from '../../core/services/sesion.service';
+import { etiquetasMetodo } from '../../core/estado/catalogos';
+import { formatearFecha } from '../../shared/utilidades/fechas';
 import { mensajeDeError } from '../../shared/utilidades/errores';
 import { IconComponent } from '../../shared/componentes/icon/icon.component';
 import { ModalComponent } from '../../shared/componentes/modal/modal.component';
@@ -42,6 +44,8 @@ export class ClientesComponent {
   /** Ficha ampliada: datos del cliente + resumen financiero del servidor. */
   readonly detalle = signal<Cliente | null>(null);
   readonly resumen = signal<ResumenCliente | null>(null);
+  readonly etiquetaMetodo = computed(() => etiquetasMetodo());
+  readonly formatearFecha = formatearFecha;
 
   readonly tiposCliente = TIPOS_CLIENTE;
 

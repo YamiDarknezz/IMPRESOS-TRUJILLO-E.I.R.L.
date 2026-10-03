@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from app.models.comprobante import Comprobante
 
 from app.models.enums import (
+    CanalIngreso,
     EstadoOrden,
     EstadoPago,
     MetodoPago,
@@ -46,6 +47,14 @@ class Orden(Base, TemporalMixin):
     tipo_documento: Mapped[TipoDocumento] = mapped_column(
         enum_columna(TipoDocumento, "tipo_documento", 10),
         default=TipoDocumento.CONTRATO,
+        nullable=False,
+    )
+    # Vía por la que llegó el pedido (#69). Las órdenes anteriores a este campo
+    # quedaron como "otro": no se sabe, y es preferible a inventar un canal.
+    canal_ingreso: Mapped[CanalIngreso] = mapped_column(
+        enum_columna(CanalIngreso, "canal_ingreso", 15),
+        default=CanalIngreso.OTRO,
+        server_default=CanalIngreso.OTRO.value,
         nullable=False,
     )
     cliente_id: Mapped[int] = mapped_column(ForeignKey("clientes.id"), nullable=False)
@@ -90,6 +99,18 @@ class Orden(Base, TemporalMixin):
         nullable=False,
     )
 
+    # Entrega antes de pagar a un cliente corporativo (#72): nunca es silenciosa.
+    # Si la entrega se autorizó con saldo pendiente queda quién, cuándo y por qué.
+    entrega_autorizada_por: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("usuarios.id"), nullable=True
+    )
+    entrega_autorizada_en: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    entrega_motivo: Mapped[str] = mapped_column(
+        String(200), default="", server_default="", nullable=False
+    )
+
     finalizada_en: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -100,6 +121,9 @@ class Orden(Base, TemporalMixin):
     # ── Relaciones ──────────────────────────────────────────────────────────
     cliente = relationship("Cliente", lazy="joined")
     asignado = relationship("Usuario", foreign_keys=[asignado_a], lazy="joined")
+    autorizador_entrega = relationship(
+        "Usuario", foreign_keys=[entrega_autorizada_por], lazy="joined"
+    )
     items: Mapped[List["OrdenItem"]] = relationship(
         back_populates="orden", cascade="all, delete-orphan", lazy="selectin"
     )
@@ -192,6 +216,11 @@ class PagoOrden(Base, TemporalMixin):
     )
     # Referencia del voucher/captura de Yape o transferencia (RF-11).
     referencia: Mapped[str] = mapped_column(String(120), default="", nullable=False)
+    # Para qué fue el pago (#110): distinta de la referencia, que es el número de
+    # operación. Es lo que hoy se reconstruye mirando los chats de WhatsApp.
+    descripcion: Mapped[str] = mapped_column(
+        String(200), default="", server_default="", nullable=False
+    )
 
     # Conciliación y auditoría de pagos (Yape falso, billete falso, etc.)
     estado_pago: Mapped[EstadoPago] = mapped_column(

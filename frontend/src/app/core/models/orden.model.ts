@@ -36,6 +36,12 @@ export const ETIQUETA_TIPO_DOCUMENTO: Record<TipoDocumento, string> = {
   proforma: 'Proforma',
 };
 
+/**
+ * Vía por la que llegó el pedido (#69). Es solo el tipo: los nombres legibles
+ * los publica el servidor (`catalogos.canales_ingreso`).
+ */
+export type CanalIngreso = 'whatsapp' | 'llamada' | 'presencial' | 'correo' | 'otro';
+
 /** Las dos líneas de negocio con caja separada (RN-05). */
 export type UnidadNegocio = 'imprenta' | 'gigantografias';
 
@@ -69,6 +75,8 @@ export interface PagoOrden {
   metodo: MetodoPago;
   tipo: 'adelanto' | 'saldo';
   referencia?: string;
+  /** Para qué fue el pago (#110). */
+  descripcion?: string;
   registrado_por?: number | null;
   estado_pago?: 'conforme' | 'observado' | 'anulado';
   motivo_observacion?: string | null;
@@ -117,6 +125,7 @@ export interface Orden {
   id_documento: string;
   codigo: string;
   tipo_documento: TipoDocumento;
+  canal_ingreso: CanalIngreso;
   unidad_negocio: UnidadNegocio;
   cliente_id: number;
   cliente: string;
@@ -128,6 +137,12 @@ export interface Orden {
   fecha_entrega: string;
   finalizada_en?: string | null;
   entregada_en?: string | null;
+  /** El cliente es corporativo: es el único que puede recibir antes de pagar (#72). */
+  cliente_corporativo?: boolean;
+  /** Entregada y todavía con deuda; deja de serlo en cuanto el cliente paga. */
+  entregada_con_saldo?: boolean;
+  /** Quién autorizó entregar con saldo, cuándo y por qué; queda aunque ya se pague. */
+  entrega_autorizada?: { por: string; en: string | null; motivo: string } | null;
   creado_por: number;
   asignado_a: number | null;
   asignado: string;

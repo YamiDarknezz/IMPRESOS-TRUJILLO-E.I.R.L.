@@ -22,13 +22,24 @@
         <span class="search-icon"><app-icon name="search" [size]="15" /></span>
         <input type="text" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)"
                name="busquedaInventario" class="search-input"
-               placeholder="Buscar material por nombre...">
+               placeholder="Buscar por nombre o ubicación...">
         @if (busqueda()) {
           <button class="search-clear" (click)="busqueda.set('')" title="Limpiar búsqueda" aria-label="Limpiar búsqueda">
             <app-icon name="x" [size]="13" />
           </button>
         }
       </div>
+
+      @if (ubicaciones().length > 0) {
+        <select class="search-input filtro-canal" [ngModel]="filtroUbicacion()"
+                (ngModelChange)="filtroUbicacion.set($event)" name="filtroUbicacion"
+                aria-label="Filtrar por ubicación">
+          <option value="">Todas las ubicaciones</option>
+          @for (u of ubicaciones(); track u) {
+            <option [value]="u">{{ u }}</option>
+          }
+        </select>
+      }
 
       @if (sesion.esSupervisor()) {
         <button class="btn-primary" (click)="alternarFormulario()">+ Nuevo Material</button>
@@ -65,7 +76,7 @@
                 <tr>
                   <td><strong>{{ mat.nombre }}</strong></td>
                   <td>
-                    <span class="badge badge-neutral" style="font-size:0.75rem;">
+                    <span class="badge badge-neutral texto-xs">
                       {{ mat.tipo_formato === 'continuo_rollo' ? 'Rollo' : (mat.tipo_formato === 'plancha_rigida' ? 'Plancha' : (mat.tipo_formato === 'quimico_tinta' ? 'Tinta' : 'Unidad')) }}
                     </span>
                   </td>
@@ -317,7 +328,13 @@
 @if (pestanaActiva() === 'piezas') {
   <div class="toolbar toolbar-wrap">
     <span class="toolbar-title">{{ piezas().length }} piezas/rollos en seguimiento</span>
-    <div style="display:flex; gap:0.5rem;">
+    <div class="search-box">
+      <span class="search-icon"><app-icon name="search" [size]="15" /></span>
+      <input type="text" [ngModel]="busquedaPiezas()" (ngModelChange)="busquedaPiezas.set($event)"
+             name="busquedaPiezas" class="search-input"
+             placeholder="Buscar por código, material o ubicación...">
+    </div>
+    <div class="acciones-fila">
       <button class="btn-secondary btn-sm" (click)="cargarPiezas()">↻ Actualizar</button>
       @if (sesion.esSupervisor()) {
         <button class="btn-primary btn-sm" (click)="abrirNuevaPieza()">+ Nuevo Rollo / Plancha</button>
@@ -332,6 +349,11 @@
         @if (sesion.esSupervisor()) {
           <button class="btn-primary btn-sm" (click)="abrirNuevaPieza()">+ Registrar primer rollo o plancha</button>
         }
+      </div>
+    } @else if (piezasFiltradas().length === 0) {
+      <div class="empty-state">
+        <p>No se encontró "{{ busquedaPiezas() }}" entre los rollos y planchas.</p>
+        <button class="btn-secondary btn-sm" (click)="busquedaPiezas.set('')">Limpiar búsqueda</button>
       </div>
     } @else {
       <div class="table-wrapper">
@@ -351,7 +373,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (p of piezas(); track p.id) {
+            @for (p of piezasFiltradas(); track p.id) {
               <tr>
                 <td><code>{{ p.codigo_identificador }}</code></td>
                 <td><strong>{{ p.material_nombre }}</strong></td>
@@ -362,16 +384,17 @@
                 </td>
                 <td>
                   <strong>{{ p.saldo_restante }}</strong> / {{ p.capacidad_inicial }} {{ p.unidad_medida }}
-                  <div style="background:var(--surface-3); border-radius:4px; height:6px; width:100%; margin-top:4px; overflow:hidden;">
+                  <div class="barra-progreso">
                     <div [style.width.%]="(p.saldo_restante / p.capacidad_inicial) * 100"
-                         [style.background]="(p.saldo_restante / p.capacidad_inicial) < 0.1 ? 'var(--danger)' : ((p.saldo_restante / p.capacidad_inicial) <= 0.3 ? 'var(--warning)' : 'var(--success)')"
-                         style="height:100%;"></div>
+                         class="barra-progreso-relleno"
+                         [class.nivel-critico]="(p.saldo_restante / p.capacidad_inicial) < 0.1"
+                         [class.nivel-bajo]="(p.saldo_restante / p.capacidad_inicial) >= 0.1 && (p.saldo_restante / p.capacidad_inicial) <= 0.3"></div>
                   </div>
                 </td>
                 <td>S/ {{ p.costo_adquisicion | number:'1.2-2' }}</td>
-                <td><strong style="color:#16a34a;">S/ {{ p.total_recaudado | number:'1.2-2' }}</strong></td>
+                <td><strong class="monto-positivo">S/ {{ p.total_recaudado | number:'1.2-2' }}</strong></td>
                 <td>
-                  <strong [style.color]="p.ganancia_neta >= 0 ? '#16a34a' : '#ef4444'">
+                  <strong [class.monto-positivo]="p.ganancia_neta >= 0" [class.monto-negativo]="p.ganancia_neta < 0">
                     S/ {{ p.ganancia_neta | number:'1.2-2' }}
                   </strong>
                 </td>
@@ -541,7 +564,22 @@
     </p>
 
     <div class="form-grid">
-      <div class="input-group" style="grid-column: 1 / -1;">
+      <div class="input-group campo-completo">
+        <label>Pedido (opcional)</label>
+        <select [ngModel]="formConsumo().orden_id ?? ''" name="ordenDelCorte"
+                (ngModelChange)="elegirOrdenDelCorte($event)">
+          <option value="">— Sin pedido —</option>
+          @for (o of ordenesEnCurso(); track o.id) {
+            <option [value]="o.id">{{ o.id_documento }} · {{ o.cliente }} · {{ o.descripcion }}</option>
+          }
+        </select>
+        <span class="field-hint">Asignarlo permite saber cuánto material se llevó cada pedido.</span>
+        @if (avisoDeSaldo(); as aviso) {
+          <span class="field-hint" [class.field-error]="aviso.tipo === 'alerta'">{{ aviso.texto }}</span>
+        }
+      </div>
+
+      <div class="input-group campo-completo">
         <label>Descripción del Trabajo / Cliente *</label>
         <input type="text" [ngModel]="formConsumo().trabajo_descripcion"
                (ngModelChange)="actualizarConsumo('trabajo_descripcion', $event)"
@@ -589,8 +627,17 @@
     <p class="modal-subtitle">
       Material: <strong>{{ pd.material_nombre }}</strong> ·
       Costo: <strong>S/ {{ pd.costo_adquisicion | number:'1.2-2' }}</strong> ·
-      Recaudado: <strong style="color:#16a34a;">S/ {{ pd.total_recaudado | number:'1.2-2' }}</strong> ·
-      Ganancia Neta: <strong [style.color]="pd.ganancia_neta >= 0 ? '#16a34a' : '#ef4444'">S/ {{ pd.ganancia_neta | number:'1.2-2' }}</strong>
+      Recaudado: <strong class="monto-positivo">S/ {{ pd.total_recaudado | number:'1.2-2' }}</strong> ·
+      Ganancia Neta: <strong [class.monto-positivo]="pd.ganancia_neta >= 0" [class.monto-negativo]="pd.ganancia_neta < 0">S/ {{ pd.ganancia_neta | number:'1.2-2' }}</strong>
+    </p>
+
+    <p class="modal-subtitle">
+      Ubicación: <strong>{{ pd.ubicacion || 'sin registrar' }}</strong> ·
+      Saldo: <strong>{{ pd.saldo_restante }} {{ pd.unidad_medida }}</strong>
+      @if (proyeccionPieza(); as proyeccion) {
+        · Promedio por corte: <strong>{{ proyeccion.promedio }} {{ pd.unidad_medida }}</strong>
+        · Alcanza para unos <strong>{{ proyeccion.cortesRestantes }}</strong> cortes más
+      }
     </p>
 
     @if ((pd.consumos?.length ?? 0) === 0) {
@@ -602,6 +649,7 @@
             <tr>
               <th>Fecha</th>
               <th>Trabajo / Cliente</th>
+              <th>Pedido</th>
               <th>Consumo</th>
               <th>Saldo Anterior</th>
               <th>Saldo Nuevo</th>
@@ -614,10 +662,11 @@
               <tr>
                 <td class="fecha-cell">{{ formatearFecha(c.fecha, true) }}</td>
                 <td><strong>{{ c.trabajo_descripcion }}</strong></td>
+                <td>{{ c.orden_codigo || '—' }}</td>
                 <td>{{ c.cantidad_consumida }} {{ pd.unidad_medida }}</td>
                 <td>{{ c.saldo_anterior }}</td>
                 <td><strong>{{ c.saldo_nuevo }}</strong></td>
-                <td><strong style="color:#16a34a;">S/ {{ c.monto_cobrado | number:'1.2-2' }}</strong></td>
+                <td><strong class="monto-positivo">S/ {{ c.monto_cobrado | number:'1.2-2' }}</strong></td>
                 <td>{{ c.merma_desperdicio || 0 }}</td>
               </tr>
             }

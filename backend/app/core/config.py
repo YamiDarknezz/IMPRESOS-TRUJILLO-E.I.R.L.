@@ -49,6 +49,15 @@ class Settings(BaseSettings):
     # Tasa de IGV usada cuando el contrato marca "incluye IGV".
     igv_porcentaje: float = 18.0
 
+    # ── Datos de la empresa para el contrato impreso (#68) ──────────────────
+    # Son los datos públicos de la ficha RUC; se pueden sobrescribir por entorno
+    # (EMPRESA_*) sin tocar código, y la pantalla los lee de /api/configuracion.
+    empresa_razon_social: str = "IMPRESOS TRUJILLO E.I.R.L."
+    empresa_ruc: str = "20602572952"
+    empresa_direccion: str = "JR. SIMON BOLIVAR NRO. 945 INT. 1, TRUJILLO, LA LIBERTAD"
+    empresa_telefono: str = "924 943 790"
+    empresa_horario: str = "Lunes a sábado de 10 AM a 8 PM"
+
     # ── Comprobantes de pago (RF-11) ────────────────────────────────────────
     # Capturas de Yape o transferencia adjuntas a una orden o a uno de sus
     # pagos. Se guardan fuera del contenedor: la API puede reconstruirse en

@@ -47,6 +47,16 @@ class TipoDocumento(StrEnum):
     PROFORMA = "proforma"
 
 
+class CanalIngreso(StrEnum):
+    """Por qué vía llegó el pedido (issue #69): hoy solo vive en el chat o en la cabeza de quien atendió."""
+
+    WHATSAPP = "whatsapp"
+    LLAMADA = "llamada"
+    PRESENCIAL = "presencial"
+    CORREO = "correo"
+    OTRO = "otro"
+
+
 class UnidadNegocio(StrEnum):
     """Las dos líneas de negocio que exigen caja separada (RN-05)."""
 

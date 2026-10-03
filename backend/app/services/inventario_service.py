@@ -22,10 +22,12 @@ from app.core.errores import Conflicto, ErrorDeNegocio, NoEncontrado
 from app.core.fechas import ahora_utc
 from app.models import (
     ConsumoPieza,
+    EstadoOrden,
     EstadoPieza,
     Material,
     MotivoMovimiento,
     MovimientoStock,
+    Orden,
     PiezaLoteMaterial,
     TipoEventoAuditoria,
     Usuario,
@@ -297,6 +299,18 @@ async def registrar_consumo_pieza(
     if pieza.estado == EstadoPieza.AGOTADO:
         raise ErrorDeNegocio("Esta pieza o rollo ya se encuentra agotado.")
 
+    # El vínculo con el pedido (#71) se valida: un id que no existe reventaba
+    # contra la llave foránea y un pedido cancelado no consume material.
+    orden = None
+    if data.orden_id is not None:
+        orden = await sesion.get(Orden, data.orden_id)
+        if orden is None:
+            raise ErrorDeNegocio("La orden indicada no existe.")
+        if orden.estado == EstadoOrden.CANCELADA:
+            raise ErrorDeNegocio(
+                f"La orden {orden.codigo} está cancelada: no se le puede asignar un corte."
+            )
+
     cantidad = _redondear(_decimal(data.cantidad_consumida))
     if cantidad > _decimal(pieza.saldo_restante):
         raise ErrorDeNegocio(
@@ -317,7 +331,9 @@ async def registrar_consumo_pieza(
 
     consumo = ConsumoPieza(
         pieza=pieza,
-        orden_id=data.orden_id,
+        # Se asigna la relación (no solo el id): serializar el corte nuevo lee
+        # `consumo.orden`, y una carga perezosa en async revienta.
+        orden=orden,
         usuario_id=usuario.id,
         trabajo_descripcion=data.trabajo_descripcion,
         cantidad_consumida=cantidad,
@@ -371,3 +387,17 @@ async def registrar_consumo_pieza(
         valores_nuevos={"saldo_restante": float(saldo_nuevo)},
     )
     return consumo
+
+
+async def consumos_de_orden(sesion: AsyncSession, orden_id: int) -> list[ConsumoPieza]:
+    """Los cortes de rollo o plancha asignados a un pedido, del más antiguo al más reciente (#71)."""
+    return list(
+        (
+            await sesion.execute(
+                select(ConsumoPieza)
+                .where(ConsumoPieza.orden_id == orden_id)
+                .order_by(ConsumoPieza.fecha, ConsumoPieza.id)
+            )
+        ).scalars()
+    )
+
