@@ -273,6 +273,7 @@ def serializar_orden(orden) -> dict[str, Any]:
         "canal_ingreso": orden.canal_ingreso.value,
         "cliente_id": orden.cliente_id,
         "cliente": orden.cliente.nombre if orden.cliente else "",
+        "cliente_corporativo": bool(orden.cliente and orden.cliente.es_corporativo),
         "direccion": orden.direccion,
         "telefono": orden.telefono,
         "descripcion": orden.descripcion,
@@ -282,6 +283,18 @@ def serializar_orden(orden) -> dict[str, Any]:
         "fecha_entrega": orden.fecha_entrega.isoformat() if orden.fecha_entrega else None,
         "finalizada_en": iso(orden.finalizada_en),
         "entregada_en": iso(orden.entregada_en),
+        # Entregada y todavía con deuda (#72): sale sola del saldo, así que deja de
+        # ser verdad en cuanto el cliente paga. La autorización, en cambio, queda.
+        "entregada_con_saldo": orden.estado.value == "entregada" and not orden.pagado_totalmente,
+        "entrega_autorizada": (
+            {
+                "por": orden.autorizador_entrega.nombre if orden.autorizador_entrega else "",
+                "en": iso(orden.entrega_autorizada_en),
+                "motivo": orden.entrega_motivo,
+            }
+            if orden.entrega_autorizada_por is not None
+            else None
+        ),
         "creado_por": orden.creado_por,
         "asignado_a": orden.asignado_a,
         "asignado": orden.asignado.nombre if orden.asignado else "",

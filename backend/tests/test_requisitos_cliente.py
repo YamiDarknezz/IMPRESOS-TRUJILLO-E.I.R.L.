@@ -471,3 +471,235 @@ async def test_un_operario_no_ve_los_rollos_de_un_pedido_ajeno(
     ajena = await _crear(cliente_api, admin, material, asignado_a=admin.id)
     respuesta = await cliente_api.get(f"/api/ordenes/{ajena['id']}/rollos", headers=cabecera_token(operario))
     assert respuesta.status_code == 403
+
+
+# ══ #72 · Clientes empresa: entrega antes de pagar y cuenta por cobrar ═════
+
+async def _orden_lista_para_entregar(cliente_api, admin, material, cliente_id=None, **cambios):
+    """Una orden finalizada con saldo pendiente (adelanto de 50 sobre 100)."""
+    orden = await _crear(
+        cliente_api, admin, material, cliente_id=cliente_id, precio_total=100, adelanto_pago=50, **cambios
+    )
+    completada = await cliente_api.post(
+        "/api/ordenes/completar",
+        json={"id_orden": orden["id"], "materiales_reales": [{"material_id": material.id, "cantidad": 2}]},
+        headers=cabecera_token(admin),
+    )
+    assert completada.status_code == 200, completada.text
+    return orden
+
+
+async def _entregar(cliente_api, usuario, orden, **extra):
+    return await cliente_api.post(
+        f"/api/ordenes/{orden['id']}/estado",
+        json={"estado": "entregada"} | extra,
+        headers=cabecera_token(usuario),
+    )
+
+
+async def test_sin_autorizacion_la_entrega_con_saldo_sigue_prohibida_aun_a_un_corporativo(
+    cliente_api, admin, material, cliente_corporativo
+):
+    orden = await _orden_lista_para_entregar(cliente_api, admin, material, cliente_corporativo.id)
+
+    respuesta = await _entregar(cliente_api, admin, orden)
+
+    assert respuesta.status_code == 400
+    assert "no está pagada en su totalidad" in respuesta.json()["detail"]
+
+
+async def test_un_supervisor_autoriza_la_entrega_con_saldo_de_un_corporativo(
+    cliente_api, admin, material, cliente_corporativo
+):
+    orden = await _orden_lista_para_entregar(cliente_api, admin, material, cliente_corporativo.id)
+
+    respuesta = await _entregar(
+        cliente_api, admin, orden, autorizar_saldo=True, motivo="Orden de compra mensual"
+    )
+
+    assert respuesta.status_code == 200, respuesta.text
+    datos = respuesta.json()["data"]
+    assert datos["estado"] == "entregada"
+    assert datos["entregada_con_saldo"] is True
+    assert datos["finanzas"]["saldo_pendiente"] == 50
+    assert datos["entrega_autorizada"]["por"] == admin.nombre
+    assert datos["entrega_autorizada"]["motivo"] == "Orden de compra mensual"
+    assert datos["cliente_corporativo"] is True
+
+
+async def test_la_autorizacion_exige_el_motivo(cliente_api, admin, material, cliente_corporativo):
+    orden = await _orden_lista_para_entregar(cliente_api, admin, material, cliente_corporativo.id)
+
+    respuesta = await _entregar(cliente_api, admin, orden, autorizar_saldo=True, motivo="   ")
+
+    assert respuesta.status_code == 400
+    assert "motivo" in respuesta.json()["detail"]
+
+
+async def test_un_cliente_comun_no_puede_recibir_antes_de_pagar_ni_con_autorizacion(
+    cliente_api, admin, material, cliente
+):
+    orden = await _orden_lista_para_entregar(cliente_api, admin, material, cliente.id)
+
+    respuesta = await _entregar(cliente_api, admin, orden, autorizar_saldo=True, motivo="Es conocido")
+
+    assert respuesta.status_code == 400
+    assert "corporativos" in respuesta.json()["detail"]
+
+
+async def test_solo_un_supervisor_autoriza(
+    cliente_api, sesion, admin, operario, material, cliente_corporativo
+):
+    orden = await _orden_lista_para_entregar(
+        cliente_api, admin, material, cliente_corporativo.id, asignado_a=operario.id
+    )
+
+    respuesta = await _entregar(cliente_api, operario, orden, autorizar_saldo=True, motivo="Pidió el cliente")
+
+    assert respuesta.status_code == 403
+    estado = (
+        await cliente_api.get(f"/api/ordenes/{orden['id']}", headers=cabecera_token(admin))
+    ).json()["data"]["estado"]
+    assert estado == "finalizada"
+
+
+async def test_la_entrega_con_saldo_queda_en_la_auditoria(
+    cliente_api, admin, material, cliente_corporativo
+):
+    orden = await _orden_lista_para_entregar(cliente_api, admin, material, cliente_corporativo.id)
+    await _entregar(cliente_api, admin, orden, autorizar_saldo=True, motivo="Orden de compra mensual")
+
+    auditoria = (await cliente_api.get("/api/auditoria", headers=cabecera_token(admin))).json()["data"]
+    entrada = next(e for e in auditoria if "ENTREGA CON SALDO" in (e["detalle"] or ""))
+
+    assert entrada["registro_id"] == orden["codigo"]
+    assert "Orden de compra mensual" in entrada["detalle"]
+    assert entrada["valores_nuevos"]["entrega_con_saldo"] is True
+    assert entrada["valores_nuevos"]["saldo_pendiente"] == 50
+
+
+async def test_autorizar_una_orden_ya_pagada_no_deja_rastro_de_excepcion(
+    cliente_api, admin, material, cliente_corporativo
+):
+    orden = await _orden_lista_para_entregar(cliente_api, admin, material, cliente_corporativo.id)
+    await cliente_api.post(
+        f"/api/ordenes/{orden['id']}/confirmar-pago", json={}, headers=cabecera_token(admin)
+    )
+
+    datos = (await _entregar(cliente_api, admin, orden, autorizar_saldo=True, motivo="x")).json()["data"]
+
+    assert datos["estado"] == "entregada"
+    assert datos["entregada_con_saldo"] is False
+    assert datos["entrega_autorizada"] is None
+
+
+async def test_despues_de_entregar_con_saldo_el_cliente_todavia_puede_pagar(
+    cliente_api, admin, material, cliente_corporativo
+):
+    orden = await _orden_lista_para_entregar(cliente_api, admin, material, cliente_corporativo.id)
+    await _entregar(cliente_api, admin, orden, autorizar_saldo=True, motivo="Orden de compra")
+
+    abono = await cliente_api.post(
+        f"/api/ordenes/{orden['id']}/confirmar-pago", json={"monto": 20}, headers=cabecera_token(admin)
+    )
+    assert abono.status_code == 200, abono.text
+    assert abono.json()["data"]["entregada_con_saldo"] is True
+
+    saldo = await cliente_api.post(
+        f"/api/ordenes/{orden['id']}/confirmar-pago", json={}, headers=cabecera_token(admin)
+    )
+    datos = saldo.json()["data"]
+    assert datos["entregada_con_saldo"] is False
+    assert datos["finanzas"]["pagado_totalmente"] is True
+    # La autorización queda como historia aunque la deuda ya se saldó.
+    assert datos["entrega_autorizada"]["motivo"] == "Orden de compra"
+
+
+async def test_cuentas_por_cobrar_agrupa_por_cliente_y_separa_por_antiguedad(
+    cliente_api, sesion, admin, material, cliente_corporativo, cliente
+):
+    from datetime import timedelta
+
+    from app.core.fechas import ahora_utc
+    from app.models import Orden
+
+    o1 = await _orden_lista_para_entregar(cliente_api, admin, material, cliente_corporativo.id)
+    o2 = await _orden_lista_para_entregar(cliente_api, admin, material, cliente_corporativo.id)
+    o3 = await _orden_lista_para_entregar(cliente_api, admin, material, cliente_corporativo.id)
+    for orden in (o1, o2, o3):
+        await _entregar(cliente_api, admin, orden, autorizar_saldo=True, motivo="Orden de compra")
+
+    # Se retrocede la fecha de entrega: 10, 45 y 120 días de deuda.
+    for orden, dias in ((o1, 10), (o2, 45), (o3, 120)):
+        fila = await sesion.get(Orden, orden["id"])
+        fila.entregada_en = ahora_utc() - timedelta(days=dias)
+    await sesion.flush()
+    # Una orden de un cliente común no entra en la vista corporativa.
+    await _orden_lista_para_entregar(cliente_api, admin, material, cliente.id)
+
+    respuesta = await cliente_api.get("/api/finanzas/cuentas-por-cobrar", headers=cabecera_token(admin))
+    assert respuesta.status_code == 200, respuesta.text
+    datos = respuesta.json()["data"]
+
+    assert datos["total_pendiente"] == 150
+    assert datos["tramos"] == {"d0_30": 50, "d31_60": 50, "d61_90": 0, "d90_mas": 50}
+    [fila] = datos["clientes"]
+    assert fila["cliente"] == cliente_corporativo.nombre
+    assert fila["saldo_pendiente"] == 150
+    assert fila["dias_mayor_antiguedad"] == 120
+    assert [(o["codigo"], o["dias"], o["tramo"]) for o in fila["ordenes"]] == [
+        (o3["codigo"], 120, "d90_mas"),
+        (o2["codigo"], 45, "d31_60"),
+        (o1["codigo"], 10, "d0_30"),
+    ]
+    assert fila["ordenes"][0]["entrega_motivo"] == "Orden de compra"
+
+
+async def test_cuentas_por_cobrar_puede_incluir_a_todos_los_clientes(
+    cliente_api, admin, material, cliente_corporativo, cliente
+):
+    await _orden_lista_para_entregar(cliente_api, admin, material, cliente_corporativo.id)
+    await _orden_lista_para_entregar(cliente_api, admin, material, cliente.id)
+
+    todos = (
+        await cliente_api.get(
+            "/api/finanzas/cuentas-por-cobrar",
+            params={"solo_corporativos": False},
+            headers=cabecera_token(admin),
+        )
+    ).json()["data"]
+
+    assert {f["cliente"] for f in todos["clientes"]} == {cliente_corporativo.nombre, cliente.nombre}
+    assert todos["total_pendiente"] == 100
+
+
+async def test_cuentas_por_cobrar_ignora_lo_pagado_y_lo_cancelado(
+    cliente_api, admin, material, cliente_corporativo
+):
+    pagada = await _orden_lista_para_entregar(cliente_api, admin, material, cliente_corporativo.id)
+    await cliente_api.post(
+        f"/api/ordenes/{pagada['id']}/confirmar-pago", json={}, headers=cabecera_token(admin)
+    )
+    cancelada = await _crear(cliente_api, admin, material, cliente_id=cliente_corporativo.id)
+    await cliente_api.post(f"/api/ordenes/{cancelada['id']}/cancelar", headers=cabecera_token(admin))
+
+    datos = (
+        await cliente_api.get("/api/finanzas/cuentas-por-cobrar", headers=cabecera_token(admin))
+    ).json()["data"]
+
+    assert datos["clientes"] == []
+    assert datos["total_pendiente"] == 0
+
+
+async def test_cuentas_por_cobrar_es_solo_de_supervision(cliente_api, operario):
+    respuesta = await cliente_api.get("/api/finanzas/cuentas-por-cobrar", headers=cabecera_token(operario))
+    assert respuesta.status_code == 403
+
+
+def test_tramo_de_respeta_los_limites_de_30_60_y_90_dias():
+    from app.services.finanzas_service import tramo_de
+
+    assert [tramo_de(d) for d in (0, 30, 31, 60, 61, 90, 91, 400)] == [
+        "d0_30", "d0_30", "d31_60", "d31_60", "d61_90", "d61_90", "d90_mas", "d90_mas",
+    ]
+

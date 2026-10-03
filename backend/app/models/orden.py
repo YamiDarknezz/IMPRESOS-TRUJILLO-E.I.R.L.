@@ -99,6 +99,18 @@ class Orden(Base, TemporalMixin):
         nullable=False,
     )
 
+    # Entrega antes de pagar a un cliente corporativo (#72): nunca es silenciosa.
+    # Si la entrega se autorizó con saldo pendiente queda quién, cuándo y por qué.
+    entrega_autorizada_por: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("usuarios.id"), nullable=True
+    )
+    entrega_autorizada_en: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    entrega_motivo: Mapped[str] = mapped_column(
+        String(200), default="", server_default="", nullable=False
+    )
+
     finalizada_en: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -109,6 +121,9 @@ class Orden(Base, TemporalMixin):
     # ── Relaciones ──────────────────────────────────────────────────────────
     cliente = relationship("Cliente", lazy="joined")
     asignado = relationship("Usuario", foreign_keys=[asignado_a], lazy="joined")
+    autorizador_entrega = relationship(
+        "Usuario", foreign_keys=[entrega_autorizada_por], lazy="joined"
+    )
     items: Mapped[List["OrdenItem"]] = relationship(
         back_populates="orden", cascade="all, delete-orphan", lazy="selectin"
     )

@@ -16,7 +16,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.fechas import dentro_del_rango
+from app.core.fechas import a_fecha_peru, ahora_utc, dentro_del_rango
 from app.models import CanalIngreso, EstadoOrden, Orden, Rol, TipoPago, UnidadNegocio, Usuario
 
 METODO_SIN_ESPECIFICAR = "—"
@@ -186,3 +186,115 @@ async def resumen(
             reverse=True,
         ),
     }
+
+
+# ── Cuentas por cobrar (#72) ────────────────────────────────────────────────
+
+# Tramos de antigüedad de la deuda, en días: (clave, desde, hasta inclusive).
+TRAMOS_ANTIGUEDAD = (
+    ("d0_30", 0, 30),
+    ("d31_60", 31, 60),
+    ("d61_90", 61, 90),
+    ("d90_mas", 91, None),
+)
+
+
+def tramo_de(dias: int) -> str:
+    """Tramo de antigüedad al que pertenece una deuda de `dias` días."""
+    for clave, desde, hasta in TRAMOS_ANTIGUEDAD:
+        if dias >= desde and (hasta is None or dias <= hasta):
+            return clave
+    return TRAMOS_ANTIGUEDAD[0][0]
+
+
+def _tramos_vacios() -> dict[str, float]:
+    return {clave: 0.0 for clave, _, _ in TRAMOS_ANTIGUEDAD}
+
+
+async def cuentas_por_cobrar(
+    sesion: AsyncSession,
+    solo_corporativos: bool = True,
+    hoy: Optional[date] = None,
+) -> dict:
+    """
+    Lo que cada cliente debe, con la antigüedad de la deuda (#72).
+
+    La deuda se cuenta desde que se entregó el trabajo (lo que de verdad la
+    genera); si todavía no se entregó, desde que se creó la orden. Las órdenes
+    canceladas no deben nada. Por defecto solo se listan los clientes
+    corporativos, que son los que reciben el trabajo antes de pagar.
+    """
+    hoy = hoy or a_fecha_peru(ahora_utc())
+    ordenes = list(
+        (
+            await sesion.execute(
+                select(Orden).where(
+                    Orden.estado != EstadoOrden.CANCELADA,
+                    Orden.pagado_totalmente.is_(False),
+                    Orden.saldo_pendiente > 0,
+                )
+            )
+        ).scalars()
+    )
+
+    por_cliente: dict[int, dict] = {}
+    total = 0.0
+    tramos_totales = _tramos_vacios()
+
+    for orden in ordenes:
+        cliente = orden.cliente
+        if solo_corporativos and not (cliente and cliente.es_corporativo):
+            continue
+
+        referencia = orden.entregada_en or orden.creado_en
+        dias = max((hoy - a_fecha_peru(referencia)).days, 0)
+        tramo = tramo_de(dias)
+        saldo = float(orden.saldo_pendiente)
+
+        fila = por_cliente.setdefault(
+            orden.cliente_id,
+            {
+                "cliente_id": orden.cliente_id,
+                "cliente": cliente.nombre if cliente else "",
+                "es_corporativo": bool(cliente and cliente.es_corporativo),
+                "saldo_pendiente": 0.0,
+                "dias_mayor_antiguedad": 0,
+                "tramos": _tramos_vacios(),
+                "ordenes": [],
+            },
+        )
+        fila["saldo_pendiente"] = round(fila["saldo_pendiente"] + saldo, 2)
+        fila["tramos"][tramo] = round(fila["tramos"][tramo] + saldo, 2)
+        fila["dias_mayor_antiguedad"] = max(fila["dias_mayor_antiguedad"], dias)
+        fila["ordenes"].append(
+            {
+                "orden_id": orden.id,
+                "codigo": orden.codigo,
+                "estado": orden.estado.value,
+                "total": round(float(orden.total), 2),
+                "saldo_pendiente": round(saldo, 2),
+                "fecha_referencia": a_fecha_peru(referencia).isoformat(),
+                "dias": dias,
+                "tramo": tramo,
+                "entregada_con_saldo": orden.estado == EstadoOrden.ENTREGADA,
+                "entrega_autorizada_por": orden.autorizador_entrega.nombre
+                if orden.autorizador_entrega
+                else None,
+                "entrega_motivo": orden.entrega_motivo or "",
+            }
+        )
+        total = round(total + saldo, 2)
+        tramos_totales[tramo] = round(tramos_totales[tramo] + saldo, 2)
+
+    clientes = sorted(por_cliente.values(), key=lambda f: f["saldo_pendiente"], reverse=True)
+    for fila in clientes:
+        fila["ordenes"].sort(key=lambda o: o["dias"], reverse=True)
+
+    return {
+        "fecha_corte": hoy.isoformat(),
+        "solo_corporativos": solo_corporativos,
+        "total_pendiente": total,
+        "tramos": tramos_totales,
+        "clientes": clientes,
+    }
+

@@ -121,6 +121,29 @@ describe('OrdenesService', () => {
     expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes/metricas');
   });
 
+  it('entregarConSaldo() manda la autorización con el motivo y recarga órdenes y métricas (#72)', async () => {
+    apiFalsa.post.mockResolvedValue({ status: 'success', data: {} });
+    apiFalsa.get.mockClear();
+
+    await servicio.entregarConSaldo(ordenBase({ id: 4 }), 'Orden de compra');
+
+    expect(apiFalsa.post).toHaveBeenCalledWith('/api/ordenes/4/estado', {
+      estado: 'entregada',
+      autorizar_saldo: true,
+      motivo: 'Orden de compra',
+    });
+    expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes/metricas');
+    expect(apiFalsa.get).toHaveBeenCalledWith(expect.stringContaining('/api/ordenes?'));
+  });
+
+  it('entregarConSaldo() propaga el rechazo del servidor sin recargar', async () => {
+    apiFalsa.post.mockRejectedValue(new Error('Solo un supervisor'));
+    apiFalsa.get.mockClear();
+
+    await expect(servicio.entregarConSaldo(ordenBase(), 'x')).rejects.toThrow('Solo un supervisor');
+    expect(apiFalsa.get).not.toHaveBeenCalled();
+  });
+
   describe('cambiarEstado() (optimista, revierte si el servidor rechaza)', () => {
     function conListaCargada(...ordenes: Orden[]): Promise<void> {
       apiFalsa.get.mockResolvedValue({ status: 'success', data: ordenes, total: ordenes.length });

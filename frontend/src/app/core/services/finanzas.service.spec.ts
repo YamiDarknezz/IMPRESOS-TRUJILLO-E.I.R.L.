@@ -99,4 +99,17 @@ describe('FinanzasService', () => {
   it('porMetodo() es una lista vacía si todavía no hay resumen', () => {
     expect(servicio.porMetodo()).toEqual([]);
   });
+
+  // Issue #72
+  it('cuentasPorCobrar() pide la vista corporativa por defecto', async () => {
+    apiFalsa.get.mockResolvedValue({ status: 'success', data: { clientes: [] } });
+    await servicio.cuentasPorCobrar();
+    expect(apiFalsa.get).toHaveBeenCalledWith('/api/finanzas/cuentas-por-cobrar?solo_corporativos=true');
+  });
+
+  it('cuentasPorCobrar(false) incluye a todos los clientes', async () => {
+    apiFalsa.get.mockResolvedValue({ status: 'success', data: { clientes: [] } });
+    await servicio.cuentasPorCobrar(false);
+    expect(apiFalsa.get).toHaveBeenCalledWith('/api/finanzas/cuentas-por-cobrar?solo_corporativos=false');
+  });
 });

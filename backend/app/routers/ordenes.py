@@ -195,7 +195,14 @@ async def cambiar_estado(
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
 ):
     """Avanza (o corrige) la etapa de producción de una orden."""
-    orden = await ordenes_service.cambiar_estado(sesion, id_orden, data.estado, usuario)
+    orden = await ordenes_service.cambiar_estado(
+        sesion,
+        id_orden,
+        data.estado,
+        usuario,
+        autorizar_saldo=data.autorizar_saldo,
+        motivo=data.motivo,
+    )
     return {"status": "success", "data": serializar_orden(orden)}
 
 

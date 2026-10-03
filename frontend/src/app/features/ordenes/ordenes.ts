@@ -127,6 +127,10 @@ export class OrdenesComponent {
   readonly rollos = signal<RollosDeOrden | null>(null);
   readonly cargandoRollos = signal(false);
 
+  /** Orden de un cliente corporativo que se va a entregar antes de pagar (#72). */
+  readonly ordenAEntregarConSaldo = signal<Orden | null>(null);
+  readonly motivoEntrega = signal('');
+
   /** Orden cuyo historial de pagos se está mirando (#110). */
   readonly ordenHistorial = signal<Orden | null>(null);
 
@@ -177,6 +181,20 @@ export class OrdenesComponent {
 
     if (estado === 'entregada') {
       // El backend también lo impide; aquí se avisa antes de intentarlo.
+      if (!orden.finanzas?.pagado_totalmente && orden.cliente_corporativo) {
+        // A los clientes corporativos se les puede entregar antes de pagar,
+        // pero solo con la autorización de un supervisor y su motivo (#72).
+        if (this.sesion.esSupervisor()) {
+          this.motivoEntrega.set('');
+          this.ordenAEntregarConSaldo.set(orden);
+        } else {
+          alert(
+            'Esta orden es de un cliente corporativo y tiene saldo pendiente.\n\n' +
+            'Solo un supervisor puede autorizar entregarla antes de que pague.'
+          );
+        }
+        return;
+      }
       if (!orden.finanzas?.pagado_totalmente) {
         alert(
           'No se puede entregar una orden que no está pagada en su totalidad.\n\n' +
@@ -195,6 +213,31 @@ export class OrdenesComponent {
       await this.ordenesService.cambiarEstado(orden, estado);
     } catch (e) {
       alert(mensajeDeError(e, 'No se pudo cambiar el estado de la orden.'));
+    }
+  }
+
+  cerrarEntregaConSaldo(): void {
+    this.ordenAEntregarConSaldo.set(null);
+    this.motivoEntrega.set('');
+  }
+
+  async confirmarEntregaConSaldo(): Promise<void> {
+    const orden = this.ordenAEntregarConSaldo();
+    const motivo = this.motivoEntrega().trim();
+    if (!orden) return;
+    if (!motivo) {
+      alert('Indica el motivo por el que se entrega antes de que pague.');
+      return;
+    }
+
+    this.guardando.set(true);
+    try {
+      await this.ordenesService.entregarConSaldo(orden, motivo);
+      this.cerrarEntregaConSaldo();
+    } catch (e) {
+      alert(mensajeDeError(e, 'No se pudo autorizar la entrega con saldo.'));
+    } finally {
+      this.guardando.set(false);
     }
   }
 

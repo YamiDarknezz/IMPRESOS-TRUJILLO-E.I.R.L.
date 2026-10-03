@@ -189,6 +189,20 @@ export class OrdenesService {
     void this.cargarMetricas();
   }
 
+  /**
+   * Entrega una orden de un cliente corporativo antes de que pague (#72).
+   * Lo autoriza un supervisor con un motivo; no es optimista porque el
+   * servidor puede rechazarla y la orden cambia de saldo y de autorización.
+   */
+  async entregarConSaldo(orden: Orden, motivo: string): Promise<void> {
+    await this.api.post(`/api/ordenes/${orden.id}/estado`, {
+      estado: 'entregada',
+      autorizar_saldo: true,
+      motivo,
+    });
+    await Promise.all([this.lista.recargar(), this.cargarMetricas()]);
+  }
+
   async asignar(orden: Orden, idUsuario: number | null): Promise<void> {
     const anterior = orden.asignado_a;
     this.parchear(orden.id, { asignado_a: idUsuario });

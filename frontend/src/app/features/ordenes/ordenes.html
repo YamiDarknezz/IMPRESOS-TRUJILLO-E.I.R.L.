@@ -170,7 +170,7 @@
               <td><code class="id-chip">{{ orden.id_documento }}</code></td>
               <td>
                 {{ orden.cliente }}
-                <small class="text-muted bloque">vía {{ etiquetaCanal()[orden.canal_ingreso] ?? orden.canal_ingreso }}</small>
+                <small class="text-muted bloque">vía {{ etiquetaCanal()[orden.canal_ingreso] || orden.canal_ingreso }}</small>
               </td>
 
               @if (sesion.esSupervisor()) {
@@ -248,6 +248,12 @@
                   <span class="badge" [ngClass]="claseEstado(orden.estado)">
                     {{ etiquetaEstado[orden.estado] }}
                   </span>
+                  @if (orden.entregada_con_saldo) {
+                    <span class="badge badge-warning bloque"
+                          [title]="'Entrega autorizada por ' + (orden.entrega_autorizada?.por ?? '') + ': ' + (orden.entrega_autorizada?.motivo ?? '')">
+                      Con saldo S/ {{ orden.finanzas?.saldo_pendiente | number:'1.2-2' }}
+                    </span>
+                  }
                 }
               </td>
 
@@ -508,7 +514,7 @@
                 <td>{{ formatearFecha(pago.fecha) }}</td>
                 <td>{{ pago.tipo === 'adelanto' ? 'Adelanto' : 'Abono' }}</td>
                 <td>S/ {{ pago.monto | number:'1.2-2' }}</td>
-                <td>{{ etiquetaMetodo()[pago.metodo] ?? pago.metodo }}</td>
+                <td>{{ etiquetaMetodo()[pago.metodo] || pago.metodo }}</td>
                 <td>
                   {{ pago.descripcion || '—' }}
                   @if (pago.estado_pago && pago.estado_pago !== 'conforme') {
@@ -573,6 +579,31 @@
 
     <div class="form-actions">
       <button type="button" class="btn-secondary" (click)="cerrarRollos()">Cerrar</button>
+    </div>
+  </app-modal>
+}
+
+<!-- ═══ Modal: autorizar la entrega de un cliente corporativo antes de pagar (#72) ═══ -->
+@if (ordenAEntregarConSaldo(); as orden) {
+  <app-modal titulo="Entregar antes de que pague" [conBotonCerrar]="true" [cerrarAlClicFuera]="false" (cerrar)="cerrarEntregaConSaldo()">
+    <span modal-cabecera class="modal-orden-id">{{ orden.id_documento }}</span>
+    <p class="modal-subtitle">
+      "{{ orden.cliente }}" es un cliente corporativo y debe todavía
+      <strong>S/ {{ orden.finanzas?.saldo_pendiente | number:'1.2-2' }}</strong>.
+      Como supervisor puedes autorizar la entrega: queda registrada con tu nombre y el motivo,
+      y la deuda pasa a Cuentas por cobrar.
+    </p>
+    <div class="input-group">
+      <label>Motivo de la autorización *</label>
+      <input type="text" [ngModel]="motivoEntrega()" (ngModelChange)="motivoEntrega.set($event)"
+             name="motivoEntrega" maxlength="200"
+             placeholder="Ej: Orden de compra a 30 días">
+    </div>
+    <div class="form-actions">
+      <button type="button" class="btn-secondary" (click)="cerrarEntregaConSaldo()" [disabled]="guardando()">Cancelar</button>
+      <button type="button" class="btn-primary" (click)="confirmarEntregaConSaldo()" [disabled]="guardando()">
+        {{ guardando() ? 'Autorizando...' : 'Autorizar y entregar' }}
+      </button>
     </div>
   </app-modal>
 }

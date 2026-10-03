@@ -49,6 +49,14 @@ export const routes: Routes = [
         loadComponent: () => import('./features/finanzas/finanzas').then(m => m.FinanzasComponent),
       },
       {
+        path: 'cuentas-por-cobrar',
+        canActivate: [rolesGuard('admin', 'subgerente')],
+        loadComponent: () =>
+          import('./features/cuentas-por-cobrar/cuentas-por-cobrar').then(
+            m => m.CuentasPorCobrarComponent
+          ),
+      },
+      {
         path: 'clientes',
         canActivate: [rolesGuard('admin', 'subgerente', 'secretaria')],
         loadComponent: () => import('./features/clientes/clientes').then(m => m.ClientesComponent),

@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { ApiService } from './api.service';
-import { ETIQUETA_METODO, MetodoPago, RespuestaItem, ResumenFinanzas } from '../models';
+import { CuentasPorCobrar, ETIQUETA_METODO, MetodoPago, RespuestaItem, ResumenFinanzas } from '../models';
 import { hoyISO, primerDiaDelMesISO } from '../../shared/utilidades/fechas';
 import { guardarPreferencia, leerPreferencia } from '../../shared/utilidades/almacenamiento';
 
@@ -43,6 +43,14 @@ export class FinanzasService {
     } finally {
       this.cargando.set(false);
     }
+  }
+
+  /** Deuda por cliente con su antigüedad (#72). Solo la ve la supervisión. */
+  async cuentasPorCobrar(soloCorporativos = true): Promise<CuentasPorCobrar> {
+    const res = await this.api.get<RespuestaItem<CuentasPorCobrar>>(
+      `/api/finanzas/cuentas-por-cobrar?solo_corporativos=${soloCorporativos}`
+    );
+    return res.data;
   }
 
   setMesActual(): void {

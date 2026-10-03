@@ -139,6 +139,16 @@ class ConfirmarPagoData(BaseModel):
 
 class CambiarEstadoData(BaseModel):
     estado: EstadoOrden
+    # Entregar una orden de un cliente corporativo antes de pagar (#72): lo
+    # autoriza un supervisor y se explica el motivo. Sin esto, la regla de
+    # "sin pago completo no se entrega" sigue intacta.
+    autorizar_saldo: bool = False
+    motivo: str = Field(default="", max_length=200)
+
+    @field_validator("motivo")
+    @classmethod
+    def _limpiar_motivo(cls, v: str) -> str:
+        return limpiar(v)
 
 
 class VentaRapidaData(BaseModel):

@@ -438,3 +438,42 @@ async def test_corte_asignado_a_un_pedido_se_serializa_sin_cargas_perezosas_en_p
     delante = await inventario_service.consumos_de_orden(sesion_pg, orden.id)
     assert [c.id for c in delante] == [consumo.id]
 
+
+async def test_entrega_con_saldo_autorizada_y_cuentas_por_cobrar_en_postgres(sesion_pg, entorno_pg):
+    """
+    #72: autorizar una entrega con saldo escribe las columnas nuevas (FK a
+    usuarios incluida), serializa sin cargas perezosas y aparece en la vista de
+    cuentas por cobrar con su antigüedad.
+    """
+    from app.models import Cliente
+    from app.schemas import MaterialEstimado
+    from app.services import finanzas_service
+    from app.services.serializadores import serializar_orden
+
+    admin, material = entorno_pg["admin"], entorno_pg["material"]
+    corporativo = Cliente(nombre=f"Corporativo PG {SUFIJO}", es_corporativo=True)
+    sesion_pg.add(corporativo)
+    await sesion_pg.flush()
+
+    orden = await ordenes_service.crear_orden(
+        sesion_pg, datos_orden(material.id, cliente_id=corporativo.id), admin
+    )
+    await ordenes_service.completar(
+        sesion_pg, orden.id, [MaterialEstimado(material_id=material.id, cantidad=2)], admin
+    )
+    entregada = await ordenes_service.cambiar_estado(
+        sesion_pg, orden.id, EstadoOrden.ENTREGADA, admin,
+        autorizar_saldo=True, motivo="Orden de compra mensual",
+    )
+    datos = serializar_orden(entregada)
+
+    assert datos["entregada_con_saldo"] is True
+    assert datos["entrega_autorizada"]["por"] == admin.nombre
+    assert datos["entrega_autorizada"]["motivo"] == "Orden de compra mensual"
+
+    cuentas = await finanzas_service.cuentas_por_cobrar(sesion_pg)
+    fila = next(f for f in cuentas["clientes"] if f["cliente_id"] == corporativo.id)
+    assert fila["saldo_pendiente"] == 50
+    assert fila["ordenes"][0]["dias"] == 0
+    assert fila["ordenes"][0]["entrega_autorizada_por"] == admin.nombre
+

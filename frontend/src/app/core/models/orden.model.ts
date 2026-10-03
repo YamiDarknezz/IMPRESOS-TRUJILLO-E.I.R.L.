@@ -137,6 +137,12 @@ export interface Orden {
   fecha_entrega: string;
   finalizada_en?: string | null;
   entregada_en?: string | null;
+  /** El cliente es corporativo: es el único que puede recibir antes de pagar (#72). */
+  cliente_corporativo?: boolean;
+  /** Entregada y todavía con deuda; deja de serlo en cuanto el cliente paga. */
+  entregada_con_saldo?: boolean;
+  /** Quién autorizó entregar con saldo, cuándo y por qué; queda aunque ya se pague. */
+  entrega_autorizada?: { por: string; en: string | null; motivo: string } | null;
   creado_por: number;
   asignado_a: number | null;
   asignado: string;

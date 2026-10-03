@@ -205,7 +205,7 @@
                   <td><code class="id-chip">{{ pago.orden_codigo }}</code></td>
                   <td>{{ pago.tipo === 'adelanto' ? 'Adelanto' : 'Abono' }}</td>
                   <td>S/ {{ pago.monto | number:'1.2-2' }}</td>
-                  <td>{{ etiquetaMetodo()[pago.metodo] ?? pago.metodo }}</td>
+                  <td>{{ etiquetaMetodo()[pago.metodo] || pago.metodo }}</td>
                   <td>
                     {{ pago.descripcion || '—' }}
                     @if (pago.estado_pago !== 'conforme') {

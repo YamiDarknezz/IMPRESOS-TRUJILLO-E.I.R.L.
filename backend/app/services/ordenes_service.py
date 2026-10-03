@@ -165,9 +165,18 @@ def exigir_etapa(orden: Orden, usuario: Usuario) -> None:
         raise PermisoDenegado("Solo puedes avanzar órdenes asignadas a ti.")
 
 
-def validar_transicion(actual: EstadoOrden, nuevo: EstadoOrden, pagado_totalmente: bool) -> None:
+def validar_transicion(
+    actual: EstadoOrden,
+    nuevo: EstadoOrden,
+    pagado_totalmente: bool,
+    entrega_con_saldo_autorizada: bool = False,
+) -> None:
     """
     Verifica que mover la orden de `actual` a `nuevo` sea legítimo.
+
+    `entrega_con_saldo_autorizada` es la única excepción a RN-02 (#72): un
+    supervisor autorizó entregar a un cliente corporativo antes de que pague.
+    Quien llama es quien comprueba que la autorización sea válida.
 
     Las prohibiciones no son arbitrarias: cada una protege el inventario o una
     regla de cobro. Lanza ErrorDeNegocio con el motivo si no vale.
@@ -199,7 +208,7 @@ def validar_transicion(actual: EstadoOrden, nuevo: EstadoOrden, pagado_totalment
             "Una orden ya finalizada no puede volver al proceso de producción."
         )
 
-    if nuevo == EstadoOrden.ENTREGADA and not pagado_totalmente:
+    if nuevo == EstadoOrden.ENTREGADA and not pagado_totalmente and not entrega_con_saldo_autorizada:
         # El cliente no se lleva el trabajo sin haber pagado el total.
         raise ErrorDeNegocio(
             "No se puede entregar una orden que no está pagada en su totalidad. "
@@ -856,10 +865,37 @@ async def asignar(sesion: AsyncSession, id_orden: int, usuario_destino: Optional
     return orden
 
 
+def _exigir_autorizacion_de_entrega_con_saldo(
+    orden: Orden, usuario: Usuario, motivo: str
+) -> None:
+    """
+    Condiciones para entregar antes de pagar (#72). Las tres, siempre:
+    cliente corporativo, un rol de supervisión y el motivo escrito.
+    """
+    if not (orden.cliente and orden.cliente.es_corporativo):
+        raise ErrorDeNegocio(
+            "Solo los clientes corporativos pueden recibir el trabajo antes de pagar."
+        )
+    if usuario.rol not in (Rol.ADMIN, Rol.SUBGERENTE):
+        raise PermisoDenegado("Solo un supervisor puede autorizar una entrega con saldo pendiente.")
+    if not motivo:
+        raise ErrorDeNegocio("Indica el motivo para autorizar la entrega con saldo pendiente.")
+
+
 async def cambiar_estado(
-    sesion: AsyncSession, id_orden: int, nuevo: EstadoOrden, usuario: Usuario
+    sesion: AsyncSession,
+    id_orden: int,
+    nuevo: EstadoOrden,
+    usuario: Usuario,
+    autorizar_saldo: bool = False,
+    motivo: str = "",
 ) -> Orden:
-    """Avanza (o corrige) la etapa de producción de una orden."""
+    """
+    Avanza (o corrige) la etapa de producción de una orden.
+
+    Entregar con saldo pendiente solo es posible con `autorizar_saldo`, y queda
+    en la orden y en la auditoría (#72): cliente corporativo, supervisor y motivo.
+    """
     orden = await _obtener_para_escritura(sesion, id_orden)
     exigir_etapa(orden, usuario)
 
@@ -867,19 +903,50 @@ async def cambiar_estado(
     if actual == nuevo:
         return orden
 
-    validar_transicion(actual, nuevo, orden.pagado_totalmente)
+    con_saldo = (
+        nuevo == EstadoOrden.ENTREGADA and not orden.pagado_totalmente and autorizar_saldo
+    )
+    if con_saldo:
+        # Solo se pide autorización si de verdad hace falta: pedirla para una
+        # orden ya pagada no tiene sentido ni debe dejar rastro de excepción.
+        _exigir_autorizacion_de_entrega_con_saldo(orden, usuario, motivo)
+
+    validar_transicion(
+        actual, nuevo, orden.pagado_totalmente, entrega_con_saldo_autorizada=con_saldo
+    )
     orden.estado = nuevo
     if nuevo == EstadoOrden.ENTREGADA:
         orden.entregada_en = ahora_utc()
+    if con_saldo:
+        orden.entrega_autorizada_por = usuario.id
+        orden.autorizador_entrega = usuario
+        orden.entrega_autorizada_en = ahora_utc()
+        orden.entrega_motivo = motivo
 
+    detalle = f"Estado: {actual.value} -> {nuevo.value}"
+    if con_saldo:
+        detalle += (
+            f". ENTREGA CON SALDO PENDIENTE de S/ {_redondear(_decimal(orden.saldo_pendiente))} "
+            f"autorizada por {usuario.nombre}: {motivo}"
+        )
     _auditar_orden(
         sesion,
         usuario,
         "cambio_estado",
         orden,
-        f"Estado: {actual.value} -> {nuevo.value}",
+        detalle,
         anteriores={"estado": actual.value},
-        nuevos={"estado": nuevo.value},
+        nuevos={"estado": nuevo.value}
+        | (
+            {
+                "entrega_con_saldo": True,
+                "saldo_pendiente": float(orden.saldo_pendiente),
+                "autorizado_por": usuario.id,
+                "motivo": motivo,
+            }
+            if con_saldo
+            else {}
+        ),
     )
     await sesion.flush()
     return orden
