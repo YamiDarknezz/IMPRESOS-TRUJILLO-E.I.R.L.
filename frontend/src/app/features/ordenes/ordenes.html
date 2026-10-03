@@ -287,6 +287,12 @@
                       <app-icon name="dollar-sign" [size]="14" />
                     </button>
                   }
+                  <button class="btn-icon"
+                          title="Historial de pagos de la orden"
+                          aria-label="Historial de pagos de la orden"
+                          (click)="abrirHistorial(orden)">
+                    <app-icon name="history" [size]="14" />
+                  </button>
                   @if (orden.comprobantes?.length) {
                     <button class="btn-capturas"
                             [title]="orden.comprobantes?.length + ' captura(s) de pago adjunta(s)'"
@@ -382,6 +388,13 @@
              placeholder="Nro. de operación o voucher">
     </div>
 
+    <div class="input-group">
+      <label>Descripción (opcional)</label>
+      <input type="text" [ngModel]="descripcionPago()" name="descripcionPago"
+             (ngModelChange)="descripcionPago.set($event)" maxlength="200"
+             placeholder="Ej: Segundo abono, mitad del saldo">
+    </div>
+
     <div class="input-group campo-completo">
       <label for="adjuntos-cobro">Captura del pago (opcional)</label>
       <input id="adjuntos-cobro" type="file" accept="image/*,application/pdf" multiple
@@ -462,4 +475,50 @@
 <!-- ═══ Modal: Venta Rápida / Mostrador ═════════════════════════════════════ -->
 @if (ventaRapidaAbierta()) {
   <app-venta-rapida (cerrado)="ventaRapidaAbierta.set(false)" />
+}
+
+<!-- ═══ Modal: historial de pagos de la orden (#110) ══════════════════════ -->
+@if (ordenHistorial(); as orden) {
+  <app-modal titulo="Historial de pagos" claseContenido="modal-ancho" [conBotonCerrar]="true" (cerrar)="cerrarHistorial()">
+    <span modal-cabecera class="modal-orden-id">{{ orden.id_documento }}</span>
+    <p class="modal-subtitle">
+      {{ orden.cliente }} · Total S/ {{ orden.finanzas?.precio_total | number:'1.2-2' }} ·
+      <strong [class.saldo-pendiente]="(orden.finanzas?.saldo_pendiente ?? 0) > 0">
+        Falta cobrar S/ {{ orden.finanzas?.saldo_pendiente | number:'1.2-2' }}
+      </strong>
+    </p>
+
+    @if ((orden.finanzas?.pagos?.length ?? 0) === 0) {
+      <p class="text-muted">Esta orden todavía no tiene pagos registrados.</p>
+    } @else {
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr><th>Fecha</th><th>Tipo</th><th>Monto</th><th>Medio</th><th>Descripción</th><th>Referencia</th></tr>
+          </thead>
+          <tbody>
+            @for (pago of orden.finanzas?.pagos; track pago.id) {
+              <tr [class.row-cancelada]="pago.estado_pago && pago.estado_pago !== 'conforme'">
+                <td>{{ formatearFecha(pago.fecha) }}</td>
+                <td>{{ pago.tipo === 'adelanto' ? 'Adelanto' : 'Abono' }}</td>
+                <td>S/ {{ pago.monto | number:'1.2-2' }}</td>
+                <td>{{ etiquetaMetodo()[pago.metodo] ?? pago.metodo }}</td>
+                <td>
+                  {{ pago.descripcion || '—' }}
+                  @if (pago.estado_pago && pago.estado_pago !== 'conforme') {
+                    <span class="badge badge-cancelado">{{ pago.estado_pago }}</span>
+                  }
+                </td>
+                <td>{{ pago.referencia || '—' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    <div class="form-actions">
+      <button type="button" class="btn-secondary" (click)="cerrarHistorial()">Cerrar</button>
+    </div>
+  </app-modal>
 }

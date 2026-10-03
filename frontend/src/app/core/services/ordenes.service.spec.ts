@@ -89,11 +89,12 @@ describe('OrdenesService', () => {
   it('confirmarPago() manda método y referencia, y recarga solo las órdenes', async () => {
     apiFalsa.post.mockResolvedValue({ status: 'success', data: {} });
 
-    await servicio.confirmarPago(1, 'yape', 'OP-123');
+    await servicio.confirmarPago(1, 'yape', 'OP-123', 'Segundo abono');
 
     expect(apiFalsa.post).toHaveBeenCalledWith('/api/ordenes/1/confirmar-pago', {
       metodo_pago: 'yape',
       referencia: 'OP-123',
+      descripcion: 'Segundo abono',
     });
     expect(inventarioFalso.recargar).not.toHaveBeenCalled();
   });

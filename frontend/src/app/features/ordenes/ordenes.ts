@@ -119,6 +119,10 @@ export class OrdenesComponent {
   readonly ordenACobrar = signal<Orden | null>(null);
   readonly metodoPago = signal<MetodoPago>('efectivo');
   readonly referenciaPago = signal('');
+  readonly descripcionPago = signal('');
+
+  /** Orden cuyo historial de pagos se está mirando (#110). */
+  readonly ordenHistorial = signal<Orden | null>(null);
 
   // Helpers reexpuestos para la plantilla
   readonly canales = computed(() => canalesIngreso());
@@ -288,7 +292,16 @@ export class OrdenesComponent {
     this.ordenACobrar.set(orden);
     this.metodoPago.set(orden.finanzas?.metodo_pago_adelanto ?? 'efectivo');
     this.referenciaPago.set('');
+    this.descripcionPago.set('');
     this.limpiarAdjuntosCobro();
+  }
+
+  abrirHistorial(orden: Orden): void {
+    this.ordenHistorial.set(orden);
+  }
+
+  cerrarHistorial(): void {
+    this.ordenHistorial.set(null);
   }
 
   cerrarCobro(): void {
@@ -305,7 +318,8 @@ export class OrdenesComponent {
       const actualizada = await this.ordenesService.confirmarPago(
         orden.id,
         this.metodoPago(),
-        this.referenciaPago().trim()
+        this.referenciaPago().trim(),
+        this.descripcionPago().trim()
       );
 
       const pendientes = this.adjuntosCobro();

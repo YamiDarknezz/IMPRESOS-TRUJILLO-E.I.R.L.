@@ -201,6 +201,11 @@ class PagoOrden(Base, TemporalMixin):
     )
     # Referencia del voucher/captura de Yape o transferencia (RF-11).
     referencia: Mapped[str] = mapped_column(String(120), default="", nullable=False)
+    # Para qué fue el pago (#110): distinta de la referencia, que es el número de
+    # operación. Es lo que hoy se reconstruye mirando los chats de WhatsApp.
+    descripcion: Mapped[str] = mapped_column(
+        String(200), default="", server_default="", nullable=False
+    )
 
     # Conciliación y auditoría de pagos (Yape falso, billete falso, etc.)
     estado_pago: Mapped[EstadoPago] = mapped_column(

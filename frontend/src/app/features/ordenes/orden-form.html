@@ -322,6 +322,14 @@
         </select>
       </div>
 
+      <div class="input-group campo-completo">
+        <label>Descripción del adelanto (opcional)</label>
+        <input type="text" [ngModel]="form().adelantoDescripcion" name="adelantoDescripcion"
+               (ngModelChange)="actualizar('adelantoDescripcion', $event)" maxlength="200"
+               placeholder="Ej: Adelanto por los banners del evento">
+        <span class="field-hint">Queda en el historial de pagos del cliente y de la orden.</span>
+      </div>
+
       <!-- Captura del adelanto: opcional, es el respaldo de la conciliación. -->
       <div class="input-group campo-completo">
         <label for="adjuntos-orden">Captura del adelanto (opcional)</label>

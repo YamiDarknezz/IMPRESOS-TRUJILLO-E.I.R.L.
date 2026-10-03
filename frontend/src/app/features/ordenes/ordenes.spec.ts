@@ -327,11 +327,32 @@ describe('OrdenesComponent', () => {
       const componente = fixture.componentInstance;
       componente.abrirCobro(ordenBase());
       componente.referenciaPago.set('  OP-99  ');
+      componente.descripcionPago.set('  Abono de la semana ');
 
       await componente.confirmarPago();
 
-      expect(ordenesFalso.confirmarPago).toHaveBeenCalledWith(1, 'efectivo', 'OP-99');
+      expect(ordenesFalso.confirmarPago).toHaveBeenCalledWith(1, 'efectivo', 'OP-99', 'Abono de la semana');
       expect(componente.ordenACobrar()).toBeNull();
+    });
+
+    // Issue #110: cada cobro nuevo parte sin la descripción del anterior.
+    it('abrirCobro() limpia la descripción del cobro anterior', () => {
+      const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
+      componente.abrirCobro(ordenBase());
+      componente.descripcionPago.set('algo');
+
+      componente.abrirCobro(ordenBase());
+
+      expect(componente.descripcionPago()).toBe('');
+    });
+
+    it('el historial de pagos se abre y se cierra por orden', () => {
+      const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
+      const orden = ordenBase();
+      componente.abrirHistorial(orden);
+      expect(componente.ordenHistorial()).toBe(orden);
+      componente.cerrarHistorial();
+      expect(componente.ordenHistorial()).toBeNull();
     });
   });
 

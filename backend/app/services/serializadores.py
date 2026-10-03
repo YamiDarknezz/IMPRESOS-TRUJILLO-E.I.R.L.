@@ -214,6 +214,7 @@ def _serializar_pago(pago, comprobantes_del_pago=None) -> dict[str, Any]:
         "metodo": pago.metodo.value,
         "tipo": pago.tipo.value,
         "referencia": pago.referencia,
+        "descripcion": pago.descripcion or "",
         "registrado_por": pago.registrado_por,
         "estado_pago": pago.estado_pago.value if pago.estado_pago else "conforme",
         "motivo_observacion": pago.motivo_observacion.value if pago.motivo_observacion else None,

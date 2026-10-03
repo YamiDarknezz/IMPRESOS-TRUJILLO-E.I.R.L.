@@ -306,6 +306,26 @@ describe('OrdenFormComponent', () => {
       confirmSpy.mockRestore();
     });
 
+    // Issue #110
+    it('la descripción del adelanto viaja recortada en el pedido', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const componente = TestBed.createComponent(OrdenFormComponent).componentInstance;
+      componente.actualizar('clienteId', 1);
+      componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'whatsapp');
+      componente.actualizar('fechaEntrega', '2026-12-31');
+      componente.actualizar('precioTotal', 100);
+      componente.actualizar('adelanto', 50);
+      componente.actualizar('adelantoDescripcion', '  Para el diseño ');
+
+      await componente.guardar();
+
+      expect(ordenesFalso.crear).toHaveBeenCalledWith(
+        expect.objectContaining({ adelanto_descripcion: 'Para el diseño' })
+      );
+      confirmSpy.mockRestore();
+    });
+
     // #30: el backend rechaza un descuento mayor al subtotal; la interfaz ahora
     // lo dice antes, en vez de mostrar el total negativo y fallar al guardar.
     it('un descuento mayor al subtotal se marca en el formulario', async () => {

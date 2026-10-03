@@ -75,6 +75,8 @@ export interface PagoOrden {
   metodo: MetodoPago;
   tipo: 'adelanto' | 'saldo';
   referencia?: string;
+  /** Para qué fue el pago (#110). */
+  descripcion?: string;
   registrado_por?: number | null;
   estado_pago?: 'conforme' | 'observado' | 'anulado';
   motivo_observacion?: string | null;

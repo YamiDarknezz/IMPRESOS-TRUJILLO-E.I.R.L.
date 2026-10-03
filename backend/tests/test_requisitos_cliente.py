@@ -112,3 +112,118 @@ async def test_el_catalogo_publica_los_canales_con_su_nombre(cliente_api, admin)
         "correo": "Correo",
         "otro": "Otro",
     }
+
+
+# ══ #110 · Historial de adelantos con descripción ═════════════════════════
+
+async def test_el_adelanto_guarda_su_descripcion(cliente_api, admin, material):
+    orden = await _crear(cliente_api, admin, material, adelanto_descripcion="Adelanto por los banners")
+    [adelanto] = orden["finanzas"]["pagos"]
+    assert adelanto["descripcion"] == "Adelanto por los banners"
+    assert adelanto["tipo"] == "adelanto"
+
+
+async def test_editar_la_orden_sin_mandar_descripcion_no_la_borra(cliente_api, admin, material):
+    orden = await _crear(cliente_api, admin, material, adelanto_descripcion="Para el diseño")
+    cuerpo = _payload(material)
+    cuerpo.pop("adelanto_descripcion")
+
+    editada = await cliente_api.patch(
+        f"/api/ordenes/{orden['id']}", json=cuerpo, headers=cabecera_token(admin)
+    )
+
+    assert editada.json()["data"]["finanzas"]["pagos"][0]["descripcion"] == "Para el diseño"
+
+
+async def test_editar_la_orden_puede_corregir_la_descripcion(cliente_api, admin, material):
+    orden = await _crear(cliente_api, admin, material, adelanto_descripcion="Para el diseño")
+    editada = await cliente_api.patch(
+        f"/api/ordenes/{orden['id']}",
+        json=_payload(material, adelanto_descripcion="Para la impresión"),
+        headers=cabecera_token(admin),
+    )
+    assert editada.json()["data"]["finanzas"]["pagos"][0]["descripcion"] == "Para la impresión"
+
+
+async def test_el_abono_guarda_su_descripcion(cliente_api, admin, material):
+    orden = await _crear(cliente_api, admin, material, precio_total=100, adelanto_pago=50)
+    respuesta = await cliente_api.post(
+        f"/api/ordenes/{orden['id']}/confirmar-pago",
+        json={"monto": 20, "referencia": "OP-77", "descripcion": "Segundo abono, mitad del saldo"},
+        headers=cabecera_token(admin),
+    )
+    pagos = respuesta.json()["data"]["finanzas"]["pagos"]
+    abono = next(p for p in pagos if p["tipo"] == "saldo")
+    assert abono["descripcion"] == "Segundo abono, mitad del saldo"
+    assert abono["referencia"] == "OP-77"
+
+
+async def test_una_descripcion_demasiado_larga_se_rechaza(cliente_api, admin, material):
+    cuerpo = _payload(material) | {"adelanto_descripcion": "x" * 201}
+    respuesta = await cliente_api.post("/api/ordenes", json=cuerpo, headers=cabecera_token(admin))
+    assert respuesta.status_code == 422
+
+
+async def test_el_historial_del_cliente_ordena_los_pagos_y_dice_cuanto_falta(
+    cliente_api, admin, material, cliente
+):
+    """Responde "¿cuándo adelantó, cuánto y cuánto le falta?" sin salir del sistema."""
+    orden = await _crear(
+        cliente_api, admin, material,
+        cliente_id=cliente.id, precio_total=100, adelanto_pago=50,
+        adelanto_descripcion="Adelanto del banner",
+    )
+    await cliente_api.post(
+        f"/api/ordenes/{orden['id']}/confirmar-pago",
+        json={"monto": 25, "descripcion": "Abono de la semana"},
+        headers=cabecera_token(admin),
+    )
+
+    resumen = (
+        await cliente_api.get(f"/api/clientes/{cliente.id}/resumen", headers=cabecera_token(admin))
+    ).json()["data"]
+
+    assert resumen["total_adelantado"] == 50
+    assert resumen["total_pagado"] == 75
+    assert resumen["por_cobrar"] == 25
+    historial = resumen["historial_pagos"]
+    assert [p["descripcion"] for p in historial] == ["Abono de la semana", "Adelanto del banner"]
+    assert [p["saldo_despues"] for p in historial] == [25, 50]
+    assert {p["orden_codigo"] for p in historial} == {orden["codigo"]}
+
+
+async def test_un_pago_observado_aparece_pero_no_cuenta_como_dinero_recibido(
+    cliente_api, admin, material, cliente
+):
+    orden = await _crear(
+        cliente_api, admin, material, cliente_id=cliente.id, precio_total=100, adelanto_pago=50
+    )
+    pago_id = orden["finanzas"]["pagos"][0]["id"]
+    observado = await cliente_api.post(
+        f"/api/caja/pagos/{pago_id}/observar",
+        json={"motivo": "yape_falso", "nota": "No llegó a la cuenta"},
+        headers=cabecera_token(admin),
+    )
+    assert observado.status_code == 200, observado.text
+
+    resumen = (
+        await cliente_api.get(f"/api/clientes/{cliente.id}/resumen", headers=cabecera_token(admin))
+    ).json()["data"]
+
+    [fila] = resumen["historial_pagos"]
+    assert fila["estado_pago"] == "observado"
+    assert fila["saldo_despues"] is None
+    assert resumen["total_pagado"] == 0
+    assert resumen["por_cobrar"] == 100
+
+
+async def test_el_historial_no_incluye_ordenes_canceladas(cliente_api, admin, material, cliente):
+    orden = await _crear(cliente_api, admin, material, cliente_id=cliente.id)
+    await cliente_api.post(f"/api/ordenes/{orden['id']}/cancelar", headers=cabecera_token(admin))
+
+    resumen = (
+        await cliente_api.get(f"/api/clientes/{cliente.id}/resumen", headers=cabecera_token(admin))
+    ).json()["data"]
+
+    assert resumen["historial_pagos"] == []
+    assert resumen["total_pagado"] == 0

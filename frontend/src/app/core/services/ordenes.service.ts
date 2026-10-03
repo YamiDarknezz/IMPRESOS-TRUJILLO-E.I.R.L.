@@ -54,6 +54,8 @@ export interface DatosOrden {
   precio_total: number | null;
   adelanto_pago: number;
   metodo_pago: MetodoPago;
+  /** Para qué es el adelanto (#110). */
+  adelanto_descripcion: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -133,10 +135,15 @@ export class OrdenesService {
   }
 
   /** Registra el cobro y devuelve la orden: de ahí sale el pago al que se adjunta. */
-  async confirmarPago(idOrden: number, metodo: MetodoPago, referencia = ''): Promise<Orden> {
+  async confirmarPago(
+    idOrden: number,
+    metodo: MetodoPago,
+    referencia = '',
+    descripcion = ''
+  ): Promise<Orden> {
     const res = await this.api.post<RespuestaItem<Orden>>(
       `/api/ordenes/${idOrden}/confirmar-pago`,
-      { metodo_pago: metodo, referencia }
+      { metodo_pago: metodo, referencia, descripcion }
     );
     await this.lista.recargar();
     return res.data;

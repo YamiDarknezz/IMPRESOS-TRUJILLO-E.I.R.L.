@@ -62,6 +62,7 @@ interface FormularioOrden {
   metodoPago: MetodoPago;
   precioTotal: number;
   adelanto: number;
+  adelantoDescripcion: string;
   descuento: number;
   motivoDescuento: string;
   materiales: MaterialItem[];
@@ -81,7 +82,7 @@ function formularioVacio(): FormularioOrden {
     clienteId: null, cliente: '', asignadoA: null, productoId: null,
     descripcion: '', tipoDocumento: 'contrato', canalIngreso: '', unidadNegocio: 'imprenta',
     fechaEntrega: '', incluyeIgv: false, metodoPago: 'efectivo',
-    precioTotal: 0, adelanto: 0, descuento: 0, motivoDescuento: '',
+    precioTotal: 0, adelanto: 0, adelantoDescripcion: '', descuento: 0, motivoDescuento: '',
     materiales: [], lineas: [],
   };
 }
@@ -219,6 +220,8 @@ export class OrdenFormComponent {
       metodoPago: orden.finanzas?.metodo_pago_adelanto ?? 'efectivo',
       precioTotal: orden.items?.length ? 0 : orden.subtotal,
       adelanto: orden.finanzas?.adelanto_pago ?? 0,
+      adelantoDescripcion:
+        orden.finanzas?.pagos?.find(p => p.tipo === 'adelanto')?.descripcion ?? '',
       descuento: orden.finanzas?.descuento ?? 0,
       motivoDescuento: orden.finanzas?.motivo_descuento ?? '',
       materiales: (orden.materiales?.estimados ?? []).map(m => ({ ...m })),
@@ -453,6 +456,7 @@ export class OrdenFormComponent {
       precio_total: form.lineas.length > 0 ? null : form.precioTotal,
       adelanto_pago: form.adelanto,
       metodo_pago: form.metodoPago,
+      adelanto_descripcion: form.adelantoDescripcion.trim(),
     };
 
     this.guardando.set(true);

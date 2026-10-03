@@ -466,6 +466,10 @@ async def _sincronizar_adelanto(
 
         primero.monto = nuevo
         primero.metodo = data.metodo_pago
+        # Solo si el cliente de la API lo mandó: no se borra una descripción
+        # ya registrada por editar otra cosa de la orden.
+        if "adelanto_descripcion" in data.model_fields_set:
+            primero.descripcion = data.adelanto_descripcion
         # Si hubiera más de un adelanto registrado, se conserva el primero.
         for sobrante in adelantos[1:]:
             orden.pagos.remove(sobrante)
@@ -478,6 +482,7 @@ async def _sincronizar_adelanto(
                 metodo=data.metodo_pago,
                 tipo=TipoPago.ADELANTO,
                 registrado_por=usuario.id,
+                descripcion=data.adelanto_descripcion,
             )
         )
 
@@ -580,6 +585,7 @@ async def crear_orden(sesion: AsyncSession, data: OrdenCreateData, usuario: Usua
                 metodo=data.metodo_pago,
                 tipo=TipoPago.ADELANTO,
                 registrado_por=usuario.id,
+                descripcion=data.adelanto_descripcion,
             )
         )
         await sesion.flush()
@@ -886,6 +892,7 @@ async def confirmar_pago(
     referencia: str,
     usuario: Usuario,
     monto: Optional[float] = None,
+    descripcion: str = "",
 ) -> Orden:
     """
     Registra un cobro contra el saldo pendiente (issue #13).
@@ -922,6 +929,7 @@ async def confirmar_pago(
             tipo=TipoPago.SALDO,
             registrado_por=usuario.id,
             referencia=referencia,
+            descripcion=descripcion,
         )
     )
     await sesion.flush()
@@ -1044,6 +1052,42 @@ async def completar(
     return orden, mermas, devoluciones
 
 
+def historial_de_pagos(ordenes: list[Orden]) -> list[dict]:
+    """
+    Secuencia de pagos de las órdenes dadas, del más reciente al más antiguo (#110).
+
+    Responde "¿cuándo adelantó, cuánto, con qué medio y por qué?" sin abrir
+    WhatsApp. Cada pago conforme trae lo que le faltaba pagar a su orden
+    DESPUÉS de él (`saldo_despues`). Un pago observado o anulado aparece en el
+    historial, pero no cuenta como dinero recibido ni mueve ese saldo.
+    """
+    filas: list[dict] = []
+    for orden in ordenes:
+        acumulado = Decimal("0")
+        for pago in sorted(orden.pagos, key=lambda p: (p.fecha, p.id or 0)):
+            saldo_despues: Optional[float] = None
+            if pago.es_conforme:
+                acumulado += _decimal(pago.monto)
+                saldo_despues = float(calcular_saldo(orden.total, acumulado))
+            filas.append(
+                {
+                    "pago_id": pago.id,
+                    "orden_id": orden.id,
+                    "orden_codigo": orden.codigo,
+                    "fecha": pago.fecha.isoformat() if pago.fecha else None,
+                    "tipo": pago.tipo.value,
+                    "monto": float(_redondear(_decimal(pago.monto))),
+                    "metodo": pago.metodo.value,
+                    "descripcion": pago.descripcion or "",
+                    "referencia": pago.referencia or "",
+                    "estado_pago": pago.estado_pago.value if pago.estado_pago else "conforme",
+                    "saldo_despues": saldo_despues,
+                }
+            )
+    filas.sort(key=lambda fila: fila["fecha"] or "", reverse=True)
+    return filas
+
+
 async def resumen_cliente(sesion: AsyncSession, cliente_id: int) -> dict:
     """Ficha del cliente: historial, facturado y por cobrar (RF del SRS)."""
     cliente = await sesion.get(Cliente, cliente_id)
@@ -1070,11 +1114,21 @@ async def resumen_cliente(sesion: AsyncSession, cliente_id: int) -> dict:
         ),
         Decimal("0"),
     )
+    # Las canceladas quedan fuera: su dinero se devolvió o nunca fue del negocio.
+    vigentes = [orden for orden in ordenes if orden.estado != EstadoOrden.CANCELADA]
+    conformes = [pago for orden in vigentes for pago in orden.pagos if pago.es_conforme]
+    adelantado = sum(
+        (_decimal(p.monto) for p in conformes if p.tipo == TipoPago.ADELANTO), Decimal("0")
+    )
+    pagado = sum((_decimal(p.monto) for p in conformes), Decimal("0"))
     return {
         "cliente_id": cliente_id,
         "total_ordenes": len(ordenes),
         "facturado": _redondear(facturado),
         "por_cobrar": _redondear(por_cobrar),
+        "total_adelantado": _redondear(adelantado),
+        "total_pagado": _redondear(pagado),
+        "historial_pagos": historial_de_pagos(vigentes),
     }
 
 
