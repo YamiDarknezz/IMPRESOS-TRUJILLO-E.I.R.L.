@@ -18,6 +18,7 @@ from app.models import (
     EstadoCierre,
     EstadoOrden,
     EstadoPago,
+    GastoCaja,
     MotivoObservacionPago,
     Orden,
     PagoOrden,
@@ -28,6 +29,7 @@ from app.models import (
 # Caja y Finanzas no deben poder divergir sobre qué es una orden "cerrada" y
 # cómo se recalcula su saldo: se reutiliza la misma fuente de verdad que usa
 # confirmar_pago (bloqueo de fila incluido), en vez de reimplementarla aquí.
+from app.schemas.caja import GastoCajaData
 from app.services.ordenes_service import _obtener_para_escritura, _recalcular_finanzas
 
 METODOS = ("efectivo", "yape", "transferencia")
@@ -63,6 +65,32 @@ async def _pagos_del_dia(sesion: AsyncSession, fecha: date) -> list[tuple[PagoOr
         )
     ).all()
     return [(pago, orden) for pago, orden in filas]
+
+
+async def _gastos_del_dia(
+    sesion: AsyncSession,
+    fecha: date,
+    usuario_id: Optional[int] = None,
+    unidad_negocio: Optional[UnidadNegocio] = None,
+) -> list[GastoCaja]:
+    consulta = select(GastoCaja).where(GastoCaja.fecha == fecha).order_by(GastoCaja.id)
+    if usuario_id is not None:
+        consulta = consulta.where(GastoCaja.registrado_por == usuario_id)
+    if unidad_negocio is not None:
+        consulta = consulta.where(GastoCaja.unidad_negocio == unidad_negocio)
+    return list((await sesion.execute(consulta)).scalars())
+
+
+def serializar_gasto(gasto: GastoCaja) -> dict:
+    return {
+        "id": gasto.id,
+        "fecha": gasto.fecha.isoformat(),
+        "unidad_negocio": gasto.unidad_negocio.value,
+        "monto": round(float(gasto.monto), 2),
+        "motivo": gasto.motivo,
+        "usuario_id": gasto.registrado_por,
+        "usuario_nombre": gasto.usuario.nombre if gasto.usuario else "Sin registrar",
+    }
 
 
 async def resumen_dia(
@@ -144,17 +172,133 @@ async def resumen_dia(
             }
         )
 
+    # ── Gastos (#112): lo que salió de la caja y el neto que debería quedar ──
+    gastos = await _gastos_del_dia(sesion, fecha, usuario_id, unidad_negocio)
+    total_gastos = 0.0
+    for unidad_clave, acumulado in por_unidad.items():
+        acumulado["gastos"] = 0.0
+    for fila in por_usuario.values():
+        fila["gastos"] = 0.0
+    for gasto in gastos:
+        monto_gasto = float(gasto.monto)
+        total_gastos = round(total_gastos + monto_gasto, 2)
+        por_unidad[gasto.unidad_negocio.value]["gastos"] = round(
+            por_unidad[gasto.unidad_negocio.value]["gastos"] + monto_gasto, 2
+        )
+        # Un gasto de alguien que no cobró nada ese día también debe verse.
+        fila = por_usuario.setdefault(
+            gasto.registrado_por,
+            {
+                "usuario_id": gasto.registrado_por,
+                "nombre": gasto.usuario.nombre if gasto.usuario else "Sin registrar",
+                **_acumulado(),
+                "gastos": 0.0,
+            },
+        )
+        fila["gastos"] = round(fila["gastos"] + monto_gasto, 2)
+    for acumulado in (*por_unidad.values(), *por_usuario.values()):
+        acumulado["neto"] = round(acumulado["total"] - acumulado["gastos"], 2)
+
     return {
         "fecha": fecha.isoformat(),
         "total": total,
         "total_observado": total_observado,
+        "total_gastos": total_gastos,
+        # Lo cobrado menos lo gastado; el efectivo es lo único que sale de la caja física.
+        "neto": round(total["total"] - total_gastos, 2),
+        "efectivo_neto": round(total["efectivo"] - total_gastos, 2),
         "por_unidad_negocio": por_unidad,
         "por_usuario": sorted(
             por_usuario.values(), key=lambda fila: fila["total"], reverse=True
         ),
         "detalle": detalle,
         "observados": observados,
+        "gastos": [serializar_gasto(gasto) for gasto in gastos],
     }
+
+
+async def _cierre_del_usuario(
+    sesion: AsyncSession, fecha: date, unidad_negocio: UnidadNegocio, usuario_id: int
+) -> Optional[CierreCaja]:
+    return (
+        await sesion.execute(
+            select(CierreCaja).where(
+                CierreCaja.fecha == fecha,
+                CierreCaja.unidad_negocio == unidad_negocio,
+                CierreCaja.usuario_id == usuario_id,
+            )
+        )
+    ).scalar_one_or_none()
+
+
+async def registrar_gasto(sesion: AsyncSession, data: GastoCajaData, usuario: Usuario) -> GastoCaja:
+    """
+    Anota un gasto que salió de la caja (#112).
+
+    No se admite en un día cuya caja esa persona ya cerró: el cierre guarda el
+    monto de gastos de ese momento y cambiarlo después lo dejaría desfasado
+    (el mismo cuidado que el adelanto con el cierre congelado, issue #19).
+    """
+    hoy = a_fecha_peru(ahora_utc())
+    fecha = data.fecha or hoy
+    if fecha > hoy:
+        raise ErrorDeNegocio("No se puede registrar un gasto con fecha futura.")
+    if await _cierre_del_usuario(sesion, fecha, data.unidad_negocio, usuario.id) is not None:
+        raise ErrorDeNegocio(
+            "Ya cerraste tu caja de esa fecha y unidad: el gasto ya no se puede agregar."
+        )
+
+    gasto = GastoCaja(
+        fecha=fecha,
+        unidad_negocio=data.unidad_negocio,
+        monto=round(data.monto, 2),
+        motivo=data.motivo,
+        usuario=usuario,
+    )
+    sesion.add(gasto)
+    await sesion.flush()
+
+    registrar(
+        sesion,
+        usuario.id,
+        TipoEventoAuditoria.CREAR,
+        tabla_afectada="gastos_caja",
+        registro_id=gasto.id,
+        detalle=f"Gasto de caja {fecha} {data.unidad_negocio.value}: S/ {gasto.monto} ({data.motivo})",
+        valores_nuevos={"monto": float(gasto.monto), "motivo": data.motivo},
+    )
+    return gasto
+
+
+async def eliminar_gasto(sesion: AsyncSession, gasto_id: int, usuario: Usuario) -> dict:
+    """Corrige un gasto mal anotado (solo supervisión); queda en la auditoría."""
+    gasto = await sesion.get(GastoCaja, gasto_id)
+    if gasto is None:
+        raise NoEncontrado("Gasto no encontrado.")
+    if await _cierre_del_usuario(
+        sesion, gasto.fecha, gasto.unidad_negocio, gasto.registrado_por
+    ) is not None:
+        raise ErrorDeNegocio(
+            "No se puede quitar un gasto de una caja que ya se cerró."
+        )
+
+    resultado = serializar_gasto(gasto)
+    registrar(
+        sesion,
+        usuario.id,
+        TipoEventoAuditoria.ELIMINAR,
+        tabla_afectada="gastos_caja",
+        registro_id=gasto.id,
+        detalle=(
+            f"Gasto de caja eliminado ({gasto.fecha} {gasto.unidad_negocio.value}): "
+            f"S/ {gasto.monto} ({gasto.motivo}), anotado por "
+            f"{gasto.usuario.nombre if gasto.usuario else 'usuario desconocido'}"
+        ),
+        valores_anteriores={"monto": float(gasto.monto), "motivo": gasto.motivo},
+    )
+    await sesion.delete(gasto)
+    await sesion.flush()
+    return resultado
 
 
 async def observar_pago(
@@ -285,6 +429,14 @@ async def cerrar_caja(
         ):
             _sumar(acumulado, pago)
 
+    gastos_del_usuario = round(
+        sum(
+            float(g.monto)
+            for g in await _gastos_del_dia(sesion, fecha, usuario.id, unidad_negocio)
+        ),
+        2,
+    )
+
     cierre = CierreCaja(
         fecha=fecha,
         unidad_negocio=unidad_negocio,
@@ -293,6 +445,7 @@ async def cerrar_caja(
         monto_yape=acumulado["yape"],
         monto_transferencia=acumulado["transferencia"],
         total=acumulado["total"],
+        monto_gastos=gastos_del_usuario,
         estado=EstadoCierre.CERRADO,
         observacion=observacion,
     )
@@ -305,8 +458,15 @@ async def cerrar_caja(
         TipoEventoAuditoria.CIERRE_CAJA,
         tabla_afectada="cierres_caja",
         registro_id=cierre.id,
-        detalle=f"Cierre {fecha} {unidad_negocio.value}: S/ {acumulado['total']}",
-        valores_nuevos={"total": acumulado["total"], "unidad": unidad_negocio.value},
+        detalle=(
+            f"Cierre {fecha} {unidad_negocio.value}: S/ {acumulado['total']} cobrado, "
+            f"S/ {gastos_del_usuario} en gastos"
+        ),
+        valores_nuevos={
+            "total": acumulado["total"],
+            "gastos": gastos_del_usuario,
+            "unidad": unidad_negocio.value,
+        },
     )
     return cierre
 

@@ -38,6 +38,8 @@ describe('CajaComponent', () => {
     cerrar: ReturnType<typeof vi.fn>;
     congelar: ReturnType<typeof vi.fn>;
     observarPago: ReturnType<typeof vi.fn>;
+    registrarGasto: ReturnType<typeof vi.fn>;
+    eliminarGasto: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
@@ -47,6 +49,8 @@ describe('CajaComponent', () => {
       cerrar: vi.fn().mockResolvedValue(cierre),
       congelar: vi.fn().mockResolvedValue(cierre),
       observarPago: vi.fn().mockResolvedValue({}),
+      registrarGasto: vi.fn().mockResolvedValue({}),
+      eliminarGasto: vi.fn().mockResolvedValue(undefined),
     };
     TestBed.configureTestingModule({
       imports: [CajaComponent],
@@ -174,5 +178,87 @@ describe('CajaComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.componentInstance.pagoAObservar()).toBeNull();
+  });
+
+  // Issue #112: los gastos del día restan del arqueo.
+  describe('gastos de caja', () => {
+    it('abrirModalGasto() parte vacío y usa la unidad filtrada', () => {
+      const componente = TestBed.createComponent(CajaComponent).componentInstance;
+      componente.cambiarUnidad('gigantografias');
+      componente.gastoMotivo.set('algo viejo');
+
+      componente.abrirModalGasto();
+
+      expect(componente.modalGasto()).toBe(true);
+      expect(componente.gastoMotivo()).toBe('');
+      expect(componente.gastoMonto()).toBeNull();
+      expect(componente.gastoUnidad()).toBe('gigantografias');
+    });
+
+    it('guardarGasto(): exige el motivo y un monto mayor a 0', async () => {
+      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+      const componente = TestBed.createComponent(CajaComponent).componentInstance;
+      componente.gastoMonto.set(10);
+      await componente.guardarGasto();
+      expect(alertSpy).toHaveBeenLastCalledWith('Indica en qué se gastó.');
+
+      componente.gastoMotivo.set('Tinta');
+      componente.gastoMonto.set(0);
+      await componente.guardarGasto();
+      expect(alertSpy).toHaveBeenLastCalledWith('Ingresa un monto válido mayor a 0.');
+
+      expect(cajaFalso.registrarGasto).not.toHaveBeenCalled();
+      alertSpy.mockRestore();
+    });
+
+    it('guardarGasto(): lo anota en el día que se mira, cierra el modal y recarga', async () => {
+      const fixture = TestBed.createComponent(CajaComponent);
+      const componente = fixture.componentInstance;
+      componente.cambiarFecha('2026-09-18');
+      componente.abrirModalGasto();
+      componente.gastoMotivo.set('  Papel bond ');
+      componente.gastoMonto.set(15.5);
+      cajaFalso.resumen.mockClear();
+
+      await componente.guardarGasto();
+
+      expect(cajaFalso.registrarGasto).toHaveBeenCalledWith({
+        monto: 15.5,
+        motivo: 'Papel bond',
+        unidad_negocio: 'imprenta',
+        fecha: '2026-09-18',
+      });
+      expect(componente.modalGasto()).toBe(false);
+      expect(cajaFalso.resumen).toHaveBeenCalled();
+    });
+
+    it('guardarGasto(): si el servidor lo rechaza, avisa y el modal sigue abierto', async () => {
+      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+      cajaFalso.registrarGasto.mockRejectedValue(new Error('Ya cerraste tu caja'));
+      const componente = TestBed.createComponent(CajaComponent).componentInstance;
+      componente.abrirModalGasto();
+      componente.gastoMotivo.set('Tinta');
+      componente.gastoMonto.set(5);
+
+      await componente.guardarGasto();
+
+      expect(alertSpy).toHaveBeenCalledTimes(1);
+      expect(componente.modalGasto()).toBe(true);
+      alertSpy.mockRestore();
+    });
+
+    it('eliminarGasto(): pide confirmación antes de quitarlo', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+      const componente = TestBed.createComponent(CajaComponent).componentInstance;
+      const gasto = { id: 4, fecha: '2026-09-18', unidad_negocio: 'imprenta' as const, monto: 9, motivo: 'Tinta', usuario_id: 1, usuario_nombre: 'Ana' };
+
+      await componente.eliminarGasto(gasto);
+      expect(cajaFalso.eliminarGasto).not.toHaveBeenCalled();
+
+      confirmSpy.mockReturnValue(true);
+      await componente.eliminarGasto(gasto);
+      expect(cajaFalso.eliminarGasto).toHaveBeenCalledWith(4);
+      confirmSpy.mockRestore();
+    });
   });
 });

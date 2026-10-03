@@ -24,6 +24,10 @@
   <button class="btn-secondary btn-sm" (click)="cargar()">↻ Actualizar</button>
 
   @if (sesion.puedeVender()) {
+    <button class="btn-secondary btn-sm" (click)="abrirModalGasto()">− Registrar gasto</button>
+  }
+
+  @if (sesion.puedeVender()) {
     <div class="actions-cell">
       @for (u of unidades; track u) {
         <button class="btn-secondary btn-sm" (click)="cerrarCaja(u)" [disabled]="guardando()">
@@ -81,6 +85,25 @@
         <span class="stat-value stat-color-danger">S/ {{ datos.total.total | number:'1.2-2' }}</span>
       </div>
     </div>
+    <div class="stat-card">
+      <div class="stat-icon stat-icon-warning">
+        <app-icon name="coins" [size]="20" />
+      </div>
+      <div class="stat-body">
+        <span class="stat-label">Gastos del día</span>
+        <span class="stat-value stat-color-warning">- S/ {{ datos.total_gastos ?? 0 | number:'1.2-2' }}</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon stat-icon-success">
+        <app-icon name="wallet" [size]="20" />
+      </div>
+      <div class="stat-body">
+        <span class="stat-label" title="Cobrado menos gastado">Neto del día</span>
+        <span class="stat-value stat-color-success">S/ {{ datos.neto ?? datos.total.total | number:'1.2-2' }}</span>
+        <span class="text-hint">Efectivo que debe quedar: S/ {{ datos.efectivo_neto ?? datos.total.efectivo | number:'1.2-2' }}</span>
+      </div>
+    </div>
     @if ((datos.total_observado ?? 0) > 0) {
       <div class="stat-card stat-card-danger">
         <div class="stat-icon stat-icon-danger">
@@ -106,6 +129,10 @@
             Efectivo: S/ {{ datos.por_unidad_negocio[u]?.efectivo ?? 0 | number:'1.2-2' }}
             · Yape: S/ {{ datos.por_unidad_negocio[u]?.yape ?? 0 | number:'1.2-2' }}
             · Transf: S/ {{ datos.por_unidad_negocio[u]?.transferencia ?? 0 | number:'1.2-2' }}
+          </span>
+          <span class="metodo-label">
+            Gastos: S/ {{ datos.por_unidad_negocio[u]?.gastos ?? 0 | number:'1.2-2' }}
+            · Neto: S/ {{ datos.por_unidad_negocio[u]?.neto ?? datos.por_unidad_negocio[u]?.total ?? 0 | number:'1.2-2' }}
           </span>
         </div>
       }
@@ -192,6 +219,42 @@
     }
   </div>
 
+  <!-- ═══ Gastos del día (#112) ═══════════════════════════════════════════ -->
+  <div class="table-card card card-seccion-tabla">
+    <div class="toolbar toolbar-alerta">
+      <span class="toolbar-title">Gastos del día</span>
+    </div>
+    @if ((datos.gastos?.length ?? 0) === 0) {
+      <div class="empty-state"><p>Sin gastos registrados en la fecha ({{ formatearFecha(fecha()) }}).</p></div>
+    } @else {
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr><th>Motivo</th><th>Unidad</th><th>Anotado por</th><th>Monto</th>@if (sesion.esSupervisor()) { <th>Acciones</th> }</tr>
+          </thead>
+          <tbody>
+            @for (gasto of datos.gastos; track gasto.id) {
+              <tr>
+                <td>{{ gasto.motivo }}</td>
+                <td><span class="badge badge-neutral">{{ etiquetaUnidad[gasto.unidad_negocio] }}</span></td>
+                <td>{{ gasto.usuario_nombre }}</td>
+                <td>- S/ {{ gasto.monto | number:'1.2-2' }}</td>
+                @if (sesion.esSupervisor()) {
+                  <td>
+                    <button class="btn-icon btn-icon-cancel" title="Quitar gasto" aria-label="Quitar gasto"
+                            (click)="eliminarGasto(gasto)" [disabled]="guardando()">
+                      <app-icon name="trash" [size]="14" />
+                    </button>
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+
   <!-- ═══ Cierres registrados ═════════════════════════════════════════════ -->
   <div class="table-card card" style="margin-bottom:1.5rem">
     <div class="toolbar" style="padding:1rem 1.25rem 0">
@@ -210,6 +273,8 @@
               <th>Yape</th>
               <th>Transferencia</th>
               <th>Total</th>
+              <th>Gastos</th>
+              <th>Neto</th>
               <th>Estado</th>
               <th>Validado por</th>
               <th>Acciones</th>
@@ -224,6 +289,8 @@
                 <td>S/ {{ cierre.monto_yape | number:'1.2-2' }}</td>
                 <td>S/ {{ cierre.monto_transferencia | number:'1.2-2' }}</td>
                 <td><strong>S/ {{ cierre.total | number:'1.2-2' }}</strong></td>
+                <td>S/ {{ cierre.monto_gastos ?? 0 | number:'1.2-2' }}</td>
+                <td><strong>S/ {{ cierre.neto ?? cierre.total | number:'1.2-2' }}</strong></td>
                 <td>
                   <span class="badge" [ngClass]="cierre.estado === 'congelado' ? 'badge-success' : 'badge-warning'">
                     {{ cierre.estado === 'congelado' ? 'Congelado' : 'Cerrado' }}
@@ -346,6 +413,42 @@
       <button class="btn-secondary" (click)="cerrarModalObservar()" [disabled]="guardando()">Cancelar</button>
       <button class="btn-danger" (click)="guardarObservacion()" [disabled]="guardando()">
         {{ guardando() ? 'Observando...' : 'Confirmar y Deducir de Caja' }}
+      </button>
+    </div>
+  </app-modal>
+}
+
+<!-- ═══ Modal: Registrar gasto de caja (#112) ═══════════════════════════════ -->
+@if (modalGasto()) {
+  <app-modal titulo="Registrar gasto de caja" [conBotonCerrar]="true" [cerrarAlClicFuera]="false" (cerrar)="cerrarModalGasto()">
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">En qué se gastó *</label>
+        <input type="text" [ngModel]="gastoMotivo()" (ngModelChange)="gastoMotivo.set($event)"
+               name="gastoMotivo" class="form-input" maxlength="200"
+               placeholder="Ej: Tinta negra, papel bond, banner...">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Monto (S/) *</label>
+          <input type="number" step="0.10" min="0.10" [ngModel]="gastoMonto()" (ngModelChange)="gastoMonto.set($event)"
+                 name="gastoMonto" class="form-input" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Unidad de negocio</label>
+          <select [ngModel]="gastoUnidad()" (ngModelChange)="gastoUnidad.set($event)" name="gastoUnidad" class="form-input">
+            @for (u of unidades; track u) {
+              <option [value]="u">{{ etiquetaUnidad[u] }}</option>
+            }
+          </select>
+        </div>
+      </div>
+      <p class="text-hint">Se anota en el día que estás mirando ({{ formatearFecha(fecha()) }}) y resta del arqueo.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="cerrarModalGasto()" [disabled]="guardando()">Cancelar</button>
+      <button class="btn-primary" (click)="guardarGasto()" [disabled]="guardando()">
+        {{ guardando() ? 'Guardando...' : 'Registrar gasto' }}
       </button>
     </div>
   </app-modal>

@@ -1530,3 +1530,7 @@ select.date-filter-input:focus {
 .section-title-primero {
   margin-top: 0;
 }
+
+.card-seccion-tabla {
+  margin-bottom: 1.5rem;
+}

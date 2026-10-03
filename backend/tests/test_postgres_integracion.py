@@ -372,3 +372,29 @@ async def test_canal_de_ingreso_con_check_y_valor_por_defecto_en_postgres(sesion
                 text("UPDATE ordenes SET canal_ingreso = 'paloma' WHERE id = :id"), {"id": orden.id}
             )
 
+
+async def test_gasto_de_caja_exige_monto_positivo_en_postgres(sesion_pg, entorno_pg):
+    """#112: el CHECK `monto > 0` de gastos_caja existe de verdad en la base."""
+    from datetime import date
+
+    from app.models import GastoCaja
+
+    admin = entorno_pg["admin"]
+    sesion_pg.add(
+        GastoCaja(
+            fecha=date(2026, 10, 3), unidad_negocio=UnidadNegocio.IMPRENTA, monto=5,
+            motivo="Tinta", registrado_por=admin.id,
+        )
+    )
+    await sesion_pg.flush()
+
+    with pytest.raises(IntegrityError):
+        async with sesion_pg.begin_nested():
+            sesion_pg.add(
+                GastoCaja(
+                    fecha=date(2026, 10, 3), unidad_negocio=UnidadNegocio.IMPRENTA, monto=0,
+                    motivo="Nada", registrado_por=admin.id,
+                )
+            )
+            await sesion_pg.flush()
+

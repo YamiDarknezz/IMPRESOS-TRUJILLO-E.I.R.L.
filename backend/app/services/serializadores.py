@@ -327,6 +327,9 @@ def serializar_cierre(cierre) -> dict[str, Any]:
         "monto_yape": num(cierre.monto_yape),
         "monto_transferencia": num(cierre.monto_transferencia),
         "total": num(cierre.total),
+        "monto_gastos": num(cierre.monto_gastos),
+        # Lo cobrado menos lo gastado ese día (#112).
+        "neto": round(num(cierre.total) - num(cierre.monto_gastos), 2),
         "estado": cierre.estado.value,
         "validado_por": cierre.validado_por,
         "validador": cierre.validador.nombre if cierre.validador else "",

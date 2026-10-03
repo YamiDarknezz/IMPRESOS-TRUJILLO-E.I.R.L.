@@ -8,9 +8,33 @@ export interface AcumuladoCaja {
   total: number;
 }
 
-export interface FilaCajaUsuario extends AcumuladoCaja {
+/** Lo cobrado de una unidad o de un usuario, con lo que salió por gastos (#112). */
+export interface AcumuladoConGastos extends AcumuladoCaja {
+  gastos?: number;
+  neto?: number;
+}
+
+export interface FilaCajaUsuario extends AcumuladoConGastos {
   usuario_id: number | null;
   nombre: string;
+}
+
+/** Egreso de la caja del día: tinta, papel, banner... (#112). */
+export interface GastoCaja {
+  id: number;
+  fecha: string;
+  unidad_negocio: UnidadNegocio;
+  monto: number;
+  motivo: string;
+  usuario_id: number;
+  usuario_nombre: string;
+}
+
+export interface GastoCajaData {
+  monto: number;
+  motivo: string;
+  unidad_negocio: UnidadNegocio;
+  fecha?: string;
 }
 
 export interface PagoObservadoInfo {
@@ -51,7 +75,12 @@ export interface ResumenCaja {
   fecha: string;
   total: AcumuladoCaja;
   total_observado?: number;
-  por_unidad_negocio: Record<string, AcumuladoCaja>;
+  /** Lo gastado, lo cobrado menos lo gastado, y el efectivo que debería quedar. */
+  total_gastos?: number;
+  neto?: number;
+  efectivo_neto?: number;
+  gastos?: GastoCaja[];
+  por_unidad_negocio: Record<string, AcumuladoConGastos>;
   por_usuario: FilaCajaUsuario[];
   detalle: DetalleCaja[];
   observados?: PagoObservadoInfo[];
@@ -80,6 +109,8 @@ export interface CierreCaja {
   monto_yape: number;
   monto_transferencia: number;
   total: number;
+  monto_gastos?: number;
+  neto?: number;
   estado: EstadoCierre;
   validado_por: number | null;
   validador: string;

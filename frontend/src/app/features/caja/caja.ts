@@ -6,6 +6,7 @@ import { CajaService } from '../../core/services/caja.service';
 import { SesionService } from '../../core/services/sesion.service';
 import {
   AcumuladoCaja,
+  GastoCaja,
   CierreCaja,
   DetalleCaja,
   ETIQUETA_METODO,
@@ -49,6 +50,12 @@ export class CajaComponent {
   readonly cierres = signal<CierreCaja[]>([]);
   readonly cargando = signal(false);
   readonly guardando = signal(false);
+
+  // ── Modal Registrar gasto (#112) ────────────────────────────────────────
+  readonly modalGasto = signal(false);
+  readonly gastoMonto = signal<number | null>(null);
+  readonly gastoMotivo = signal('');
+  readonly gastoUnidad = signal<UnidadNegocio>('imprenta');
 
   // ── Modal Observar Cobro (Auditoría previa al cierre) ───────────────────
   readonly pagoAObservar = signal<DetalleCaja | null>(null);
@@ -110,6 +117,68 @@ export class CajaComponent {
       alert(mensajeDeError(e, 'No se pudo cargar la caja.'));
     } finally {
       this.cargando.set(false);
+    }
+  }
+
+  // ── Gastos de caja (#112) ────────────────────────────────────────────────
+
+  abrirModalGasto(): void {
+    this.gastoMonto.set(null);
+    this.gastoMotivo.set('');
+    this.gastoUnidad.set(this.unidad() ?? 'imprenta');
+    this.modalGasto.set(true);
+  }
+
+  cerrarModalGasto(): void {
+    this.modalGasto.set(false);
+  }
+
+  async guardarGasto(): Promise<void> {
+    const monto = Number(this.gastoMonto());
+    const motivo = this.gastoMotivo().trim();
+    if (!motivo) {
+      alert('Indica en qué se gastó.');
+      return;
+    }
+    if (!monto || monto <= 0) {
+      alert('Ingresa un monto válido mayor a 0.');
+      return;
+    }
+
+    this.guardando.set(true);
+    try {
+      await this.cajaService.registrarGasto({
+        monto,
+        motivo,
+        unidad_negocio: this.gastoUnidad(),
+        // El gasto se anota en el día que se está mirando.
+        fecha: this.fecha(),
+      });
+      this.cerrarModalGasto();
+      await this.cargar();
+    } catch (e) {
+      alert(mensajeDeError(e, 'No se pudo registrar el gasto.'));
+    } finally {
+      this.guardando.set(false);
+    }
+  }
+
+  /** Solo la supervisión corrige un gasto mal anotado. */
+  async eliminarGasto(gasto: GastoCaja): Promise<void> {
+    const confirmado = confirm(
+      `¿Quitar el gasto "${gasto.motivo}" de S/ ${gasto.monto.toFixed(2)}?\n\n` +
+      'Queda registrado en la auditoría.'
+    );
+    if (!confirmado) return;
+
+    this.guardando.set(true);
+    try {
+      await this.cajaService.eliminarGasto(gasto.id);
+      await this.cargar();
+    } catch (e) {
+      alert(mensajeDeError(e, 'No se pudo quitar el gasto.'));
+    } finally {
+      this.guardando.set(false);
     }
   }
 
