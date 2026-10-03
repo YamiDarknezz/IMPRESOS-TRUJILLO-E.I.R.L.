@@ -66,7 +66,7 @@ export interface ClientePorCobrar {
 /** Lo que debe cada cliente, con la antigüedad de la deuda (#72). */
 export interface CuentasPorCobrar {
   fecha_corte: string;
-  solo_corporativos: boolean;
+  solo_proformas: boolean;
   total_pendiente: number;
   tramos: TramosAntiguedad;
   clientes: ClientePorCobrar[];

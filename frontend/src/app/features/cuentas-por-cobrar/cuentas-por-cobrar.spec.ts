@@ -5,7 +5,7 @@ import { CuentasPorCobrarComponent, TRAMOS } from './cuentas-por-cobrar';
 
 const cuentas: CuentasPorCobrar = {
   fecha_corte: '2026-10-03',
-  solo_corporativos: true,
+  solo_proformas: true,
   total_pendiente: 150,
   tramos: { d0_30: 50, d31_60: 0, d61_90: 0, d90_mas: 100 },
   clientes: [
@@ -35,7 +35,7 @@ describe('CuentasPorCobrarComponent (#72)', () => {
     });
   });
 
-  it('al crearse, carga solo a los clientes corporativos', async () => {
+  it('al crearse, carga solo las proformas', async () => {
     const fixture = TestBed.createComponent(CuentasPorCobrarComponent);
     await fixture.whenStable();
     expect(finanzasFalso.cuentasPorCobrar).toHaveBeenCalledWith(true);
@@ -48,7 +48,7 @@ describe('CuentasPorCobrarComponent (#72)', () => {
 
     componente.cambiarAlcance(false);
 
-    expect(componente.soloCorporativos()).toBe(false);
+    expect(componente.soloProformas()).toBe(false);
     expect(finanzasFalso.cuentasPorCobrar).toHaveBeenCalledWith(false);
   });
 

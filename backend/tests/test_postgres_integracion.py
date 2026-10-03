@@ -451,12 +451,14 @@ async def test_entrega_con_saldo_autorizada_y_cuentas_por_cobrar_en_postgres(ses
     from app.services.serializadores import serializar_orden
 
     admin, material = entorno_pg["admin"], entorno_pg["material"]
-    corporativo = Cliente(nombre=f"Corporativo PG {SUFIJO}", es_corporativo=True)
+    corporativo = Cliente(nombre=f"Cliente PG proforma {SUFIJO}")
     sesion_pg.add(corporativo)
     await sesion_pg.flush()
 
     orden = await ordenes_service.crear_orden(
-        sesion_pg, datos_orden(material.id, cliente_id=corporativo.id), admin
+        sesion_pg,
+        datos_orden(material.id, cliente_id=corporativo.id, tipo_documento="proforma"),
+        admin,
     )
     await ordenes_service.completar(
         sesion_pg, orden.id, [MaterialEstimado(material_id=material.id, cantidad=2)], admin

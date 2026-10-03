@@ -46,9 +46,9 @@ export class FinanzasService {
   }
 
   /** Deuda por cliente con su antigüedad (#72). Solo la ve la supervisión. */
-  async cuentasPorCobrar(soloCorporativos = true): Promise<CuentasPorCobrar> {
+  async cuentasPorCobrar(soloProformas = true): Promise<CuentasPorCobrar> {
     const res = await this.api.get<RespuestaItem<CuentasPorCobrar>>(
-      `/api/finanzas/cuentas-por-cobrar?solo_corporativos=${soloCorporativos}`
+      `/api/finanzas/cuentas-por-cobrar?solo_proformas=${soloProformas}`
     );
     return res.data;
   }

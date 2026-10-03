@@ -196,7 +196,7 @@ export class OrdenesService {
   }
 
   /**
-   * Entrega una orden de un cliente corporativo antes de que pague (#72).
+   * Entrega una proforma antes de que pague (#72).
    * Lo autoriza un supervisor con un motivo; no es optimista porque el
    * servidor puede rechazarla y la orden cambia de saldo y de autorización.
    */

@@ -173,9 +173,17 @@ export class OrdenFormComponent {
     Math.max(redondear(this.total() - this.form().adelanto), 0)
   );
 
-  /** Adelanto mínimo exigido para clientes no corporativos. */
+  /**
+   * La proforma es el documento de los clientes de confianza y de las empresas
+   * que pagan a plazo: no exige adelanto. Los clientes corporativos tampoco (#72).
+   */
+  readonly exentoDeAdelanto = computed(
+    () => this.form().tipoDocumento === 'proforma' || !!this.clienteSeleccionado()?.es_corporativo
+  );
+
+  /** Adelanto mínimo exigido; 0 si el documento o el cliente están exentos. */
   readonly adelantoMinimo = computed(() => {
-    if (this.clienteSeleccionado()?.es_corporativo) return 0;
+    if (this.exentoDeAdelanto()) return 0;
     return redondear(this.total() * adelantoMinimoPorcentaje() / 100);
   });
 
@@ -379,7 +387,7 @@ export class OrdenFormComponent {
       errores['descuento'] = 'El descuento no puede superar el subtotal.';
     }
     // RN-01: sin adelanto no se arranca el trabajo.
-    if (!(form.adelanto > 0) && !this.clienteSeleccionado()?.es_corporativo) {
+    if (!(form.adelanto > 0) && !this.exentoDeAdelanto()) {
       errores['adelanto'] = 'Se requiere un adelanto para iniciar el trabajo.';
     }
     if (form.adelanto < this.adelantoMinimo()) {

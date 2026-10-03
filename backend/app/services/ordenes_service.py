@@ -3,7 +3,8 @@
 Concentra las decisiones que definen el sistema (SRS, Reglas de Negocio):
 
 1. RN-01: sin adelanto no se arranca el trabajo (mínimo del 50% para clientes
-   generales; los corporativos con orden de compra formal quedan exceptuados).
+   generales; los corporativos con orden de compra formal y las PROFORMAS quedan
+   exceptuados: son clientes de confianza o empresas que pagan a plazo).
 2. RN-02: sin pago completo no se entrega (candado digital).
 3. RN-03: el stock se reserva al crear la orden, no al producirla.
 4. RN-06: cancelar devuelve el stock reservado.
@@ -104,12 +105,15 @@ def validar_adelanto(
     adelanto: float | Decimal,
     es_corporativo: bool,
     porcentaje_minimo: float | None = None,
+    es_proforma: bool = False,
 ) -> None:
     """
     RN-01. Los clientes generales deben adelantar al menos el porcentaje
-    configurado; las órdenes corporativas se autorizan sin ese mínimo.
+    configurado; las órdenes corporativas y las proformas se autorizan sin ese
+    mínimo (la proforma es el documento de los clientes de confianza y de las
+    empresas que pagan a plazo, p. ej. por cheque).
     """
-    if es_corporativo:
+    if es_corporativo or es_proforma:
         return
 
     total_d = _decimal(total)
@@ -175,7 +179,7 @@ def validar_transicion(
     Verifica que mover la orden de `actual` a `nuevo` sea legítimo.
 
     `entrega_con_saldo_autorizada` es la única excepción a RN-02 (#72): un
-    supervisor autorizó entregar a un cliente corporativo antes de que pague.
+    supervisor autorizó entregar una proforma antes de que pague.
     Quien llama es quien comprueba que la autorización sea válida.
 
     Las prohibiciones no son arbitrarias: cada una protege el inventario o una
@@ -529,7 +533,12 @@ async def crear_orden(sesion: AsyncSession, data: OrdenCreateData, usuario: Usua
     igv, total = calcular_totales(subtotal, data.incluye_igv, descuento)
     # La exención de RN-01 solo aplica cuando el cliente fue seleccionado
     # explícitamente por id, no cuando se resolvió por coincidencia de nombre.
-    validar_adelanto(total, data.adelanto_pago, bool(data.cliente_id) and cliente.es_corporativo)
+    validar_adelanto(
+        total,
+        data.adelanto_pago,
+        bool(data.cliente_id) and cliente.es_corporativo,
+        es_proforma=data.tipo_documento == TipoDocumento.PROFORMA,
+    )
 
     orden = Orden(
         tipo_documento=data.tipo_documento,
@@ -717,7 +726,12 @@ async def actualizar(sesion: AsyncSession, id_orden: int, data: OrdenCreateData,
     igv, total = calcular_totales(subtotal, data.incluye_igv, descuento)
     # La exención de RN-01 solo aplica cuando el cliente fue seleccionado
     # explícitamente por id, no cuando se resolvió por coincidencia de nombre.
-    validar_adelanto(total, data.adelanto_pago, bool(data.cliente_id) and cliente.es_corporativo)
+    validar_adelanto(
+        total,
+        data.adelanto_pago,
+        bool(data.cliente_id) and cliente.es_corporativo,
+        es_proforma=data.tipo_documento == TipoDocumento.PROFORMA,
+    )
 
     anteriores = {
         linea.material_id: float(linea.cantidad_estimada) for linea in orden.materiales
@@ -870,11 +884,13 @@ def _exigir_autorizacion_de_entrega_con_saldo(
 ) -> None:
     """
     Condiciones para entregar antes de pagar (#72). Las tres, siempre:
-    cliente corporativo, un rol de supervisión y el motivo escrito.
+    que sea una PROFORMA (el documento de los clientes de confianza y de las
+    empresas que pagan a plazo), un rol de supervisión y el motivo escrito.
     """
-    if not (orden.cliente and orden.cliente.es_corporativo):
+    if orden.tipo_documento != TipoDocumento.PROFORMA:
         raise ErrorDeNegocio(
-            "Solo los clientes corporativos pueden recibir el trabajo antes de pagar."
+            "Solo las proformas pueden entregarse antes de pagar: un contrato "
+            "se entrega con el pago completo."
         )
     if usuario.rol not in (Rol.ADMIN, Rol.SUBGERENTE):
         raise PermisoDenegado("Solo un supervisor puede autorizar una entrega con saldo pendiente.")
@@ -894,7 +910,7 @@ async def cambiar_estado(
     Avanza (o corrige) la etapa de producción de una orden.
 
     Entregar con saldo pendiente solo es posible con `autorizar_saldo`, y queda
-    en la orden y en la auditoría (#72): cliente corporativo, supervisor y motivo.
+    en la orden y en la auditoría (#72): proforma, supervisor y motivo.
     """
     orden = await _obtener_para_escritura(sesion, id_orden)
     exigir_etapa(orden, usuario)

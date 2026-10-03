@@ -127,7 +127,7 @@ export class OrdenesComponent {
   readonly rollos = signal<RollosDeOrden | null>(null);
   readonly cargandoRollos = signal(false);
 
-  /** Orden de un cliente corporativo que se va a entregar antes de pagar (#72). */
+  /** Proforma que se va a entregar antes de pagar (#72). */
   readonly ordenAEntregarConSaldo = signal<Orden | null>(null);
   readonly motivoEntrega = signal('');
 
@@ -181,15 +181,15 @@ export class OrdenesComponent {
 
     if (estado === 'entregada') {
       // El backend también lo impide; aquí se avisa antes de intentarlo.
-      if (!orden.finanzas?.pagado_totalmente && orden.cliente_corporativo) {
-        // A los clientes corporativos se les puede entregar antes de pagar,
-        // pero solo con la autorización de un supervisor y su motivo (#72).
+      if (!orden.finanzas?.pagado_totalmente && orden.tipo_documento === 'proforma') {
+        // La proforma (clientes de confianza o que pagan a plazo) se puede entregar
+        // antes de pagar, pero solo con un supervisor y su motivo (#72).
         if (this.sesion.esSupervisor()) {
           this.motivoEntrega.set('');
           this.ordenAEntregarConSaldo.set(orden);
         } else {
           alert(
-            'Esta orden es de un cliente corporativo y tiene saldo pendiente.\n\n' +
+            'Esta proforma tiene saldo pendiente.\n\n' +
             'Solo un supervisor puede autorizar entregarla antes de que pague.'
           );
         }

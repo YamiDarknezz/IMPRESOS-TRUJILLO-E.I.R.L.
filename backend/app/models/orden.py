@@ -99,7 +99,7 @@ class Orden(Base, TemporalMixin):
         nullable=False,
     )
 
-    # Entrega antes de pagar a un cliente corporativo (#72): nunca es silenciosa.
+    # Entrega de una proforma antes de pagar (#72): nunca es silenciosa.
     # Si la entrega se autorizó con saldo pendiente queda quién, cuándo y por qué.
     entrega_autorizada_por: Mapped[Optional[int]] = mapped_column(
         ForeignKey("usuarios.id"), nullable=True
