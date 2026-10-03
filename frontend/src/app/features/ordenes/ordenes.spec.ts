@@ -153,12 +153,12 @@ describe('OrdenesComponent', () => {
     });
   });
 
-  // Issue #72: a los clientes corporativos se les entrega antes de pagar, con un supervisor.
-  describe('entrega con saldo a un cliente corporativo (#72)', () => {
+  // Issue #72: la proforma se entrega antes de pagar, con un supervisor.
+  describe('entrega con saldo de una proforma (#72)', () => {
     const conSaldo = (extra: Partial<Orden> = {}) =>
       ordenBase({
         estado: 'finalizada',
-        cliente_corporativo: true,
+        tipo_documento: 'proforma',
         finanzas: { precio_total: 100, subtotal: 85, igv: 15, adelanto_pago: 50, saldo_pendiente: 50, metodo_pago_adelanto: 'efectivo', pagado_totalmente: false },
         ...extra,
       });
@@ -190,11 +190,11 @@ describe('OrdenesComponent', () => {
       alertSpy.mockRestore();
     });
 
-    it('un cliente común sigue sin poder recibir antes de pagar, aunque quien pregunte sea supervisor', async () => {
+    it('un contrato sigue sin poder entregarse antes de pagar, aunque quien pregunte sea supervisor', async () => {
       const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
       const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
 
-      await componente.cambiarEstado(conSaldo({ cliente_corporativo: false }), 'entregada');
+      await componente.cambiarEstado(conSaldo({ tipo_documento: 'contrato' }), 'entregada');
 
       expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('no está pagada en su totalidad'));
       expect(componente.ordenAEntregarConSaldo()).toBeNull();

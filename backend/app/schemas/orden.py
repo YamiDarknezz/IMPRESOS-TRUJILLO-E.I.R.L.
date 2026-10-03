@@ -139,7 +139,7 @@ class ConfirmarPagoData(BaseModel):
 
 class CambiarEstadoData(BaseModel):
     estado: EstadoOrden
-    # Entregar una orden de un cliente corporativo antes de pagar (#72): lo
+    # Entregar una proforma antes de pagar (#72): lo
     # autoriza un supervisor y se explica el motivo. Sin esto, la regla de
     # "sin pago completo no se entrega" sigue intacta.
     autorizar_saldo: bool = False

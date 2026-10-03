@@ -47,7 +47,7 @@ async def resumen_finanzas(
 async def cuentas_por_cobrar(
     usuario: Annotated[Usuario, Depends(supervision)],
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
-    solo_corporativos: bool = True,
+    solo_proformas: bool = True,
 ):
     """
     Deuda por cliente con su antigüedad (0-30, 31-60, 61-90 y más de 90 días).
@@ -56,6 +56,6 @@ async def cuentas_por_cobrar(
     """
     return {
         "status": "success",
-        "data": await finanzas_service.cuentas_por_cobrar(sesion, solo_corporativos),
+        "data": await finanzas_service.cuentas_por_cobrar(sesion, solo_proformas),
     }
 

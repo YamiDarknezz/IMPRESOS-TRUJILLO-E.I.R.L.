@@ -21,7 +21,7 @@ export const TRAMOS: { clave: keyof TramosAntiguedad; etiqueta: string }[] = [
  * Cuentas por cobrar (#72): lo que debe cada cliente y desde hace cuánto.
  *
  * Es el seguimiento de las entregas autorizadas antes de pagar a los clientes
- * corporativos: sin esta vista la deuda se llevaba por fuera y se perdía la
+ * proformas (clientes de confianza o que pagan a plazo): sin esta vista la deuda se llevaba por fuera y se perdía la
  * trazabilidad. Solo la ve la supervisión.
  */
 @Component({
@@ -35,7 +35,7 @@ export class CuentasPorCobrarComponent {
 
   readonly datos = signal<CuentasPorCobrar | null>(null);
   readonly cargando = signal(false);
-  readonly soloCorporativos = signal(true);
+  readonly soloProformas = signal(true);
   /** Clientes con el detalle de órdenes desplegado. */
   readonly abiertos = signal<ReadonlySet<number>>(new Set());
 
@@ -49,7 +49,7 @@ export class CuentasPorCobrarComponent {
   async cargar(): Promise<void> {
     this.cargando.set(true);
     try {
-      this.datos.set(await this.finanzas.cuentasPorCobrar(this.soloCorporativos()));
+      this.datos.set(await this.finanzas.cuentasPorCobrar(this.soloProformas()));
     } catch (e) {
       alert(mensajeDeError(e, 'No se pudieron cargar las cuentas por cobrar.'));
     } finally {
@@ -57,8 +57,8 @@ export class CuentasPorCobrarComponent {
     }
   }
 
-  cambiarAlcance(soloCorporativos: boolean): void {
-    this.soloCorporativos.set(soloCorporativos);
+  cambiarAlcance(soloProformas: boolean): void {
+    this.soloProformas.set(soloProformas);
     void this.cargar();
   }
 
@@ -79,7 +79,7 @@ export class CuentasPorCobrarComponent {
     const filas: unknown[][] = [
       ['Cuentas por cobrar — Impresos Trujillo'],
       ['Fecha de corte', datos.fecha_corte],
-      ['Alcance', datos.solo_corporativos ? 'Clientes corporativos' : 'Todos los clientes'],
+      ['Alcance', datos.solo_proformas ? 'Solo proformas' : 'Proformas y contratos'],
       ['Total pendiente (S/)', datos.total_pendiente.toFixed(2)],
       [],
       ['Cliente', 'Orden', 'Estado', 'Total (S/)', 'Saldo (S/)', 'Desde', 'Días', 'Tramo', 'Autorizó', 'Motivo'],

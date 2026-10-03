@@ -17,7 +17,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.fechas import a_fecha_peru, ahora_utc, dentro_del_rango
-from app.models import CanalIngreso, EstadoOrden, Orden, Rol, TipoPago, UnidadNegocio, Usuario
+from app.models import (
+    CanalIngreso,
+    EstadoOrden,
+    Orden,
+    Rol,
+    TipoDocumento,
+    TipoPago,
+    UnidadNegocio,
+    Usuario,
+)
 
 METODO_SIN_ESPECIFICAR = "—"
 NOMBRE_SIN_ASIGNAR = "Sin asignar"
@@ -213,7 +222,7 @@ def _tramos_vacios() -> dict[str, float]:
 
 async def cuentas_por_cobrar(
     sesion: AsyncSession,
-    solo_corporativos: bool = True,
+    solo_proformas: bool = True,
     hoy: Optional[date] = None,
 ) -> dict:
     """
@@ -221,8 +230,9 @@ async def cuentas_por_cobrar(
 
     La deuda se cuenta desde que se entregó el trabajo (lo que de verdad la
     genera); si todavía no se entregó, desde que se creó la orden. Las órdenes
-    canceladas no deben nada. Por defecto solo se listan los clientes
-    corporativos, que son los que reciben el trabajo antes de pagar.
+    canceladas no deben nada. Por defecto solo se listan las PROFORMAS, que
+    son las que se entregan antes de pagar (clientes de confianza y empresas
+    que pagan a plazo).
     """
     hoy = hoy or a_fecha_peru(ahora_utc())
     ordenes = list(
@@ -243,7 +253,7 @@ async def cuentas_por_cobrar(
 
     for orden in ordenes:
         cliente = orden.cliente
-        if solo_corporativos and not (cliente and cliente.es_corporativo):
+        if solo_proformas and orden.tipo_documento != TipoDocumento.PROFORMA:
             continue
 
         referencia = orden.entregada_en or orden.creado_en
@@ -292,7 +302,7 @@ async def cuentas_por_cobrar(
 
     return {
         "fecha_corte": hoy.isoformat(),
-        "solo_corporativos": solo_corporativos,
+        "solo_proformas": solo_proformas,
         "total_pendiente": total,
         "tramos": tramos_totales,
         "clientes": clientes,

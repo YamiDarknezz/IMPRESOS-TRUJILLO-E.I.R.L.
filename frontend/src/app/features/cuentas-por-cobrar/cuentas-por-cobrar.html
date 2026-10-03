@@ -2,9 +2,9 @@
   <span class="toolbar-title">Cuentas por cobrar</span>
 
   <label class="checkbox-label">
-    <input type="checkbox" [ngModel]="soloCorporativos()" name="soloCorporativos"
+    <input type="checkbox" [ngModel]="soloProformas()" name="soloProformas"
            (ngModelChange)="cambiarAlcance($event)">
-    Solo clientes corporativos
+    Solo proformas
   </label>
 
   <button class="btn-secondary btn-sm" (click)="cargar()">↻ Actualizar</button>
@@ -49,7 +49,7 @@
     @if (d.clientes.length === 0) {
       <div class="empty-state">
         <span class="empty-icon"><app-icon name="check-circle" [size]="40" /></span>
-        <p>No hay deudas pendientes{{ d.solo_corporativos ? ' de clientes corporativos' : '' }}.</p>
+        <p>No hay deudas pendientes{{ d.solo_proformas ? ' en proformas' : '' }}.</p>
       </div>
     } @else {
       <div class="table-wrapper">

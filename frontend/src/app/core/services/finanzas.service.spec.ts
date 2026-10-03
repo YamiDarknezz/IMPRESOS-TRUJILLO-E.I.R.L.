@@ -101,15 +101,15 @@ describe('FinanzasService', () => {
   });
 
   // Issue #72
-  it('cuentasPorCobrar() pide la vista corporativa por defecto', async () => {
+  it('cuentasPorCobrar() pide solo las proformas por defecto', async () => {
     apiFalsa.get.mockResolvedValue({ status: 'success', data: { clientes: [] } });
     await servicio.cuentasPorCobrar();
-    expect(apiFalsa.get).toHaveBeenCalledWith('/api/finanzas/cuentas-por-cobrar?solo_corporativos=true');
+    expect(apiFalsa.get).toHaveBeenCalledWith('/api/finanzas/cuentas-por-cobrar?solo_proformas=true');
   });
 
-  it('cuentasPorCobrar(false) incluye a todos los clientes', async () => {
+  it('cuentasPorCobrar(false) incluye también los contratos', async () => {
     apiFalsa.get.mockResolvedValue({ status: 'success', data: { clientes: [] } });
     await servicio.cuentasPorCobrar(false);
-    expect(apiFalsa.get).toHaveBeenCalledWith('/api/finanzas/cuentas-por-cobrar?solo_corporativos=false');
+    expect(apiFalsa.get).toHaveBeenCalledWith('/api/finanzas/cuentas-por-cobrar?solo_proformas=false');
   });
 });

@@ -302,7 +302,9 @@
         <input type="number" [ngModel]="form().adelanto" name="adelanto"
                (ngModelChange)="actualizar('adelanto', $event)" min="0" step="0.01"
                [class.input-error]="errores()['adelanto']">
-        @if (clienteSeleccionado()?.es_corporativo) {
+        @if (form().tipoDocumento === 'proforma') {
+          <span class="field-hint">Proforma: no exige adelanto (cliente de confianza o que paga a plazo).</span>
+        } @else if (clienteSeleccionado()?.es_corporativo) {
           <span class="field-hint">Cliente corporativo: puede autorizarse sin adelanto mínimo.</span>
         } @else {
           <span class="field-hint">

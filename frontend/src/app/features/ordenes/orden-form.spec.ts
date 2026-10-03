@@ -409,6 +409,37 @@ describe('OrdenFormComponent', () => {
       expect(ordenesFalso.crear).not.toHaveBeenCalled();
     });
 
+    // Issue #72: la proforma es el documento de los clientes de confianza y de los
+    // que pagan a plazo; no exige adelanto, el contrato sí.
+    it('una proforma no necesita adelanto, aunque el cliente no sea corporativo', async () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const componente = TestBed.createComponent(OrdenFormComponent).componentInstance;
+      componente.actualizar('clienteId', 1); // persona
+      componente.actualizar('tipoDocumento', 'proforma');
+      componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'llamada');
+      componente.actualizar('fechaEntrega', '2026-12-31');
+      componente.actualizar('precioTotal', 100);
+      componente.actualizar('adelanto', 0);
+
+      await componente.guardar();
+
+      expect(componente.exentoDeAdelanto()).toBe(true);
+      expect(componente.adelantoMinimo()).toBe(0);
+      expect(componente.errores()['adelanto']).toBeUndefined();
+      expect(ordenesFalso.crear).toHaveBeenCalledWith(expect.objectContaining({ tipo_documento: 'proforma', adelanto_pago: 0 }));
+    });
+
+    it('un contrato sigue exigiendo el adelanto mínimo', async () => {
+      const componente = TestBed.createComponent(OrdenFormComponent).componentInstance;
+      componente.actualizar('clienteId', 1);
+      componente.actualizar('tipoDocumento', 'contrato');
+      componente.actualizar('precioTotal', 100);
+
+      expect(componente.exentoDeAdelanto()).toBe(false);
+      expect(componente.adelantoMinimo()).toBe(50);
+    });
+
     it('un cliente corporativo no necesita adelanto', async () => {
       const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
       const fixture = TestBed.createComponent(OrdenFormComponent);

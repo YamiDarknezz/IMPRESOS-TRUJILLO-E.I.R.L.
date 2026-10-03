@@ -588,12 +588,12 @@
   </app-modal>
 }
 
-<!-- ═══ Modal: autorizar la entrega de un cliente corporativo antes de pagar (#72) ═══ -->
+<!-- ═══ Modal: autorizar la entrega de una proforma antes de pagar (#72) ═══ -->
 @if (ordenAEntregarConSaldo(); as orden) {
   <app-modal titulo="Entregar antes de que pague" [conBotonCerrar]="true" [cerrarAlClicFuera]="false" (cerrar)="cerrarEntregaConSaldo()">
     <span modal-cabecera class="modal-orden-id">{{ orden.id_documento }}</span>
     <p class="modal-subtitle">
-      "{{ orden.cliente }}" es un cliente corporativo y debe todavía
+      Esta proforma de "{{ orden.cliente }}" tiene todavía
       <strong>S/ {{ orden.finanzas?.saldo_pendiente | number:'1.2-2' }}</strong>.
       Como supervisor puedes autorizar la entrega: queda registrada con tu nombre y el motivo,
       y la deuda pasa a Cuentas por cobrar.
@@ -602,7 +602,7 @@
       <label>Motivo de la autorización *</label>
       <input type="text" [ngModel]="motivoEntrega()" (ngModelChange)="motivoEntrega.set($event)"
              name="motivoEntrega" maxlength="200"
-             placeholder="Ej: Orden de compra a 30 días">
+             placeholder="Ej: Paga con cheque a 30 días">
     </div>
     <div class="form-actions">
       <button type="button" class="btn-secondary" (click)="cerrarEntregaConSaldo()" [disabled]="guardando()">Cancelar</button>
