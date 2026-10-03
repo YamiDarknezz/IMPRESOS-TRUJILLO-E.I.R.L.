@@ -1289,6 +1289,11 @@ select.date-filter-input:focus {
   margin-top: 2px;
 }
 
+/* ─── Unidades: clases que reemplazan estilos inline (Issue #37) ────────── */
+
+/* Pista de campo sin margen superior (mismo que style="margin-top:0") */
+.field-hint.field-hint-flush { margin-top: 0; }
+
 /* ─── Pestañas (inventario) ──────────────────────────────────────────────── */
 .tabs-nav {
   display: flex;
