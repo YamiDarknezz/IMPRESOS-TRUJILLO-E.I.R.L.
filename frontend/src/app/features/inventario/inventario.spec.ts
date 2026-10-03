@@ -36,7 +36,6 @@ function piezaBase(sobrescribe: Partial<PiezaLoteMaterial> = {}): PiezaLoteMater
     fecha_ingreso: '2026-09-01',
     nota: '',
     total_recaudado: 0,
-    ganancia_neta: 0,
     ...sobrescribe,
   };
 }
@@ -254,6 +253,22 @@ describe('InventarioComponent', () => {
 
       expect(inventarioFalso.registrarConsumoPieza).not.toHaveBeenCalled();
       expect(alertSpy).toHaveBeenCalledWith('Ingresa la descripción del trabajo.');
+      alertSpy.mockRestore();
+    });
+
+    it('guardarConsumo(): si hay monto, exige método de pago', async () => {
+      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+      const fixture = TestBed.createComponent(InventarioComponent);
+      const componente = fixture.componentInstance;
+      componente.abrirConsumo(piezaBase());
+      componente.actualizarConsumo('trabajo_descripcion', 'Corte de banner');
+      componente.actualizarConsumo('cantidad_consumida', 1);
+      componente.actualizarConsumo('monto_cobrado', 45);
+
+      await componente.guardarConsumo();
+
+      expect(inventarioFalso.registrarConsumoPieza).not.toHaveBeenCalled();
+      expect(alertSpy).toHaveBeenCalledWith('Selecciona el método de pago del cobro.');
       alertSpy.mockRestore();
     });
 

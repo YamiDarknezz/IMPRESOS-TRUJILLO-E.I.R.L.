@@ -105,8 +105,9 @@ def serializar_pieza(pieza) -> dict[str, Any]:
         "fecha_ingreso": iso(pieza.fecha_ingreso),
         "fecha_termino": iso(pieza.fecha_termino),
         "nota": pieza.nota,
+        # Rendimiento del rollo (#57): lo cobrado por sus cortes ya entró a
+        # Caja/Finanzas. La ganancia neta es análisis y vive en el módulo BI.
         "total_recaudado": num(pieza.total_recaudado),
-        "ganancia_neta": num(pieza.ganancia_neta),
         "consumos": [serializar_consumo(c) for c in (pieza.consumos or [])],
     }
 

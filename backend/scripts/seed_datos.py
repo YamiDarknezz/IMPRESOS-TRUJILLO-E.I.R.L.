@@ -307,7 +307,8 @@ async def _sembrar_ordenes_demo(
             trabajo_descripcion="Banner publicitario 2x1 m con ojalillos",
             cantidad_consumida=4,
             orden_id=orden_produccion.id,
-            monto_cobrado=130,
+            monto_cobrado=65,
+            metodo_pago=MetodoPago.EFECTIVO,
         ),
         operario1,
     )

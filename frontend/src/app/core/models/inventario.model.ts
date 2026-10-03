@@ -1,3 +1,5 @@
+import { MetodoPago } from './comunes.model';
+
 export type TipoFormatoMaterial =
   | 'continuo_rollo'
   | 'plancha_rigida'
@@ -85,8 +87,8 @@ export interface PiezaLoteMaterial {
   fecha_ingreso: string;
   fecha_termino?: string | null;
   nota: string;
+  /** Lo cobrado por sus cortes (#57): ya contabilizado en Caja/Finanzas. */
   total_recaudado: number;
-  ganancia_neta: number;
   consumos?: ConsumoPieza[];
 }
 
@@ -108,7 +110,10 @@ export interface ConsumoPiezaCreateData {
   trabajo_descripcion: string;
   cantidad_consumida: number;
   orden_id?: number | null;
+  /** Cobro del corte (#57): si es mayor a 0, exige método y entra a Caja. */
   monto_cobrado?: number;
+  metodo_pago?: MetodoPago;
+  referencia?: string;
   merma_desperdicio?: number;
   nota?: string;
 }

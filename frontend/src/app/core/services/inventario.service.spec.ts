@@ -168,7 +168,7 @@ describe('filtrarPiezas (#109)', () => {
     id: 1, material_id: 1, material_nombre: 'Lona banner', codigo_identificador: 'ROLL-01',
     capacidad_inicial: 50, saldo_restante: 50, unidad_medida: 'm', costo_adquisicion: 0, estado: 'disponible',
     ubicacion: 'Estante 2', maquina_asignada: '', fecha_ingreso: '2026-09-01', nota: '',
-    total_recaudado: 0, ganancia_neta: 0, ...sobrescribe,
+    total_recaudado: 0, ...sobrescribe,
   });
   const a = rollo({});
   const b = rollo({ id: 2, codigo_identificador: 'PL-02', material_nombre: 'Acrílico', ubicacion: 'Almacén' });
