@@ -101,6 +101,17 @@ def parametros() -> dict[str, float]:
     }
 
 
+def empresa() -> dict[str, str]:
+    """Datos de la empresa que van en el contrato impreso (#68)."""
+    return {
+        "razon_social": settings.empresa_razon_social,
+        "ruc": settings.empresa_ruc,
+        "direccion": settings.empresa_direccion,
+        "telefono": settings.empresa_telefono,
+        "horario": settings.empresa_horario,
+    }
+
+
 def catalogos() -> dict[str, list[dict[str, str]]]:
     """Listas de valores con su nombre legible, para los desplegables y las tablas."""
     return {

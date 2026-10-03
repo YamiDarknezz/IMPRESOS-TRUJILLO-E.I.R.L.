@@ -293,6 +293,11 @@
                       <app-icon name="dollar-sign" [size]="14" />
                     </button>
                   }
+                  <a class="btn-icon" [routerLink]="['/ordenes', orden.id, 'imprimir']"
+                     title="Imprimir o guardar el contrato en PDF"
+                     aria-label="Imprimir o guardar el contrato en PDF">
+                    <app-icon name="receipt-text" [size]="14" />
+                  </a>
                   <button class="btn-icon"
                           title="Rollos y planchas usados en el pedido"
                           aria-label="Rollos y planchas usados en el pedido"

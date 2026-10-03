@@ -150,6 +150,12 @@ export class OrdenesService {
     return res.data;
   }
 
+  /** Pide una orden al servidor: la vista de impresión se puede abrir sin pasar por el listado (#68). */
+  async obtener(idOrden: number): Promise<Orden> {
+    const res = await this.api.get<RespuestaItem<Orden>>(`/api/ordenes/${idOrden}`);
+    return res.data;
+  }
+
   /** Cortes de rollo o plancha asignados a un pedido (#71). */
   rollosDeOrden(idOrden: number): Promise<RollosDeOrden> {
     return this.api.get<RollosDeOrden>(`/api/ordenes/${idOrden}/rollos`);

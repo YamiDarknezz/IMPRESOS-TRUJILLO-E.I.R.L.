@@ -32,6 +32,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/ordenes/orden-form').then(m => m.OrdenFormComponent),
       },
       {
+        path: 'ordenes/:id/imprimir',
+        loadComponent: () =>
+          import('./features/ordenes/orden-imprimir').then(m => m.OrdenImprimirComponent),
+      },
+      {
         path: 'ordenes/:id/editar',
         canActivate: [rolesGuard('admin', 'subgerente', 'secretaria')],
         loadComponent: () => import('./features/ordenes/orden-form').then(m => m.OrdenFormComponent),

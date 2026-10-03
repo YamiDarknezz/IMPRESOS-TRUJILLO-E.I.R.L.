@@ -91,3 +91,22 @@ def test_cada_etiqueta_declarada_corresponde_a_un_valor_real():
         assert not sobrantes, f"{nombre}: etiquetas de valores inexistentes {sobrantes}"
         faltantes = set(enum) - set(etiquetas)
         assert not faltantes, f"{nombre}: valores sin etiqueta {faltantes}"
+
+
+async def test_la_configuracion_publica_los_datos_de_la_empresa_para_el_contrato(cliente_api, admin):
+    """#68: el contrato impreso no escribe a mano ni el RUC ni la dirección."""
+    from app.core.config import settings
+
+    datos = (
+        await cliente_api.get("/api/configuracion", headers=cabecera_token(admin))
+    ).json()["data"]["empresa"]
+
+    assert datos == {
+        "razon_social": settings.empresa_razon_social,
+        "ruc": settings.empresa_ruc,
+        "direccion": settings.empresa_direccion,
+        "telefono": settings.empresa_telefono,
+        "horario": settings.empresa_horario,
+    }
+    assert datos["ruc"] and datos["razon_social"]
+

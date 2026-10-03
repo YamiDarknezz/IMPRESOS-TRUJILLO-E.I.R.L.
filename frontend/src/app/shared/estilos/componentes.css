@@ -1546,3 +1546,80 @@ select.date-filter-input:focus {
   gap: 0.4rem;
   font-size: 0.875rem;
 }
+
+/* ─── Contrato imprimible (#68) ────────────────────────────────────────────
+   En pantalla es una hoja centrada; al imprimir desaparece el armazón de la
+   aplicación y queda solo el documento. Se usan colores fijos de papel a
+   propósito: lo impreso no sigue al tema oscuro. */
+
+.acciones-impresion {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.documento {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  background: #fff;
+  color: #111;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.documento p { margin: 0.15rem 0; }
+.documento h2 { margin: 1.1rem 0 0.35rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: #444; border-bottom: 1px solid #ccc; padding-bottom: 0.2rem; }
+.documento-cabecera { display: flex; justify-content: space-between; gap: 1.5rem; border-bottom: 2px solid #111; padding-bottom: 0.75rem; }
+.documento-empresa { margin: 0 0 0.25rem; font-size: 1.3rem; }
+.documento-numero { display: flex; flex-direction: column; align-items: flex-end; gap: 0.1rem; }
+.documento-tipo { font-size: 1.1rem; font-weight: 700; text-transform: uppercase; }
+.documento-pequeno { font-size: 0.78rem; color: #444; }
+.documento-pie { margin-top: 1.5rem; text-align: center; }
+.documento-tabla { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+.documento-tabla th, .documento-tabla td { border: 1px solid #bbb; padding: 0.3rem 0.5rem; text-align: left; }
+.documento-tabla th { background: #f0f0f0; }
+.documento-totales { margin: 1rem 0 0 auto; width: 280px; }
+.documento-totales div { display: flex; justify-content: space-between; padding: 0.15rem 0; }
+.documento-totales .total { border-top: 1px solid #111; font-weight: 700; }
+.documento-totales .saldo { font-weight: 700; }
+.documento-firmas { display: flex; justify-content: space-between; gap: 3rem; margin-top: 3.5rem; text-align: center; }
+.documento-firmas > div { flex: 1; }
+.linea-firma { display: block; border-top: 1px solid #111; margin-bottom: 0.3rem; }
+
+@media print {
+  .topbar,
+  .sidebar,
+  .sidebar-backdrop,
+  .acciones-impresion {
+    display: none !important;
+  }
+
+  .layout-body,
+  .main-content {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  body {
+    background: #fff !important;
+  }
+
+  .documento {
+    max-width: none;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+  }
+
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+}
