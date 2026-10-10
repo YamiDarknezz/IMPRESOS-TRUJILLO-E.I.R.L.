@@ -477,6 +477,55 @@ async def test_corte_asignado_a_un_pedido_se_serializa_sin_cargas_perezosas_en_p
     assert [c.id for c in delante] == [consumo.id]
 
 
+async def test_la_orden_descuenta_el_rollo_y_lo_devuelve_al_cancelar_en_postgres(
+    sesion_pg, entorno_pg
+):
+    """
+    #127: el corte automático escribe las columnas nuevas (`orden_materiales.pieza_id`,
+    `consumos_pieza.automatico`), bloquea la fila del rollo con FOR UPDATE OF, no
+    vuelve a restar el material y el serializador no lee nada perezoso.
+    """
+    from app.models import EstadoPieza
+    from app.schemas import MaterialEstimado
+    from app.schemas.inventario import PiezaLoteCreateData
+    from app.services import inventario_service
+    from app.services.serializadores import serializar_consumo
+
+    admin, material, cliente = entorno_pg["admin"], entorno_pg["material"], entorno_pg["cliente"]
+    pieza = await inventario_service.registrar_pieza(
+        sesion_pg,
+        PiezaLoteCreateData(
+            material_id=material.id, codigo_identificador=f"R127-{SUFIJO}", capacidad_inicial=5,
+            unidad_medida="ml",
+        ),
+        admin,
+    )
+    stock = float(material.stock_actual)
+
+    orden = await ordenes_service.crear_orden(
+        sesion_pg,
+        datos_orden(
+            material.id,
+            cliente_id=cliente.id,
+            materiales_estimados=[MaterialEstimado(material_id=material.id, cantidad=2, pieza_id=pieza.id)],
+        ),
+        admin,
+    )
+
+    assert float(pieza.saldo_restante) == 3
+    assert pieza.estado == EstadoPieza.EN_USO
+    assert float(material.stock_actual) == stock - 2
+    (corte,) = await inventario_service.consumos_de_orden(sesion_pg, orden.id)
+    fila = serializar_consumo(corte)
+    assert fila["automatico"] is True and fila["saldo_restante_pieza"] == 3
+
+    await ordenes_service.cancelar(sesion_pg, orden.id, admin)
+
+    assert float(pieza.saldo_restante) == 5
+    assert pieza.estado == EstadoPieza.DISPONIBLE
+    assert await inventario_service.consumos_de_orden(sesion_pg, orden.id) == []
+
+
 async def test_entrega_con_saldo_autorizada_y_cuentas_por_cobrar_en_postgres(sesion_pg, entorno_pg):
     """
     #72: autorizar una entrega con saldo escribe las columnas nuevas (FK a

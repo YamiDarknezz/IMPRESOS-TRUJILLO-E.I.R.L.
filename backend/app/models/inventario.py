@@ -3,7 +3,17 @@ from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    false,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TemporalMixin, enum_columna
@@ -120,6 +130,12 @@ class ConsumoPieza(Base, TemporalMixin):
     merma_desperdicio: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, nullable=False)
     fecha: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     nota: Mapped[str] = mapped_column(Text, default="", nullable=False)
+    # El corte lo creó la orden sola (#127), no una persona en Inventario. Solo
+    # esos se ajustan o se devuelven cuando la orden se edita, se cancela o se
+    # completa; los manuales (y su merma) quedan como están.
+    automatico: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=false(), nullable=False
+    )
 
     pieza = relationship("PiezaLoteMaterial", back_populates="consumos", lazy="joined")
     orden = relationship("Orden", lazy="joined")

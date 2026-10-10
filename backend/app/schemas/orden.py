@@ -13,6 +13,9 @@ class MaterialEstimado(BaseModel):
 
     material_id: int
     cantidad: float
+    # Rollo o plancha de donde sale (#127): si viene, la orden le descuenta la
+    # cantidad al crearse. Sin él, el material solo se reserva, como siempre.
+    pieza_id: Optional[int] = None
 
     @field_validator("cantidad")
     @classmethod
