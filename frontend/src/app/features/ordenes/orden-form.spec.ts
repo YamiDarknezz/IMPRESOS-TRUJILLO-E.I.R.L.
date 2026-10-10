@@ -8,7 +8,7 @@ import { ComprobantesService } from '../../core/services/comprobantes.service';
 import { ProductosService } from '../../core/services/productos.service';
 import { SesionService } from '../../core/services/sesion.service';
 import { OrdenFormComponent } from './orden-form';
-import { Cliente, MaterialInventario, Orden, Producto } from '../../core/models';
+import { Cliente, MaterialInventario, Orden, PiezaLoteMaterial, Producto } from '../../core/models';
 
 const clientePersona: Cliente = {
   id: 1, nombre: 'Juan Pérez', tipo: 'persona', documento: '1', telefono: '999',
@@ -54,7 +54,7 @@ function ordenExistente(sobrescribe: Partial<Orden> = {}): Orden {
 
 describe('OrdenFormComponent', () => {
   let clientesFalso: { clientes: ReturnType<typeof signal<Cliente[]>>; cargar: ReturnType<typeof vi.fn>; crear: ReturnType<typeof vi.fn> };
-  let inventarioFalso: { materiales: ReturnType<typeof signal<MaterialInventario[]>>; cargar: ReturnType<typeof vi.fn> };
+  let inventarioFalso: { materiales: ReturnType<typeof signal<MaterialInventario[]>>; cargar: ReturnType<typeof vi.fn>; listarPiezas: ReturnType<typeof vi.fn> };
   let productosFalso: { productos: ReturnType<typeof signal<Producto[]>>; cargar: ReturnType<typeof vi.fn> };
   let ordenesFalso: {
     ordenes: ReturnType<typeof signal<Orden[]>>;
@@ -67,7 +67,11 @@ describe('OrdenFormComponent', () => {
 
   function configurar(idRuta: string | null = null) {
     clientesFalso = { clientes: signal([clientePersona, clienteCorporativo]), cargar: vi.fn().mockResolvedValue(undefined), crear: vi.fn() };
-    inventarioFalso = { materiales: signal([material]), cargar: vi.fn().mockResolvedValue(undefined) };
+    inventarioFalso = {
+      materiales: signal([material]),
+      cargar: vi.fn().mockResolvedValue(undefined),
+      listarPiezas: vi.fn().mockResolvedValue([]),
+    };
     productosFalso = { productos: signal([producto]), cargar: vi.fn().mockResolvedValue(undefined) };
     ordenesFalso = {
       ordenes: signal([ordenExistente()]),
@@ -508,6 +512,129 @@ describe('OrdenFormComponent', () => {
 
       expect(ordenesFalso.crear).toHaveBeenCalledWith(expect.objectContaining({ asignado_a: null }));
       confirmSpy.mockRestore();
+    });
+  });
+
+  // Issue #127: el rollo se elige al crear la orden y la orden le descuenta los metros.
+  describe('rollo de cada material (#127)', () => {
+    const rollo = (sobrescribe: Partial<PiezaLoteMaterial> = {}): PiezaLoteMaterial => ({
+      id: 10, material_id: 1, codigo_identificador: 'UV-A', capacidad_inicial: 100, saldo_restante: 60,
+      unidad_medida: 'ml', costo_adquisicion: 0, estado: 'disponible', ubicacion: '', maquina_asignada: '',
+      fecha_ingreso: '2026-10-01', nota: '', total_recaudado: 0, ...sobrescribe,
+    });
+
+    async function conRollos(piezas: PiezaLoteMaterial[], idRuta: string | null = null) {
+      configurar(idRuta);
+      inventarioFalso.materiales.set([{ ...material, tipo_formato: 'continuo_rollo', unidad: 'ml' }]);
+      inventarioFalso.listarPiezas.mockResolvedValue(piezas);
+      const fixture = TestBed.createComponent(OrdenFormComponent);
+      await Promise.resolve();
+      await Promise.resolve();
+      return fixture.componentInstance;
+    }
+
+    it('un material de rollo se reconoce, y uno que no lo es no ofrece rollos', async () => {
+      const componente = await conRollos([rollo()]);
+
+      expect(componente.esDeRollo(1)).toBe(true);
+      expect(componente.esDeRollo(99)).toBe(false);
+    });
+
+    it('solo ofrece los rollos de ese material que no están agotados', async () => {
+      const componente = await conRollos([
+        rollo({ id: 10 }),
+        rollo({ id: 11, estado: 'agotado', saldo_restante: 0 }),
+        rollo({ id: 12, material_id: 2 }),
+      ]);
+
+      expect(componente.rollosDe(1).map(p => p.id)).toEqual([10]);
+    });
+
+    it('al añadir un material de rollo sugiere el rollo en uso', async () => {
+      const componente = await conRollos([rollo({ id: 10 }), rollo({ id: 11, estado: 'en_uso' })]);
+      componente.materialSelId.set('1');
+      componente.materialSelCantidad.set(2);
+
+      componente.agregarMaterial();
+
+      expect(componente.form().materiales[0].pieza_id).toBe(11);
+    });
+
+    it('elegir otro rollo, o ninguno, cambia el de la línea', async () => {
+      const componente = await conRollos([rollo({ id: 10 }), rollo({ id: 11 })]);
+      componente.materialSelId.set('1');
+      componente.agregarMaterial();
+
+      componente.elegirRollo(0, '11');
+      expect(componente.form().materiales[0].pieza_id).toBe(11);
+
+      componente.elegirRollo(0, '');
+      expect(componente.form().materiales[0].pieza_id).toBeNull();
+    });
+
+    it('si pide más metros de los que le quedan al rollo, no guarda y dice cuánto queda', async () => {
+      const componente = await conRollos([rollo({ id: 10, saldo_restante: 1.5 })]);
+      componente.materialSelId.set('1');
+      componente.materialSelCantidad.set(2);
+      componente.agregarMaterial();
+      componente.actualizar('clienteId', 1);
+      componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'whatsapp');
+      componente.actualizar('fechaEntrega', '2026-12-31');
+      componente.actualizar('precioTotal', 100);
+      componente.actualizar('adelanto', 50);
+
+      await componente.guardar();
+
+      expect(componente.errores()['materiales']).toContain('1.5');
+      expect(ordenesFalso.crear).not.toHaveBeenCalled();
+    });
+
+    it('al guardar manda el rollo de cada línea, y nada si no se eligió', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const componente = await conRollos([rollo({ id: 10 })]);
+      componente.materialSelId.set('1');
+      componente.materialSelCantidad.set(2);
+      componente.agregarMaterial();
+      componente.actualizar('clienteId', 1);
+      componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'whatsapp');
+      componente.actualizar('fechaEntrega', '2026-12-31');
+      componente.actualizar('precioTotal', 100);
+      componente.actualizar('adelanto', 50);
+
+      await componente.guardar();
+      expect(ordenesFalso.crear).toHaveBeenLastCalledWith(
+        expect.objectContaining({ materiales_estimados: [{ material_id: 1, cantidad: 2, pieza_id: 10 }] })
+      );
+
+      componente.elegirRollo(0, '');
+      await componente.guardar();
+      expect(ordenesFalso.crear).toHaveBeenLastCalledWith(
+        expect.objectContaining({ materiales_estimados: [{ material_id: 1, cantidad: 2 }] })
+      );
+      confirmSpy.mockRestore();
+    });
+
+    it('al editar, lo que la orden ya le descontó al rollo cuenta como disponible', async () => {
+      const componente = await conRollos(
+        [rollo({ id: 10, saldo_restante: 3 })], // al rollo le quedan 3 porque esta orden ya se llevó 5
+        '9'
+      );
+      ordenesFalso.ordenes.set([
+        ordenExistente({
+          materiales: {
+            estimados: [{ id_material: 1, nombre: 'Lona', cantidad: 5, unidad: 'ml', pieza_id: 10 }],
+            reales: [], mermas: [], devoluciones: [],
+          },
+        }),
+      ]);
+      const fixture = TestBed.createComponent(OrdenFormComponent);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(fixture.componentInstance.saldoDelRollo(10, 1)).toBe(8);
+      expect(componente.saldoDelRollo(10, 1)).toBe(3);
     });
   });
 

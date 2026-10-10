@@ -15,6 +15,7 @@ import {
   ETIQUETA_TIPO_DOCUMENTO,
   ETIQUETA_UNIDAD,
   MaterialItem,
+  PiezaLoteMaterial,
   METODOS_PAGO,
   MetodoPago,
   Orden,
@@ -109,6 +110,8 @@ export class OrdenFormComponent {
 
   readonly clientes = this.clientesService.clientes;
   readonly materiales = this.inventarioService.materiales;
+  /** Rollos y planchas con su saldo, para elegir de cuál sale cada material (#127). */
+  readonly rollos = signal<PiezaLoteMaterial[]>([]);
   readonly productos = this.productosService.productos;
 
   readonly form = signal<FormularioOrden>(formularioVacio());
@@ -191,6 +194,9 @@ export class OrdenFormComponent {
   });
 
   constructor() {
+    // Los rollos no se guardan en caché: su saldo cambia con cada orden.
+    void this.inventarioService.listarPiezas().then(piezas => this.rollos.set(piezas)).catch(() => undefined);
+
     // Los catálogos se cargan en paralelo; si ya están en caché no se repiten.
     this.clientesService.cargar();
     this.inventarioService.cargar();
@@ -310,6 +316,45 @@ export class OrdenFormComponent {
     return this.materiales().find(m => m.id === idMaterial)?.ubicacion_estante?.trim() ?? '';
   }
 
+  // ── Rollo de cada material (#127) ───────────────────────────────────────
+
+  /** ¿El material se lleva por rollo (metros lineales)? */
+  esDeRollo(idMaterial: number): boolean {
+    return this.materiales().find(m => m.id === idMaterial)?.tipo_formato === 'continuo_rollo';
+  }
+
+  /** Rollos de ese material con algo de saldo: los que se pueden elegir. */
+  rollosDe(idMaterial: number): PiezaLoteMaterial[] {
+    return this.rollos().filter(p => p.material_id === idMaterial && p.estado !== 'agotado');
+  }
+
+  /**
+   * Cuánto se le puede pedir a ese rollo. Al editar, lo que esta misma orden ya
+   * le había descontado también cuenta como disponible: es lo que se le devuelve
+   * antes de volver a descontar.
+   */
+  saldoDelRollo(idPieza: number | null | undefined, idMaterial: number): number {
+    const pieza = this.rollos().find(p => p.id === idPieza);
+    if (!pieza) return 0;
+    const propio = (this.editando()?.materiales?.estimados ?? [])
+      .filter(m => m.id_material === idMaterial && m.pieza_id === idPieza)
+      .reduce((suma, m) => suma + m.cantidad, 0);
+    return redondear(pieza.saldo_restante + propio);
+  }
+
+  /** El rollo en uso, o el primero disponible: lo que se usaría sin preguntar. */
+  private rolloPorDefecto(idMaterial: number): number | null {
+    const candidatos = this.rollosDe(idMaterial);
+    return (candidatos.find(p => p.estado === 'en_uso') ?? candidatos[0])?.id ?? null;
+  }
+
+  elegirRollo(indice: number, valor: string): void {
+    this.form.update(f => ({
+      ...f,
+      materiales: f.materiales.map((m, i) => (i === indice ? { ...m, pieza_id: valor ? Number(valor) : null } : m)),
+    }));
+  }
+
   agregarMaterial(): void {
     const material = this.materiales().find(m => String(m.id) === this.materialSelId());
     const cantidad = this.materialSelCantidad();
@@ -323,7 +368,17 @@ export class OrdenFormComponent {
         ? f.materiales.map(m =>
             m.id_material === material.id ? { ...m, cantidad: m.cantidad + cantidad } : m
           )
-        : [...f.materiales, { id_material: material.id, nombre: material.nombre, cantidad, unidad: material.unidad }];
+        : [
+            ...f.materiales,
+            {
+              id_material: material.id,
+              nombre: material.nombre,
+              cantidad,
+              unidad: material.unidad,
+              // Un material de rollo ya sugiere de cuál se descuenta (#127).
+              ...(this.esDeRollo(material.id) ? { pieza_id: this.rolloPorDefecto(material.id) } : {}),
+            },
+          ];
       return { ...f, materiales };
     });
 
@@ -397,6 +452,21 @@ export class OrdenFormComponent {
       errores['adelanto'] =
         `El adelanto mínimo para clientes generales es S/ ${this.adelantoMinimo().toFixed(2)}.`;
     }
+    // #127: la misma regla que aplica el servidor, para no llegar a guardar una orden
+    // que pide más metros de los que le quedan al rollo.
+    const pedidoPorRollo = new Map<number, number>();
+    for (const m of form.materiales) {
+      if (!m.pieza_id) continue;
+      const pedido = (pedidoPorRollo.get(m.pieza_id) ?? 0) + m.cantidad;
+      pedidoPorRollo.set(m.pieza_id, pedido);
+      const disponible = this.saldoDelRollo(m.pieza_id, m.id_material);
+      if (pedido > disponible) {
+        const rollo = this.rollos().find(p => p.id === m.pieza_id);
+        errores['materiales'] =
+          `El rollo ${rollo?.codigo_identificador ?? ''} solo tiene ${disponible} ${rollo?.unidad_medida ?? ''} ` +
+          `disponibles y la orden pide ${pedido}.`;
+      }
+    }
     return errores;
   }
 
@@ -466,6 +536,8 @@ export class OrdenFormComponent {
       materiales_estimados: form.materiales.map(m => ({
         material_id: m.id_material,
         cantidad: m.cantidad,
+        // Solo con rollo elegido; sin él el envío es el de siempre.
+        ...(m.pieza_id ? { pieza_id: m.pieza_id } : {}),
       })),
       descuento: form.descuento,
       motivo_descuento: form.motivoDescuento,

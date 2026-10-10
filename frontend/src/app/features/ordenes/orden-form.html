@@ -224,6 +224,10 @@
               [disabled]="!materialSelId()">Añadir</button>
     </div>
 
+    @if (errores()['materiales']) {
+      <span class="field-error">{{ errores()['materiales'] }}</span>
+    }
+
     @if (form().materiales.length > 0) {
       <ul class="material-list">
         @for (mat of form().materiales; track $index) {
@@ -234,6 +238,19 @@
                 <small class="text-muted">· Ubicación: {{ ubicacion }}</small>
               }
             </span>
+            <!-- Rollo del que sale (#127): la orden le descuenta los metros al crearse. -->
+            @if (esDeRollo(mat.id_material)) {
+              <select class="rollo-select" [ngModel]="mat.pieza_id || ''"
+                      (ngModelChange)="elegirRollo($index, $event)"
+                      [name]="'rollo' + $index" aria-label="Rollo del que sale este material">
+                <option value="">Sin descontar de un rollo</option>
+                @for (rollo of rollosDe(mat.id_material); track rollo.id) {
+                  <option [value]="rollo.id">
+                    {{ rollo.codigo_identificador }} — quedan {{ saldoDelRollo(rollo.id, mat.id_material) }} {{ rollo.unidad_medida }}
+                  </option>
+                }
+              </select>
+            }
             <button type="button" class="delete-btn" (click)="quitarMaterial($index)" title="Quitar material" aria-label="Quitar material">
               <app-icon name="x" [size]="13" />
             </button>

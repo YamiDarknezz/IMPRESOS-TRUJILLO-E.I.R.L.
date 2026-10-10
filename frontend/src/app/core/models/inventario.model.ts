@@ -67,6 +67,8 @@ export interface ConsumoPieza {
   fecha: string;
   usuario?: string;
   nota: string;
+  /** Lo descontó la orden sola al crearse (#127), no se registró a mano. */
+  automatico?: boolean;
 }
 
 export interface PiezaLoteMaterial {

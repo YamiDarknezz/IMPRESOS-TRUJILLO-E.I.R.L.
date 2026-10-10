@@ -23,6 +23,8 @@ export interface MaterialItem {
   nombre: string;
   cantidad: number;
   unidad?: string;
+  /** Rollo o plancha de donde sale (#127): la orden le descuenta la cantidad al crearse. */
+  pieza_id?: number | null;
 }
 
 /** Forma en que la API devuelve cualquier listado. */

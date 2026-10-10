@@ -32,6 +32,8 @@ export interface ItemOrdenData {
 export interface MaterialEstimadoData {
   material_id: number;
   cantidad: number;
+  /** Rollo del que sale (#127). */
+  pieza_id?: number | null;
 }
 
 /** Datos que el formulario envía al crear o editar una orden. */
