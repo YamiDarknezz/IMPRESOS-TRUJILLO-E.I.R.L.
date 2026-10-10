@@ -408,6 +408,39 @@ describe('OrdenesComponent', () => {
     });
   });
 
+  // Issue #124: con el adelanto repartido, la lista muestra todos los métodos.
+  describe('metodosDelAdelanto() (#124)', () => {
+    const pago = (metodo: string, extra: object = {}) => ({
+      id: 1, fecha: '2026-10-01', monto: 50, metodo, tipo: 'adelanto', ...extra,
+    });
+    const conPagos = (pagos: object[]) =>
+      ordenBase({
+        finanzas: {
+          precio_total: 300, subtotal: 300, igv: 0, adelanto_pago: 150, saldo_pendiente: 150,
+          metodo_pago_adelanto: 'efectivo', pagado_totalmente: false, pagos,
+        } as never,
+      });
+
+    it('con partes muestra todos los métodos juntos', () => {
+      const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
+      Object.assign(componente, { etiquetaMetodo: () => ({ efectivo: 'Efectivo', yape_angel: 'Yape Ángel' }) });
+
+      expect(componente.metodosDelAdelanto(conPagos([pago('efectivo'), pago('yape_angel')]))).toBe(
+        'Efectivo + Yape Ángel'
+      );
+    });
+
+    it('un adelanto observado no cuenta, y sin pagos usa el método guardado', () => {
+      const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
+      Object.assign(componente, { etiquetaMetodo: () => ({ efectivo: 'Efectivo', yape_angel: 'Yape Ángel' }) });
+
+      expect(
+        componente.metodosDelAdelanto(conPagos([pago('efectivo'), pago('yape_angel', { estado_pago: 'observado' })]))
+      ).toBe('Efectivo');
+      expect(componente.metodosDelAdelanto(conPagos([]))).toBe('Efectivo');
+    });
+  });
+
   it('asignar(): convierte el id de texto a número, o null si viene vacío', async () => {
     const fixture = TestBed.createComponent(OrdenesComponent);
     const orden = ordenBase();

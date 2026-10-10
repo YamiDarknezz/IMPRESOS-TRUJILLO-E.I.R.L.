@@ -1148,6 +1148,16 @@ select.date-filter-input:focus {
   box-shadow: 0 0 0 3px var(--ring);
 }
 
+/* Partes del adelanto repartido en varios métodos (#124) */
+.fila-parte-adelanto {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.fila-parte-adelanto input {
+  flex: 1;
+}
+
 /* Teléfono del pedido en la tabla de órdenes (#122) */
 .contacto-cell {
   white-space: nowrap;

@@ -107,6 +107,26 @@ export class OrdenesComponent {
 
   readonly hayFiltroFecha = computed(() => !!(this.desde() || this.hasta()));
 
+  /**
+   * Con qué se dejó el adelanto: un método, o todos los de las partes (#124),
+   * p. ej. "Efectivo + Yape Ángel". Sin detalle de pagos, el método guardado en la orden.
+   */
+  metodosDelAdelanto(orden: Orden): string {
+    const etiquetas = this.etiquetaMetodo();
+    const metodos = [
+      ...new Set(
+        (orden.finanzas?.pagos ?? [])
+          .filter(p => p.tipo === 'adelanto' && (p.estado_pago ?? 'conforme') === 'conforme')
+          .map(p => p.metodo)
+      ),
+    ];
+    if (metodos.length === 0) {
+      const guardado = orden.finanzas?.metodo_pago_adelanto;
+      return guardado ? (etiquetas[guardado] ?? guardado) : '';
+    }
+    return metodos.map(m => etiquetas[m] ?? m).join(' + ');
+  }
+
   // ── Estado de la interfaz ────────────────────────────────────────────────
   readonly error = signal('');
   readonly guardando = signal(false);

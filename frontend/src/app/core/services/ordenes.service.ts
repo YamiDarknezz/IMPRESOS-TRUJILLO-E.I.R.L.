@@ -57,6 +57,15 @@ export interface DatosOrden {
   metodo_pago: MetodoPago;
   /** Para qué es el adelanto (#110). */
   adelanto_descripcion: string;
+  /** El adelanto repartido en varios métodos (#124); `adelanto_pago` es la suma. */
+  adelanto_partes?: ParteAdelantoData[];
+}
+
+/** Una parte del adelanto: cuánto se dejó y con qué método (#124). */
+export interface ParteAdelantoData {
+  metodo: MetodoPago;
+  monto: number;
+  descripcion?: string;
 }
 
 @Injectable({ providedIn: 'root' })

@@ -219,7 +219,7 @@
                     {{ orden.finanzas?.pagado_totalmente ? 'Pagado' : 'Pendiente' }}
                   </span>
                   @if (orden.finanzas; as finanzas) {
-                    <span class="metodo-label">{{ etiquetaMetodo()[finanzas.metodo_pago_adelanto] }}</span>
+                    <span class="metodo-label">{{ metodosDelAdelanto(orden) }}</span>
                   }
                 } @else {
                   <span class="badge badge-neutral">—</span>
