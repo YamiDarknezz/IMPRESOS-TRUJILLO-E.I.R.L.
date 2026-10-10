@@ -1148,6 +1148,20 @@ select.date-filter-input:focus {
   box-shadow: 0 0 0 3px var(--ring);
 }
 
+/* Teléfono del pedido en la tabla de órdenes (#122) */
+.contacto-cell {
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+.enlace-telefono {
+  color: var(--text);
+  text-decoration: none;
+}
+.enlace-telefono:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
 /* ─── Finanzas ───────────────────────────────────────────────────────────── */
 
 .metodo-grid {

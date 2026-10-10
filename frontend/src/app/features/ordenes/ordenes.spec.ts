@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { signal } from '@angular/core';
+import { WritableSignal, signal } from '@angular/core';
 import { OrdenesService } from '../../core/services/ordenes.service';
 import { SesionService } from '../../core/services/sesion.service';
 import { ComprobantesService } from '../../core/services/comprobantes.service';
@@ -345,6 +345,66 @@ describe('OrdenesComponent', () => {
       await fixture.componentInstance.cambiarEstado(orden, 'en_diseno');
 
       expect(ordenesFalso.cambiarEstado).toHaveBeenCalledWith(orden, 'en_diseno');
+    });
+  });
+
+  // Issue #122: el teléfono va junto al cliente; la asignación sigue, pero al final de la fila.
+  describe('columna de contacto (#122)', () => {
+    function pintar(soloVer: boolean) {
+      ordenesFalso.ordenes.set([
+        ordenBase({ id: 1, id_documento: 'ORD-000001', telefono: '924 943 790' }),
+        ordenBase({ id: 2, id_documento: 'ORD-000002', telefono: '' }),
+      ]);
+      const fixture = TestBed.createComponent(OrdenesComponent);
+      if (soloVer) (TestBed.inject(SesionService).esSupervisor as WritableSignal<boolean>).set(false);
+      // Corriendo todos los specs juntos, el bundler del test-runner deja sin resolver
+      // las etiquetas importadas de los modelos (pasa el spec solo): se fijan aquí para
+      // que la prueba mire el contacto y no ese detalle del entorno.
+      Object.assign(fixture.componentInstance, {
+        etiquetaUnidad: { imprenta: 'Imprenta', gigantografias: 'Gigantografías' },
+        etiquetaEstado: { pendiente: 'Pendiente' },
+      });
+      fixture.componentInstance.cargando.set(false);
+      fixture.detectChanges();
+      return fixture.nativeElement as HTMLElement;
+    }
+
+    const encabezados = (tabla: HTMLElement) =>
+      Array.from(tabla.querySelectorAll('th')).map(th => th.textContent?.trim());
+
+    it('muestra el teléfono de cada orden como enlace para llamar, justo después del cliente', () => {
+      const tabla = pintar(false);
+      const columnas = encabezados(tabla);
+
+      expect(columnas.indexOf('Contacto')).toBe(columnas.indexOf('Cliente') + 1);
+
+      const enlaces = tabla.querySelectorAll('a.enlace-telefono');
+      expect(enlaces.length).toBe(1);
+      expect(enlaces[0].textContent?.trim()).toBe('924 943 790');
+      expect(enlaces[0].getAttribute('href')).toBe('tel:924 943 790');
+    });
+
+    it('la asignación sigue para supervisión, pero al final de la fila y no junto al cliente', () => {
+      const columnas = encabezados(pintar(false));
+
+      expect(columnas).toContain('Asignado');
+      expect(columnas.indexOf('Asignado')).toBeGreaterThan(columnas.indexOf('Estado'));
+      expect(columnas.indexOf('Asignado')).toBe(columnas.indexOf('Acciones') - 1);
+    });
+
+    it('quien no es supervisión no ve la columna de asignación', () => {
+      expect(encabezados(pintar(true))).not.toContain('Asignado');
+    });
+
+    it('la búsqueda encuentra la orden por su teléfono', () => {
+      const fixture = TestBed.createComponent(OrdenesComponent);
+      ordenesFalso.ordenes.set([
+        ordenBase({ id: 1, id_documento: 'ORD-000001', telefono: '924 943 790' }),
+        ordenBase({ id: 2, id_documento: 'ORD-000002', telefono: '987 654 321' }),
+      ]);
+      fixture.componentInstance.busqueda.set('924943');
+
+      expect(fixture.componentInstance.ordenesFiltradas().map(o => o.id_documento)).toEqual(['ORD-000001']);
     });
   });
 

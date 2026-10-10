@@ -243,6 +243,20 @@ export function claseEstado(estado: EstadoOrden): string {
   return 'badge-estado-' + estado.replace('_', '-');
 }
 
+/**
+ * ¿El teléfono de la orden contiene lo que se escribió?
+ *
+ * Se comparan solo los dígitos: el teléfono se guarda como lo escribió quien
+ * atendió ("924 943 790") y quien busca puede escribirlo pegado o con guiones.
+ * Con menos de tres dígitos no se busca por teléfono, para que "12" no traiga
+ * medio listado por casualidad.
+ */
+export function coincideTelefono(telefono: string | null | undefined, texto: string): boolean {
+  const buscado = texto.replace(/\D/g, '');
+  if (buscado.length < 3) return false;
+  return (telefono ?? '').replace(/\D/g, '').includes(buscado);
+}
+
 /** Filtra la lista por etapa, texto libre y rango de fechas de creación. */
 export function filtrarOrdenes(
   ordenes: Orden[],
@@ -263,7 +277,8 @@ export function filtrarOrdenes(
       const coincide =
         orden.id_documento?.toLowerCase().includes(texto) ||
         orden.cliente?.toLowerCase().includes(texto) ||
-        orden.descripcion?.toLowerCase().includes(texto);
+        orden.descripcion?.toLowerCase().includes(texto) ||
+        coincideTelefono(orden.telefono, texto);
       if (!coincide) return false;
     }
 

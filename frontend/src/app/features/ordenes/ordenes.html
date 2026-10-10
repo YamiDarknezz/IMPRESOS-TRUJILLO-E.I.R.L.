@@ -59,7 +59,7 @@
     <span class="search-icon"><app-icon name="search" [size]="15" /></span>
     <input type="text" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)"
            name="busquedaOrdenes" class="search-input"
-           placeholder="Buscar por código, cliente o descripción...">
+           placeholder="Buscar por código, cliente, teléfono o descripción...">
     @if (busqueda()) {
       <button class="search-clear" (click)="busqueda.set('')" title="Limpiar búsqueda" aria-label="Limpiar búsqueda">
         <app-icon name="x" [size]="13" />
@@ -153,12 +153,13 @@
           <tr>
             <th>ID</th>
             <th>Cliente</th>
-            @if (sesion.esSupervisor()) { <th>Asignado</th> }
+            <th>Contacto</th>
             <th>Descripción</th>
             <th>Fechas</th>
             <th>Finanzas</th>
             <th>Pago</th>
             <th>Estado</th>
+            @if (sesion.esSupervisor()) { <th>Asignado</th> }
             <th>Acciones</th>
           </tr>
         </thead>
@@ -173,22 +174,15 @@
                 <small class="text-muted bloque">vía {{ etiquetaCanal()[orden.canal_ingreso] || orden.canal_ingreso }}</small>
               </td>
 
-              @if (sesion.esSupervisor()) {
-                <td>
-                  @if (estaEnPipeline(orden)) {
-                    <select class="assign-select" [ngModel]="orden.asignado_a || ''"
-                            (ngModelChange)="asignar(orden, $event)"
-                            [name]="'asignado-' + orden.id_documento">
-                      <option value="">Sin asignar</option>
-                      @for (u of sesion.usuarios(); track u.id) {
-                        <option [value]="u.id">{{ nombreVisible(u) }}</option>
-                      }
-                    </select>
-                  } @else {
-                    {{ sesion.nombreDe(orden.asignado_a) || '—' }}
-                  }
-                </td>
-              }
+              <!-- Teléfono del pedido (#122): para llamar sin abrir la orden. Va junto al
+                   cliente; la asignación quedó al final de la fila, con menos peso. -->
+              <td class="contacto-cell">
+                @if (orden.telefono) {
+                  <a class="enlace-telefono" [href]="'tel:' + orden.telefono">{{ orden.telefono }}</a>
+                } @else {
+                  <span class="text-muted">—</span>
+                }
+              </td>
 
               <td class="desc-cell">
                 {{ orden.descripcion }}
@@ -256,6 +250,23 @@
                   }
                 }
               </td>
+
+              @if (sesion.esSupervisor()) {
+                <td>
+                  @if (estaEnPipeline(orden)) {
+                    <select class="assign-select" [ngModel]="orden.asignado_a || ''"
+                            (ngModelChange)="asignar(orden, $event)"
+                            [name]="'asignado-' + orden.id_documento">
+                      <option value="">Sin asignar</option>
+                      @for (u of sesion.usuarios(); track u.id) {
+                        <option [value]="u.id">{{ nombreVisible(u) }}</option>
+                      }
+                    </select>
+                  } @else {
+                    {{ sesion.nombreDe(orden.asignado_a) || '—' }}
+                  }
+                </td>
+              }
 
               <td class="actions-cell">
                 <div class="actions-wrapper">
