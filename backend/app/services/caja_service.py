@@ -329,10 +329,15 @@ async def observar_pago(
 
     # Una orden ya entregada SÍ se puede observar (#126): el billete falso a
     # veces se descubre después de entregar y cobrar todo, y el dinero falso no
-    # deja de serlo porque la orden esté cerrada. La entrega sigue siendo
-    # definitiva (el estado no cambia); lo que cambia es el saldo: se recalcula
-    # solo con pagos conformes, así que la orden queda entregada con deuda, que
-    # es justo lo que `entregada_con_saldo` ya expresa.
+    # deja de serlo porque la orden esté cerrada.
+    #
+    # Si estaba entregada y PAGADA del todo, lo observado es dinero PERDIDO: se
+    # descuenta de Caja y Finanzas (ya no es un pago conforme), pero la orden
+    # queda como está (cerrada, sin saldo) y no se le reabre una deuda al
+    # cliente que el negocio no está cobrando. Si estaba entregada con deuda
+    # (una proforma autorizada, #72), el saldo sí se recalcula: esa deuda ya se
+    # estaba cobrando y crece por lo que resultó falso.
+    perdida = orden.estado == EstadoOrden.ENTREGADA and orden.pagado_totalmente
 
     # El cierre congelado es el documento de control de gerencia: si el pago
     # ya quedó dentro de uno, no se toca más (issue #19 trata el resto de ese
@@ -360,8 +365,10 @@ async def observar_pago(
     pago.observado_en = ahora_utc()
 
     # Recalcula saldo, adelanto y pagado_totalmente desde el historial
-    # conforme: no una suma manual que ya se había desincronizado antes.
-    _recalcular_finanzas(orden)
+    # conforme: no una suma manual que ya se había desincronizado antes. Una
+    # orden entregada y pagada que pierde un pago queda cerrada (ver arriba).
+    if not perdida:
+        _recalcular_finanzas(orden)
 
     registrar(
         sesion,
@@ -373,6 +380,11 @@ async def observar_pago(
             f"Pago #{pago.id} de {orden.codigo}, cobrado por "
             f"{cajero.nombre if cajero else 'usuario desconocido'}, "
             f"observado por {motivo.value}: S/ {pago.monto}. {nota}"
+            + (
+                " Orden ya entregada y pagada: queda como pérdida, sin reabrir deuda."
+                if perdida
+                else ""
+            )
         ),
         valores_anteriores={"estado_pago": "conforme"},
         valores_nuevos={
@@ -382,6 +394,7 @@ async def observar_pago(
             "orden_id": orden.id,
             "registrado_por": pago.registrado_por,
             "nuevo_saldo_pendiente": float(orden.saldo_pendiente),
+            "perdida": perdida,
         },
     )
     await sesion.flush()
@@ -395,6 +408,8 @@ async def observar_pago(
         "motivo": motivo.value,
         "nota": nota,
         "nuevo_saldo_pendiente": float(orden.saldo_pendiente),
+        # Entregada y pagada del todo: el dinero se descuenta pero la orden sigue cerrada (#126).
+        "perdida": perdida,
         "observado_por": usuario.nombre,
         "observado_en": pago.observado_en.isoformat(),
     }

@@ -278,12 +278,13 @@ async def _orden_entregada_y_pagada(sesion, admin, material, cliente, metodo=Met
     return orden
 
 
-async def test_se_observa_un_pago_de_una_orden_ya_entregada(sesion, admin, material, cliente):
+async def test_se_observa_un_pago_de_una_orden_ya_entregada_y_queda_como_perdida(
+    sesion, admin, material, cliente
+):
     """
     Issue #126: el billete falso a veces aparece cuando todo ya se entregó y se
-    cobró. Se puede observar; la entrega sigue siendo definitiva (el estado no
-    cambia) y la orden queda entregada con deuda, que es lo que `#20` evitaba
-    hacer en silencio.
+    cobró. Se puede observar. El dinero está perdido: se descuenta, pero la
+    orden queda cerrada, sin saldo, y no se le reabre una deuda al cliente.
     """
     from app.models import EstadoOrden, EstadoPago, MotivoObservacionPago
     from app.services.serializadores import serializar_orden
@@ -297,10 +298,11 @@ async def test_se_observa_un_pago_de_una_orden_ya_entregada(sesion, admin, mater
     )
 
     assert resultado["estado_pago"] == EstadoPago.OBSERVADO.value
+    assert resultado["perdida"] is True
     assert orden.estado == EstadoOrden.ENTREGADA
-    assert float(orden.saldo_pendiente) == 100
-    assert orden.pagado_totalmente is False
-    assert serializar_orden(orden)["entregada_con_saldo"] is True
+    assert float(orden.saldo_pendiente) == 0
+    assert orden.pagado_totalmente is True
+    assert serializar_orden(orden)["entregada_con_saldo"] is False
 
 
 async def test_el_pago_observado_de_una_orden_entregada_deja_de_contar_en_caja_y_finanzas(
@@ -322,6 +324,37 @@ async def test_el_pago_observado_de_una_orden_entregada_deja_de_contar_en_caja_y
     assert resumen["total_observado"] == 100
     finanzas = await finanzas_service.resumen(sesion, admin)
     assert finanzas["total_ingresos"] == 0
+    # Es una pérdida, no una deuda: no aparece como por cobrar.
+    assert finanzas["total_por_cobrar"] == 0
+
+
+async def test_si_la_orden_se_entrego_con_deuda_el_pago_observado_la_aumenta(
+    sesion, admin, material, cliente
+):
+    """Una proforma entregada con saldo ya tiene una deuda que se cobra: crece por lo que resultó falso."""
+    from app.models import EstadoOrden, MotivoObservacionPago, TipoDocumento
+    from app.schemas import MaterialEstimado
+
+    orden = await _crear_cobro(
+        sesion, admin, material, cliente,
+        precio_total=100, adelanto_pago=40, metodo_pago=MetodoPago.EFECTIVO,
+        tipo_documento=TipoDocumento.PROFORMA,
+    )
+    await ordenes_service.completar(
+        sesion, orden.id, [MaterialEstimado(material_id=material.id, cantidad=2)], admin
+    )
+    await ordenes_service.cambiar_estado(
+        sesion, orden.id, EstadoOrden.ENTREGADA, admin, autorizar_saldo=True, motivo="Cliente de confianza"
+    )
+    assert float(orden.saldo_pendiente) == 60
+
+    resultado = await caja_service.observar_pago(
+        sesion, orden.pagos[0].id, MotivoObservacionPago.BILLETE_FALSO, "Falso", admin
+    )
+
+    assert resultado["perdida"] is False
+    assert orden.estado == EstadoOrden.ENTREGADA
+    assert float(orden.saldo_pendiente) == 100
 
 
 async def test_se_observa_un_pago_de_otro_dia_sin_cierre_y_solo_cambia_ese_dia(
