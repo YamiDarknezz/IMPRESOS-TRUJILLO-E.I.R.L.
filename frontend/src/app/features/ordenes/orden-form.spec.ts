@@ -9,6 +9,8 @@ import { ProductosService } from '../../core/services/productos.service';
 import { SesionService } from '../../core/services/sesion.service';
 import { OrdenFormComponent } from './orden-form';
 import { Cliente, MaterialInventario, Orden, Producto } from '../../core/models';
+import { hidratarConfiguracion, reiniciarConfiguracion } from '../../core/estado/catalogos';
+import { CATALOGOS_DE_PRUEBA, PARAMETROS_DE_PRUEBA } from '../../core/estado/catalogos.prueba';
 
 const clientePersona: Cliente = {
   id: 1, nombre: 'Juan Pérez', tipo: 'persona', documento: '1', telefono: '999',
@@ -508,6 +510,170 @@ describe('OrdenFormComponent', () => {
 
       expect(ordenesFalso.crear).toHaveBeenCalledWith(expect.objectContaining({ asignado_a: null }));
       confirmSpy.mockRestore();
+    });
+  });
+
+  // Issue #124: el adelanto repartido en varios métodos (S/ 100 en efectivo y S/ 50 por Yape).
+  describe('adelanto repartido (#124)', () => {
+    beforeEach(() => {
+      hidratarConfiguracion({ parametros: PARAMETROS_DE_PRUEBA, catalogos: CATALOGOS_DE_PRUEBA });
+    });
+    afterEach(() => reiniciarConfiguracion());
+
+    function formularioListo(precioTotal = 300) {
+      const componente = TestBed.createComponent(OrdenFormComponent).componentInstance;
+      componente.actualizar('clienteId', 1);
+      componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'whatsapp');
+      componente.actualizar('fechaEntrega', '2026-12-31');
+      componente.actualizar('precioTotal', precioTotal);
+      return componente;
+    }
+
+    it('agregar otro método suma una parte con el primer método que no se usa', () => {
+      const componente = formularioListo();
+      componente.actualizar('adelanto', 100);
+
+      componente.agregarParteAdelanto();
+
+      expect(componente.form().adelantoExtra).toEqual([
+        { metodo: 'yape_marcell', monto: 0, descripcion: '' },
+      ]);
+    });
+
+    it('el total del adelanto es la suma de las partes y descuenta del saldo', () => {
+      const componente = formularioListo(300);
+      componente.actualizar('adelanto', 100);
+      componente.agregarParteAdelanto();
+      componente.actualizarParteAdelanto(0, 'monto', 50);
+
+      expect(componente.adelantoTotal()).toBe(150);
+      expect(componente.saldoPendiente()).toBe(150);
+    });
+
+    it('no se repite un método: cada selector ofrece solo los que no usa otra parte', () => {
+      const componente = formularioListo();
+      componente.agregarParteAdelanto();
+
+      expect(componente.metodosDeLaParte(0)).not.toContain('efectivo');
+      expect(componente.metodosDeLaParte(0)).toContain('yape_marcell');
+      expect(componente.metodosPrimeraParte()).not.toContain('yape_marcell');
+      expect(componente.metodosPrimeraParte()).toContain('efectivo');
+    });
+
+    it('cuando ya se usaron todos los métodos no se puede agregar otra parte', () => {
+      const componente = formularioListo();
+      expect(componente.puedeAgregarParte()).toBe(true);
+
+      componente.agregarParteAdelanto();
+      componente.agregarParteAdelanto();
+      componente.agregarParteAdelanto();
+
+      expect(componente.form().adelantoExtra.length).toBe(3);
+      expect(componente.puedeAgregarParte()).toBe(false);
+    });
+
+    it('quitar una parte la saca del adelanto', () => {
+      const componente = formularioListo();
+      componente.agregarParteAdelanto();
+      componente.actualizarParteAdelanto(0, 'monto', 40);
+
+      componente.quitarParteAdelanto(0);
+
+      expect(componente.form().adelantoExtra).toEqual([]);
+      expect(componente.adelantoTotal()).toBe(0);
+    });
+
+    it('el adelanto mínimo se valida sobre la suma de las partes', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const componente = formularioListo(400); // mínimo 50 % = 200
+      componente.actualizar('adelanto', 100);
+      componente.agregarParteAdelanto();
+      componente.actualizarParteAdelanto(0, 'monto', 50);
+
+      await componente.guardar();
+      expect(componente.errores()['adelanto']).toContain('200.00');
+      expect(ordenesFalso.crear).not.toHaveBeenCalled();
+
+      componente.actualizarParteAdelanto(0, 'monto', 100);
+      await componente.guardar();
+      expect(componente.errores()['adelanto']).toBeUndefined();
+      expect(ordenesFalso.crear).toHaveBeenCalledTimes(1);
+      confirmSpy.mockRestore();
+    });
+
+    it('una parte en cero se rechaza', async () => {
+      const componente = formularioListo();
+      componente.actualizar('adelanto', 200);
+      componente.agregarParteAdelanto();
+
+      await componente.guardar();
+
+      expect(componente.errores()['adelantoPartes']).toBeTruthy();
+      expect(ordenesFalso.crear).not.toHaveBeenCalled();
+    });
+
+    it('al guardar manda las partes, la suma como adelanto y el método de la parte más grande', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const componente = formularioListo(300);
+      componente.actualizar('adelanto', 100);
+      componente.agregarParteAdelanto();
+      componente.actualizarParteAdelanto(0, 'metodo', 'yape_angel');
+      componente.actualizarParteAdelanto(0, 'monto', 50);
+
+      await componente.guardar();
+
+      expect(ordenesFalso.crear).toHaveBeenCalledWith(
+        expect.objectContaining({
+          adelanto_pago: 150,
+          metodo_pago: 'efectivo',
+          adelanto_partes: [
+            { metodo: 'efectivo', monto: 100, descripcion: '' },
+            { metodo: 'yape_angel', monto: 50, descripcion: '' },
+          ],
+        })
+      );
+      confirmSpy.mockRestore();
+    });
+
+    it('con un solo método el envío es el de siempre, sin partes', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const componente = formularioListo(100);
+      componente.actualizar('adelanto', 50);
+
+      await componente.guardar();
+
+      const enviado = ordenesFalso.crear.mock.calls[0][0];
+      expect(enviado.adelanto_pago).toBe(50);
+      expect('adelanto_partes' in enviado).toBe(false);
+      confirmSpy.mockRestore();
+    });
+
+    it('al editar una orden con el adelanto repartido, carga cada parte', async () => {
+      configurar('9');
+      ordenesFalso.ordenes.set([
+        ordenExistente({
+          finanzas: {
+            precio_total: 300, subtotal: 300, igv: 0, adelanto_pago: 150, saldo_pendiente: 150,
+            metodo_pago_adelanto: 'efectivo', pagado_totalmente: false,
+            pagos: [
+              { id: 1, fecha: '2026-10-01', monto: 100, metodo: 'efectivo', tipo: 'adelanto', descripcion: 'Banners' },
+              { id: 2, fecha: '2026-10-01', monto: 50, metodo: 'yape_angel', tipo: 'adelanto' },
+              { id: 3, fecha: '2026-10-01', monto: 30, metodo: 'yape_marcell', tipo: 'adelanto', estado_pago: 'observado' },
+            ],
+          },
+        }),
+      ]);
+      const fixture = TestBed.createComponent(OrdenFormComponent);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      const f = fixture.componentInstance.form();
+      expect(f.adelanto).toBe(100);
+      expect(f.metodoPago).toBe('efectivo');
+      expect(f.adelantoDescripcion).toBe('Banners');
+      // El observado no es dinero recibido: no se carga como parte.
+      expect(f.adelantoExtra).toEqual([{ metodo: 'yape_angel', monto: 50, descripcion: '' }]);
     });
   });
 
