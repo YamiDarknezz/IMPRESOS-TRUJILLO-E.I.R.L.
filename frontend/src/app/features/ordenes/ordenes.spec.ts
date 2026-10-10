@@ -6,6 +6,8 @@ import { SesionService } from '../../core/services/sesion.service';
 import { ComprobantesService } from '../../core/services/comprobantes.service';
 import { OrdenesComponent } from './ordenes';
 import { Orden } from '../../core/models';
+import { hidratarConfiguracion, reiniciarConfiguracion } from '../../core/estado/catalogos';
+import { CATALOGOS_DE_PRUEBA, PARAMETROS_DE_PRUEBA } from '../../core/estado/catalogos.prueba';
 
 function ordenBase(sobrescribe: Partial<Orden> = {}): Orden {
   return {
@@ -442,6 +444,26 @@ describe('OrdenesComponent', () => {
       });
       fixture.componentInstance.abrirCobro(orden);
       expect(fixture.componentInstance.metodoPago()).toBe('yape');
+    });
+
+    it('abrirCobro() precarga cualquiera de los dos Yape (#125)', () => {
+      const fixture = TestBed.createComponent(OrdenesComponent);
+      const orden = ordenBase({
+        finanzas: { precio_total: 100, subtotal: 85, igv: 15, adelanto_pago: 50, saldo_pendiente: 50, metodo_pago_adelanto: 'yape_angel', pagado_totalmente: false },
+      });
+      fixture.componentInstance.abrirCobro(orden);
+      expect(fixture.componentInstance.metodoPago()).toBe('yape_angel');
+    });
+
+    it('abrirCobro(): si el adelanto fue el Yape de antes, que ya no se ofrece, parte de efectivo', () => {
+      hidratarConfiguracion({ parametros: PARAMETROS_DE_PRUEBA, catalogos: CATALOGOS_DE_PRUEBA });
+      const fixture = TestBed.createComponent(OrdenesComponent);
+      const orden = ordenBase({
+        finanzas: { precio_total: 100, subtotal: 85, igv: 15, adelanto_pago: 50, saldo_pendiente: 50, metodo_pago_adelanto: 'yape', pagado_totalmente: false },
+      });
+      fixture.componentInstance.abrirCobro(orden);
+      expect(fixture.componentInstance.metodoPago()).toBe('efectivo');
+      reiniciarConfiguracion();
     });
 
     it('confirmarPago(): sin orden seleccionada, no hace nada', async () => {

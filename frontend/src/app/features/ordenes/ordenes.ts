@@ -32,6 +32,7 @@ import {
   etiquetasCanal,
   etiquetasMetodo,
   metodosPago as metodosDelServidor,
+  metodosPagoHeredados,
 } from '../../core/estado/catalogos';
 import {
   CapturaElegida,
@@ -339,7 +340,10 @@ export class OrdenesComponent {
 
   abrirCobro(orden: Orden): void {
     this.ordenACobrar.set(orden);
-    this.metodoPago.set(orden.finanzas?.metodo_pago_adelanto ?? 'efectivo');
+    // Por defecto, el mismo método del adelanto; si fue el `yape` de antes de
+    // poder elegir el número (#125) ya no se ofrece, así que se parte de efectivo.
+    const previo = orden.finanzas?.metodo_pago_adelanto ?? 'efectivo';
+    this.metodoPago.set(metodosPagoHeredados().includes(previo) ? 'efectivo' : previo);
     this.referenciaPago.set('');
     this.descripcionPago.set('');
     this.limpiarAdjuntosCobro();

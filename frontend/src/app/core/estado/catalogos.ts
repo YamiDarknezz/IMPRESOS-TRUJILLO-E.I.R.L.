@@ -15,6 +15,8 @@ import { computed, signal } from '@angular/core';
 export interface OpcionCatalogo {
   valor: string;
   etiqueta: string;
+  /** Solo para leer lo ya registrado: los desplegables no lo ofrecen (#125). */
+  heredado?: boolean;
 }
 
 export interface ParametrosNegocio {
@@ -115,8 +117,27 @@ export function etiquetaDe(nombre: NombreCatalogo, valor: string): string {
 }
 
 // Atajos para las plantillas, que es donde más se usan.
-export const metodosPago = computed(() => valoresDe('metodos_pago'));
+/** Los métodos que se ofrecen al registrar un pago: sin el heredado. */
+export const metodosPago = computed(() =>
+  catalogos().metodos_pago.filter(opcion => !opcion.heredado).map(opcion => opcion.valor)
+);
+/** Los que solo existen para leer pagos antiguos (el `yape` de antes de #125). */
+export const metodosPagoHeredados = computed(() =>
+  catalogos().metodos_pago.filter(opcion => opcion.heredado).map(opcion => opcion.valor)
+);
+/** El nombre de cualquier método, también el heredado: las tablas muestran pagos antiguos. */
 export const etiquetasMetodo = computed(() => etiquetasDe('metodos_pago'));
+
+/**
+ * Opciones de un desplegable de método que ya trae un valor guardado.
+ *
+ * Al editar una orden vieja, su método puede ser el heredado: si no estuviera
+ * en la lista, el desplegable se vería vacío aunque el valor siga siendo ese.
+ */
+export function metodosPagoCon(actual: string | null | undefined): string[] {
+  const ofrecidos = metodosPago();
+  return actual && !ofrecidos.includes(actual) ? [...ofrecidos, actual] : ofrecidos;
+}
 /** Datos de la empresa tal como los publica el servidor (#68). */
 export const empresa = datosEmpresa.asReadonly();
 export const canalesIngreso = computed(() => catalogos().canales_ingreso);

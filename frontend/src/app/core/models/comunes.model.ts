@@ -1,13 +1,20 @@
 /** Tipos compartidos por varios dominios. */
 
-export type MetodoPago = 'efectivo' | 'yape' | 'transferencia';
+/**
+ * `yape` es el heredado: así se registraban los pagos antes de poder elegir el
+ * número (#125). Se muestra en lo ya guardado pero no se ofrece al cobrar.
+ */
+export type MetodoPago = 'efectivo' | 'yape_marcell' | 'yape_angel' | 'transferencia' | 'yape';
 
-export const METODOS_PAGO: MetodoPago[] = ['efectivo', 'yape', 'transferencia'];
+/** Métodos que se ofrecen al registrar un pago nuevo. */
+export const METODOS_PAGO: MetodoPago[] = ['efectivo', 'yape_marcell', 'yape_angel', 'transferencia'];
 
 export const ETIQUETA_METODO: Record<MetodoPago, string> = {
   efectivo: 'Efectivo',
-  yape: 'Yape',
+  yape_marcell: 'Yape Marcell',
+  yape_angel: 'Yape Ángel',
   transferencia: 'Transferencia',
+  yape: 'Yape (sin especificar)',
 };
 
 /** Un material con su cantidad: se usa en órdenes y en recetas de producto. */

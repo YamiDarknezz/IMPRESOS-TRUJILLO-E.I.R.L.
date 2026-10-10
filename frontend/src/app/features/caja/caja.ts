@@ -21,6 +21,7 @@ import {
   etiquetaDe,
   etiquetasMetodo,
   metodosPago,
+  metodosPagoHeredados,
   motivosObservacion,
 } from '../../core/estado/catalogos';
 import { IconComponent } from '../../shared/componentes/icon/icon.component';
@@ -64,10 +65,28 @@ export class CajaComponent {
 
   readonly unidades = UNIDADES_NEGOCIO;
   readonly etiquetaUnidad = ETIQUETA_UNIDAD;
-  readonly etiquetaMetodo = etiquetasMetodo;
-  // Del servidor: antes estaba aquí copiada y había que mantenerla a mano.
-  readonly metodos = metodosPago;
+  readonly etiquetaMetodo = computed(() => etiquetasMetodo());
   readonly formatearFecha = formatearFecha;
+
+  /**
+   * Columnas del arqueo: los métodos que se ofrecen al cobrar, más el heredado
+   * (el `yape` de antes de #125) solo si hay algo cobrado con él. Así el total
+   * siempre cuadra con la suma de las columnas, sin una columna en cero para
+   * siempre en una caja que ya no lo usa.
+   */
+  readonly metodosArqueo = computed(() =>
+    this.conHeredados(metodo => {
+      const resumen = this.resumen();
+      return resumen ? this.montoDe(resumen.total, metodo) : 0;
+    })
+  );
+
+  /** Columnas de la tabla de cierres, con la misma regla para el heredado. */
+  readonly metodosCierres = computed(() =>
+    this.conHeredados(metodo =>
+      this.cierres().reduce((suma, cierre) => suma + this.montoDeCierre(cierre, metodo), 0)
+    )
+  );
 
   /** Los motivos de observación, con su nombre legible, vienen del catálogo. */
   readonly motivosObservacion = computed(() =>
@@ -228,7 +247,32 @@ export class CajaComponent {
    * aparece en el arqueo y suma sola, sin tocar esta función ni la plantilla.
    */
   montoDe(acumulado: AcumuladoCaja, metodo: string): number {
-    return (acumulado as unknown as Record<string, number>)[metodo] ?? 0;
+    return (acumulado as unknown as Record<string, number | undefined> | undefined)?.[metodo] ?? 0;
+  }
+
+  /**
+   * Monto de un método en un cierre guardado. Las columnas del cierre se llaman
+   * `monto_<método>` (`monto_efectivo`, `monto_yape_marcell`...).
+   */
+  montoDeCierre(cierre: CierreCaja, metodo: string): number {
+    return (cierre as unknown as Record<string, number | undefined>)[`monto_${metodo}`] ?? 0;
+  }
+
+  private conHeredados(montoDe: (metodo: string) => number): string[] {
+    const heredados = metodosPagoHeredados().filter(metodo => montoDe(metodo) > 0);
+    return [...metodosPago(), ...heredados];
+  }
+
+  /** Icono de la tarjeta de cada método. */
+  iconoDeMetodo(metodo: string): 'wallet' | 'smartphone' | 'landmark' {
+    if (metodo === 'efectivo') return 'wallet';
+    return metodo.startsWith('yape') ? 'smartphone' : 'landmark';
+  }
+
+  /** Color de la tarjeta de cada método (los dos Yape comparten el suyo). */
+  colorDeMetodo(metodo: string): 'success' | 'warning' | 'neutral' {
+    if (metodo === 'efectivo') return 'success';
+    return metodo.startsWith('yape') ? 'warning' : 'neutral';
   }
 
   /** Etiqueta legible del método; si viene uno desconocido, se muestra tal cual. */

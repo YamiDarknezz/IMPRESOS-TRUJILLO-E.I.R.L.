@@ -5,6 +5,8 @@ import { CajaService } from '../../core/services/caja.service';
 import { SesionService } from '../../core/services/sesion.service';
 import { CajaComponent } from './caja';
 import { CierreCaja, DetalleCaja, ResumenCaja } from '../../core/models';
+import { hidratarConfiguracion, reiniciarConfiguracion } from '../../core/estado/catalogos';
+import { CATALOGOS_DE_PRUEBA, PARAMETROS_DE_PRUEBA } from '../../core/estado/catalogos.prueba';
 
 const resumen: ResumenCaja = {
   fecha: '2026-09-18',
@@ -110,6 +112,57 @@ describe('CajaComponent', () => {
 
     expect(cajaFalso.congelar).toHaveBeenCalledWith(1);
     confirmSpy.mockRestore();
+  });
+
+  describe('dos números de Yape (#125)', () => {
+    beforeEach(() => {
+      hidratarConfiguracion({ parametros: PARAMETROS_DE_PRUEBA, catalogos: CATALOGOS_DE_PRUEBA });
+    });
+    afterEach(() => reiniciarConfiguracion());
+
+    const conYapes: ResumenCaja = {
+      ...resumen,
+      total: { efectivo: 20, yape: 0, yape_marcell: 40, yape_angel: 30, transferencia: 0, total: 90 },
+    };
+
+    it('el arqueo tiene una columna por cada Yape y deja fuera el heredado si no hubo cobros', () => {
+      const fixture = TestBed.createComponent(CajaComponent);
+      fixture.componentInstance.resumen.set(conYapes);
+
+      expect(fixture.componentInstance.metodosArqueo()).toEqual([
+        'efectivo', 'yape_marcell', 'yape_angel', 'transferencia',
+      ]);
+    });
+
+    it('el Yape de antes aparece solo si hubo cobros con él, para que el total cuadre', () => {
+      const fixture = TestBed.createComponent(CajaComponent);
+      fixture.componentInstance.resumen.set({ ...conYapes, total: { ...conYapes.total, yape: 10, total: 100 } });
+
+      expect(fixture.componentInstance.metodosArqueo()).toContain('yape');
+    });
+
+    it('las tarjetas muestran cada número con su nombre y su monto', () => {
+      const fixture = TestBed.createComponent(CajaComponent);
+      fixture.componentInstance.resumen.set(conYapes);
+      fixture.componentInstance.cargando.set(false);
+      fixture.detectChanges();
+
+      const texto = (fixture.nativeElement as HTMLElement).textContent ?? '';
+      expect(texto).toContain('Yape Marcell');
+      expect(texto).toContain('Yape Ángel');
+      expect(texto).toContain('S/ 40.00');
+      expect(texto).toContain('S/ 30.00');
+    });
+
+    it('montoDeCierre() lee la columna de cada método del cierre', () => {
+      const fixture = TestBed.createComponent(CajaComponent);
+      const guardado = { ...cierre, monto_yape_marcell: 40, monto_yape_angel: 30 };
+
+      expect(fixture.componentInstance.montoDeCierre(guardado, 'yape_marcell')).toBe(40);
+      expect(fixture.componentInstance.montoDeCierre(guardado, 'yape_angel')).toBe(30);
+      expect(fixture.componentInstance.montoDeCierre(guardado, 'yape')).toBe(50);
+      expect(fixture.componentInstance.montoDeCierre(cierre, 'yape_marcell')).toBe(0);
+    });
   });
 
   it('montoDe() lee el monto del método indicado del acumulado', () => {
