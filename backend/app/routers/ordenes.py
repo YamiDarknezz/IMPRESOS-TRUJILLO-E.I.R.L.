@@ -17,7 +17,7 @@ from app.core.security import (
     supervision,
     usuario_actual,
 )
-from app.models import CanalIngreso, EstadoOrden, Usuario
+from app.models import CanalIngreso, EstadoOrden, UnidadNegocio, Usuario
 from app.schemas import (
     AsignarData,
     CambiarEstadoData,
@@ -41,6 +41,10 @@ async def listar_ordenes(
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
     estado: Optional[EstadoOrden] = Query(default=None),
     canal_ingreso: Optional[CanalIngreso] = Query(default=None),
+    # Imprenta o Gigantografías (#123); y "lo que hay por hacer hoy": en proceso
+    # con entrega hoy o vencida. Se filtran aquí para que valgan con más de 100.
+    unidad_negocio: Optional[UnidadNegocio] = Query(default=None),
+    pendientes_hoy: bool = Query(default=False),
     limit: int = Query(default=LIMITE_POR_DEFECTO, le=LIMITE_MAXIMO),
     offset: int = Query(default=0, ge=0),
 ):
@@ -51,9 +55,13 @@ async def listar_ordenes(
     lista viene recortada (#27).
     """
     ordenes = await ordenes_service.listar(
-        sesion, usuario, estado, limit, offset, canal_ingreso=canal_ingreso
+        sesion, usuario, estado, limit, offset, canal_ingreso=canal_ingreso,
+        unidad_negocio=unidad_negocio, pendientes_hoy=pendientes_hoy,
     )
-    total = await ordenes_service.contar(sesion, usuario, estado, canal_ingreso=canal_ingreso)
+    total = await ordenes_service.contar(
+        sesion, usuario, estado, canal_ingreso=canal_ingreso,
+        unidad_negocio=unidad_negocio, pendientes_hoy=pendientes_hoy,
+    )
     return {"status": "success", "data": [serializar_orden(o) for o in ordenes], "total": total}
 
 
@@ -61,9 +69,13 @@ async def listar_ordenes(
 async def metricas_ordenes(
     usuario: Annotated[Usuario, Depends(usuario_actual)],
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
+    unidad_negocio: Optional[UnidadNegocio] = Query(default=None),
 ):
     """Indicadores del panel de órdenes, sumados en la base (no en el navegador)."""
-    return {"status": "success", "data": await ordenes_service.metricas(sesion, usuario)}
+    return {
+        "status": "success",
+        "data": await ordenes_service.metricas(sesion, usuario, unidad_negocio),
+    }
 
 
 @router.get("/{id_orden}")

@@ -731,3 +731,112 @@ def test_tramo_de_respeta_los_limites_de_30_60_y_90_dias():
     assert [tramo_de(d) for d in (0, 30, 31, 60, 61, 90, 91, 400)] == [
         "d0_30", "d0_30", "d31_60", "d31_60", "d61_90", "d61_90", "d90_mas", "d90_mas",
     ]
+
+
+# ══ #123 · Imprenta y Gigantografías por separado, y lo pendiente del día ═══
+
+async def test_el_listado_filtra_por_unidad_de_negocio_y_el_total_acompana(
+    cliente_api, admin, material
+):
+    for unidad in ("imprenta", "gigantografias", "gigantografias"):
+        await _crear(cliente_api, admin, material, unidad_negocio=unidad)
+
+    respuesta = await cliente_api.get(
+        "/api/ordenes", params={"unidad_negocio": "gigantografias"}, headers=cabecera_token(admin)
+    )
+    cuerpo = respuesta.json()
+
+    assert cuerpo["total"] == 2
+    assert {o["unidad_negocio"] for o in cuerpo["data"]} == {"gigantografias"}
+
+
+async def test_una_unidad_inexistente_se_rechaza(cliente_api, admin):
+    respuesta = await cliente_api.get(
+        "/api/ordenes", params={"unidad_negocio": "otra"}, headers=cabecera_token(admin)
+    )
+    assert respuesta.status_code == 422
+
+
+async def test_el_filtro_de_unidad_vale_con_mas_ordenes_que_un_bloque(cliente_api, admin, material):
+    """El filtro se resuelve en el servidor: con la lista paginada, uno en el navegador se perdería lo no cargado."""
+    for unidad in ("imprenta", "imprenta", "imprenta", "gigantografias"):
+        await _crear(cliente_api, admin, material, unidad_negocio=unidad)
+
+    # Bloque de 2: la única de Gigantografías es la más antigua y no cabe en el primer bloque sin filtro.
+    sin_filtro = (
+        await cliente_api.get("/api/ordenes", params={"limit": 2}, headers=cabecera_token(admin))
+    ).json()
+    assert "gigantografias" not in {o["unidad_negocio"] for o in sin_filtro["data"]}
+
+    con_filtro = (
+        await cliente_api.get(
+            "/api/ordenes",
+            params={"limit": 2, "unidad_negocio": "gigantografias"},
+            headers=cabecera_token(admin),
+        )
+    ).json()
+    assert con_filtro["total"] == 1
+    assert [o["unidad_negocio"] for o in con_filtro["data"]] == ["gigantografias"]
+
+
+async def test_pendientes_de_hoy_son_las_en_proceso_con_entrega_hoy_o_vencida(
+    cliente_api, admin, material
+):
+    from datetime import timedelta
+
+    from app.core.fechas import a_fecha_peru, ahora_utc
+
+    hoy = a_fecha_peru(ahora_utc())
+    vencida = await _crear(cliente_api, admin, material, fecha_entrega=hoy - timedelta(days=2))
+    para_hoy = await _crear(cliente_api, admin, material, fecha_entrega=hoy)
+    await _crear(cliente_api, admin, material, fecha_entrega=hoy + timedelta(days=3))
+    cancelada = await _crear(cliente_api, admin, material, fecha_entrega=hoy)
+    await cliente_api.post(
+        f"/api/ordenes/{cancelada['id']}/cancelar", headers=cabecera_token(admin)
+    )
+
+    respuesta = await cliente_api.get(
+        "/api/ordenes", params={"pendientes_hoy": True}, headers=cabecera_token(admin)
+    )
+    cuerpo = respuesta.json()
+
+    assert {o["id"] for o in cuerpo["data"]} == {vencida["id"], para_hoy["id"]}
+    assert cuerpo["total"] == 2
+
+
+async def test_pendientes_de_hoy_se_combina_con_el_local(cliente_api, admin, material):
+    from app.core.fechas import a_fecha_peru, ahora_utc
+
+    hoy = a_fecha_peru(ahora_utc())
+    await _crear(cliente_api, admin, material, fecha_entrega=hoy, unidad_negocio="imprenta")
+    gigante = await _crear(
+        cliente_api, admin, material, fecha_entrega=hoy, unidad_negocio="gigantografias"
+    )
+
+    cuerpo = (
+        await cliente_api.get(
+            "/api/ordenes",
+            params={"pendientes_hoy": True, "unidad_negocio": "gigantografias"},
+            headers=cabecera_token(admin),
+        )
+    ).json()
+
+    assert [o["id"] for o in cuerpo["data"]] == [gigante["id"]]
+    assert cuerpo["total"] == 1
+
+
+async def test_las_metricas_del_panel_siguen_al_local(cliente_api, admin, material):
+    await _crear(cliente_api, admin, material, unidad_negocio="imprenta", precio_total=100)
+    await _crear(
+        cliente_api, admin, material, unidad_negocio="gigantografias", precio_total=200, adelanto_pago=100
+    )
+
+    todas = (await cliente_api.get("/api/ordenes/metricas", headers=cabecera_token(admin))).json()["data"]
+    solo_imprenta = (
+        await cliente_api.get(
+            "/api/ordenes/metricas", params={"unidad_negocio": "imprenta"}, headers=cabecera_token(admin)
+        )
+    ).json()["data"]
+
+    assert todas["total"] == 2 and todas["por_cobrar"] == 150
+    assert solo_imprenta["total"] == 1 and solo_imprenta["por_cobrar"] == 50

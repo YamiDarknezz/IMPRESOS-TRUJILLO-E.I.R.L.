@@ -40,6 +40,7 @@ from app.models import (
     Rol,
     TipoDocumento,
     TipoPago,
+    UnidadNegocio,
     Usuario,
 )
 from app.schemas.orden import MaterialEstimado, OrdenCreateData, VentaRapidaData
@@ -259,6 +260,38 @@ def _aplicar_alcance(consulta, usuario: Usuario):
     return consulta
 
 
+def _aplicar_filtros(
+    consulta,
+    usuario: Usuario,
+    estado: Optional[EstadoOrden] = None,
+    canal_ingreso: Optional[CanalIngreso] = None,
+    unidad_negocio: Optional[UnidadNegocio] = None,
+    pendientes_hoy: bool = False,
+):
+    """
+    Filtros del listado, iguales para la lista y para su total.
+
+    Se resuelven aquí y no en el navegador porque la lista llega por bloques
+    (#27): un filtro hecho sobre lo ya cargado dejaría fuera, sin avisar, las
+    órdenes que todavía no se trajeron.
+
+    `pendientes_hoy` es lo que hay por hacer ya (#123): órdenes en proceso cuya
+    entrega es hoy o ya venció, con el día peruano.
+    """
+    if estado is not None:
+        consulta = consulta.where(Orden.estado == estado)
+    if canal_ingreso is not None:
+        consulta = consulta.where(Orden.canal_ingreso == canal_ingreso)
+    if unidad_negocio is not None:
+        consulta = consulta.where(Orden.unidad_negocio == unidad_negocio)
+    if pendientes_hoy:
+        hoy_peru = a_fecha_peru(ahora_utc())
+        consulta = consulta.where(
+            Orden.estado.in_(ESTADOS_PIPELINE), Orden.fecha_entrega <= hoy_peru
+        )
+    return _aplicar_alcance(consulta, usuario)
+
+
 async def listar(
     sesion: AsyncSession,
     usuario: Usuario,
@@ -266,13 +299,13 @@ async def listar(
     limite: int = 200,
     desplazamiento: int = 0,
     canal_ingreso: Optional[CanalIngreso] = None,
+    unidad_negocio: Optional[UnidadNegocio] = None,
+    pendientes_hoy: bool = False,
 ) -> list[Orden]:
-    consulta = select(Orden).order_by(Orden.creado_en.desc())
-    if estado is not None:
-        consulta = consulta.where(Orden.estado == estado)
-    if canal_ingreso is not None:
-        consulta = consulta.where(Orden.canal_ingreso == canal_ingreso)
-    consulta = _aplicar_alcance(consulta, usuario).limit(limite).offset(desplazamiento)
+    consulta = _aplicar_filtros(
+        select(Orden).order_by(Orden.creado_en.desc()),
+        usuario, estado, canal_ingreso, unidad_negocio, pendientes_hoy,
+    ).limit(limite).offset(desplazamiento)
 
     return list((await sesion.execute(consulta)).scalars())
 
@@ -282,18 +315,22 @@ async def contar(
     usuario: Usuario,
     estado: Optional[EstadoOrden] = None,
     canal_ingreso: Optional[CanalIngreso] = None,
+    unidad_negocio: Optional[UnidadNegocio] = None,
+    pendientes_hoy: bool = False,
 ) -> int:
     """Cuántas órdenes cumplen el filtro (para 'mostrando N de M' y el panel)."""
-    consulta = select(func.count()).select_from(Orden)
-    if estado is not None:
-        consulta = consulta.where(Orden.estado == estado)
-    if canal_ingreso is not None:
-        consulta = consulta.where(Orden.canal_ingreso == canal_ingreso)
-    consulta = _aplicar_alcance(consulta, usuario)
+    consulta = _aplicar_filtros(
+        select(func.count()).select_from(Orden),
+        usuario, estado, canal_ingreso, unidad_negocio, pendientes_hoy,
+    )
     return int((await sesion.execute(consulta)).scalar_one())
 
 
-async def metricas(sesion: AsyncSession, usuario: Usuario) -> dict[str, Any]:
+async def metricas(
+    sesion: AsyncSession,
+    usuario: Usuario,
+    unidad_negocio: Optional[UnidadNegocio] = None,
+) -> dict[str, Any]:
     """
     Indicadores del panel, sumados en la base.
 
@@ -307,6 +344,8 @@ async def metricas(sesion: AsyncSession, usuario: Usuario) -> dict[str, Any]:
     async def contar_donde(*condiciones) -> int:
         consulta = select(func.count()).select_from(Orden).where(*condiciones)
         consulta = _aplicar_alcance(consulta, usuario)
+        if unidad_negocio is not None:
+            consulta = consulta.where(Orden.unidad_negocio == unidad_negocio)
         return int((await sesion.execute(consulta)).scalar_one())
 
     por_cobrar = select(
@@ -316,6 +355,8 @@ async def metricas(sesion: AsyncSession, usuario: Usuario) -> dict[str, Any]:
         Orden.pagado_totalmente.is_(False),
     )
     por_cobrar = _aplicar_alcance(por_cobrar, usuario)
+    if unidad_negocio is not None:
+        por_cobrar = por_cobrar.where(Orden.unidad_negocio == unidad_negocio)
     saldo = (await sesion.execute(por_cobrar)).scalar_one()
 
     return {
