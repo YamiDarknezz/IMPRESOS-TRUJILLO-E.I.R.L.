@@ -24,6 +24,8 @@ import {
   MetodoPago,
   Orden,
   RollosDeOrden,
+  UNIDADES_NEGOCIO,
+  UnidadNegocio,
 } from '../../core/models';
 import { formatearFecha } from '../../shared/utilidades/fechas';
 import { mensajeDeError } from '../../shared/utilidades/errores';
@@ -81,6 +83,10 @@ export class OrdenesComponent {
   readonly busqueda = signal('');
   /** Vía de ingreso a la que se limita la lista; vacío = todas (#69). */
   readonly filtroCanal = signal('');
+  /** Local y "pendientes de hoy" viven en el servicio: se piden al servidor (#123). */
+  readonly local = this.ordenesService.local;
+  readonly soloPendientesHoy = this.ordenesService.soloPendientesHoy;
+  readonly unidades = UNIDADES_NEGOCIO;
   readonly desde = signal('');
   readonly hasta = signal('');
 
@@ -106,6 +112,14 @@ export class OrdenesComponent {
   );
 
   readonly hayFiltroFecha = computed(() => !!(this.desde() || this.hasta()));
+
+  cambiarLocal(valor: string): void {
+    void this.ordenesService.filtrarPor({ local: valor as UnidadNegocio | '' });
+  }
+
+  alternarPendientesHoy(): void {
+    void this.ordenesService.filtrarPor({ soloPendientesHoy: !this.soloPendientesHoy() });
+  }
 
   // ── Estado de la interfaz ────────────────────────────────────────────────
   readonly error = signal('');

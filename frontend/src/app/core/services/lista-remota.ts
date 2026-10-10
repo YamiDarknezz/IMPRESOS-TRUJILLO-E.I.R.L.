@@ -33,7 +33,8 @@ export class ListaRemota<T> {
 
   constructor(
     private readonly api: ApiService,
-    private readonly ruta: string,
+    /** Ruta fija, o una función cuando los filtros viven en el servidor (#123). */
+    private readonly ruta: string | (() => string),
     private readonly tamanoBloque?: number,
   ) {}
 
@@ -86,8 +87,9 @@ export class ListaRemota<T> {
   }
 
   private rutaConBloque(desplazamiento: number): string {
-    if (this.tamanoBloque === undefined) return this.ruta;
-    const separador = this.ruta.includes('?') ? '&' : '?';
-    return `${this.ruta}${separador}limit=${this.tamanoBloque}&offset=${desplazamiento}`;
+    const ruta = typeof this.ruta === 'function' ? this.ruta() : this.ruta;
+    if (this.tamanoBloque === undefined) return ruta;
+    const separador = ruta.includes('?') ? '&' : '?';
+    return `${ruta}${separador}limit=${this.tamanoBloque}&offset=${desplazamiento}`;
   }
 }
