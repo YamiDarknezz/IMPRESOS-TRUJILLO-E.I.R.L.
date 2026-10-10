@@ -1,11 +1,13 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { signal } from '@angular/core';
+import { WritableSignal, signal } from '@angular/core';
 import { OrdenesService } from '../../core/services/ordenes.service';
 import { SesionService } from '../../core/services/sesion.service';
 import { ComprobantesService } from '../../core/services/comprobantes.service';
 import { OrdenesComponent } from './ordenes';
 import { Orden } from '../../core/models';
+import { hidratarConfiguracion, reiniciarConfiguracion } from '../../core/estado/catalogos';
+import { CATALOGOS_DE_PRUEBA, PARAMETROS_DE_PRUEBA } from '../../core/estado/catalogos.prueba';
 
 function ordenBase(sobrescribe: Partial<Orden> = {}): Orden {
   return {
@@ -49,6 +51,9 @@ describe('OrdenesComponent', () => {
     porCobrar: ReturnType<typeof signal<number>>;
     cargar: ReturnType<typeof vi.fn>;
     recargar: ReturnType<typeof vi.fn>;
+    local: ReturnType<typeof signal<string>>;
+    soloPendientesHoy: ReturnType<typeof signal<boolean>>;
+    filtrarPor: ReturnType<typeof vi.fn>;
     entregarConSaldo: ReturnType<typeof vi.fn>;
     rollosDeOrden: ReturnType<typeof vi.fn>;
     cambiarEstado: ReturnType<typeof vi.fn>;
@@ -74,6 +79,9 @@ describe('OrdenesComponent', () => {
       porCobrar: signal(0),
       cargar: vi.fn().mockResolvedValue(undefined),
       recargar: vi.fn().mockResolvedValue(undefined),
+      local: signal(''),
+      soloPendientesHoy: signal(false),
+      filtrarPor: vi.fn().mockResolvedValue(undefined),
       entregarConSaldo: vi.fn().mockResolvedValue(undefined),
       rollosDeOrden: vi.fn().mockResolvedValue({ data: [], resumen: [] }),
       cambiarEstado: vi.fn().mockResolvedValue(undefined),
@@ -346,6 +354,150 @@ describe('OrdenesComponent', () => {
     });
   });
 
+  // Issue #123: el local y "pendientes de hoy" se piden al servidor.
+  describe('filtro por local (#123)', () => {
+    it('elegir un local lo pide al servidor', () => {
+      const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
+
+      componente.cambiarLocal('gigantografias');
+
+      expect(ordenesFalso.filtrarPor).toHaveBeenCalledWith({ local: 'gigantografias' });
+    });
+
+    it('"Todos los locales" quita el filtro', () => {
+      const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
+
+      componente.cambiarLocal('');
+
+      expect(ordenesFalso.filtrarPor).toHaveBeenCalledWith({ local: '' });
+    });
+
+    it('"Pendientes de hoy" se activa y se desactiva', () => {
+      const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
+
+      componente.alternarPendientesHoy();
+      expect(ordenesFalso.filtrarPor).toHaveBeenLastCalledWith({ soloPendientesHoy: true });
+
+      ordenesFalso.soloPendientesHoy.set(true);
+      componente.alternarPendientesHoy();
+      expect(ordenesFalso.filtrarPor).toHaveBeenLastCalledWith({ soloPendientesHoy: false });
+    });
+
+    it('la barra de filtros tiene el selector de local y el botón de pendientes de hoy', () => {
+      const fixture = TestBed.createComponent(OrdenesComponent);
+      // Corriendo todos los specs juntos las etiquetas importadas de los modelos quedan sin
+      // resolver en el bundler del test-runner (ver el spec de contacto): se fijan aquí.
+      Object.assign(fixture.componentInstance, {
+        etiquetaUnidad: { imprenta: 'Imprenta', gigantografias: 'Gigantografías' },
+        etiquetaEstado: { pendiente: 'Pendiente' },
+        unidades: ['imprenta', 'gigantografias'],
+      });
+      fixture.componentInstance.cargando.set(false);
+      fixture.detectChanges();
+
+      const pagina = fixture.nativeElement as HTMLElement;
+      const opciones = Array.from(
+        pagina.querySelectorAll('select[name="filtroLocal"] option')
+      ).map(o => o.textContent?.trim());
+
+      expect(opciones).toEqual(['Todos los locales', 'Imprenta', 'Gigantografías']);
+      expect(pagina.textContent).toContain('Pendientes de hoy');
+    });
+  });
+
+  // Issue #122: el teléfono va junto al cliente; la asignación sigue, pero al final de la fila.
+  describe('columna de contacto (#122)', () => {
+    function pintar(soloVer: boolean) {
+      ordenesFalso.ordenes.set([
+        ordenBase({ id: 1, id_documento: 'ORD-000001', telefono: '924 943 790' }),
+        ordenBase({ id: 2, id_documento: 'ORD-000002', telefono: '' }),
+      ]);
+      const fixture = TestBed.createComponent(OrdenesComponent);
+      if (soloVer) (TestBed.inject(SesionService).esSupervisor as WritableSignal<boolean>).set(false);
+      // Corriendo todos los specs juntos, el bundler del test-runner deja sin resolver
+      // las etiquetas importadas de los modelos (pasa el spec solo): se fijan aquí para
+      // que la prueba mire el contacto y no ese detalle del entorno.
+      Object.assign(fixture.componentInstance, {
+        etiquetaUnidad: { imprenta: 'Imprenta', gigantografias: 'Gigantografías' },
+        etiquetaEstado: { pendiente: 'Pendiente' },
+      });
+      fixture.componentInstance.cargando.set(false);
+      fixture.detectChanges();
+      return fixture.nativeElement as HTMLElement;
+    }
+
+    const encabezados = (tabla: HTMLElement) =>
+      Array.from(tabla.querySelectorAll('th')).map(th => th.textContent?.trim());
+
+    it('muestra el teléfono de cada orden como enlace para llamar, justo después del cliente', () => {
+      const tabla = pintar(false);
+      const columnas = encabezados(tabla);
+
+      expect(columnas.indexOf('Contacto')).toBe(columnas.indexOf('Cliente') + 1);
+
+      const enlaces = tabla.querySelectorAll('a.enlace-telefono');
+      expect(enlaces.length).toBe(1);
+      expect(enlaces[0].textContent?.trim()).toBe('924 943 790');
+      expect(enlaces[0].getAttribute('href')).toBe('tel:924 943 790');
+    });
+
+    it('la asignación sigue para supervisión, pero al final de la fila y no junto al cliente', () => {
+      const columnas = encabezados(pintar(false));
+
+      expect(columnas).toContain('Asignado');
+      expect(columnas.indexOf('Asignado')).toBeGreaterThan(columnas.indexOf('Estado'));
+      expect(columnas.indexOf('Asignado')).toBe(columnas.indexOf('Acciones') - 1);
+    });
+
+    it('quien no es supervisión no ve la columna de asignación', () => {
+      expect(encabezados(pintar(true))).not.toContain('Asignado');
+    });
+
+    it('la búsqueda encuentra la orden por su teléfono', () => {
+      const fixture = TestBed.createComponent(OrdenesComponent);
+      ordenesFalso.ordenes.set([
+        ordenBase({ id: 1, id_documento: 'ORD-000001', telefono: '924 943 790' }),
+        ordenBase({ id: 2, id_documento: 'ORD-000002', telefono: '987 654 321' }),
+      ]);
+      fixture.componentInstance.busqueda.set('924943');
+
+      expect(fixture.componentInstance.ordenesFiltradas().map(o => o.id_documento)).toEqual(['ORD-000001']);
+    });
+  });
+
+  // Issue #124: con el adelanto repartido, la lista muestra todos los métodos.
+  describe('metodosDelAdelanto() (#124)', () => {
+    const pago = (metodo: string, extra: object = {}) => ({
+      id: 1, fecha: '2026-10-01', monto: 50, metodo, tipo: 'adelanto', ...extra,
+    });
+    const conPagos = (pagos: object[]) =>
+      ordenBase({
+        finanzas: {
+          precio_total: 300, subtotal: 300, igv: 0, adelanto_pago: 150, saldo_pendiente: 150,
+          metodo_pago_adelanto: 'efectivo', pagado_totalmente: false, pagos,
+        } as never,
+      });
+
+    it('con partes muestra todos los métodos juntos', () => {
+      const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
+      Object.assign(componente, { etiquetaMetodo: () => ({ efectivo: 'Efectivo', yape_angel: 'Yape Ángel' }) });
+
+      expect(componente.metodosDelAdelanto(conPagos([pago('efectivo'), pago('yape_angel')]))).toBe(
+        'Efectivo + Yape Ángel'
+      );
+    });
+
+    it('un adelanto observado no cuenta, y sin pagos usa el método guardado', () => {
+      const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
+      Object.assign(componente, { etiquetaMetodo: () => ({ efectivo: 'Efectivo', yape_angel: 'Yape Ángel' }) });
+
+      expect(
+        componente.metodosDelAdelanto(conPagos([pago('efectivo'), pago('yape_angel', { estado_pago: 'observado' })]))
+      ).toBe('Efectivo');
+      expect(componente.metodosDelAdelanto(conPagos([]))).toBe('Efectivo');
+    });
+  });
+
   it('asignar(): convierte el id de texto a número, o null si viene vacío', async () => {
     const fixture = TestBed.createComponent(OrdenesComponent);
     const orden = ordenBase();
@@ -442,6 +594,26 @@ describe('OrdenesComponent', () => {
       });
       fixture.componentInstance.abrirCobro(orden);
       expect(fixture.componentInstance.metodoPago()).toBe('yape');
+    });
+
+    it('abrirCobro() precarga cualquiera de los dos Yape (#125)', () => {
+      const fixture = TestBed.createComponent(OrdenesComponent);
+      const orden = ordenBase({
+        finanzas: { precio_total: 100, subtotal: 85, igv: 15, adelanto_pago: 50, saldo_pendiente: 50, metodo_pago_adelanto: 'yape_angel', pagado_totalmente: false },
+      });
+      fixture.componentInstance.abrirCobro(orden);
+      expect(fixture.componentInstance.metodoPago()).toBe('yape_angel');
+    });
+
+    it('abrirCobro(): si el adelanto fue el Yape de antes, que ya no se ofrece, parte de efectivo', () => {
+      hidratarConfiguracion({ parametros: PARAMETROS_DE_PRUEBA, catalogos: CATALOGOS_DE_PRUEBA });
+      const fixture = TestBed.createComponent(OrdenesComponent);
+      const orden = ordenBase({
+        finanzas: { precio_total: 100, subtotal: 85, igv: 15, adelanto_pago: 50, saldo_pendiente: 50, metodo_pago_adelanto: 'yape', pagado_totalmente: false },
+      });
+      fixture.componentInstance.abrirCobro(orden);
+      expect(fixture.componentInstance.metodoPago()).toBe('efectivo');
+      reiniciarConfiguracion();
     });
 
     it('confirmarPago(): sin orden seleccionada, no hace nada', async () => {

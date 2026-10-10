@@ -8,6 +8,8 @@ import {
   hidratarConfiguracion,
   igvPorcentaje,
   metodosPago,
+  metodosPagoCon,
+  metodosPagoHeredados,
   motivosObservacion,
   valoresDe,
 } from './catalogos';
@@ -37,10 +39,25 @@ describe('estado de catálogos (#54)', () => {
   });
 
   it('las listas y sus etiquetas vienen del catálogo', () => {
-    expect(metodosPago()).toEqual(['efectivo', 'yape', 'transferencia']);
+    expect(metodosPago()).toEqual(['efectivo', 'yape_marcell', 'yape_angel', 'transferencia']);
     expect(valoresDe('acciones_auditoria')).toContain('observacion_pago');
-    expect(etiquetasDe('metodos_pago')['yape']).toBe('Yape');
+    expect(etiquetasDe('metodos_pago')['yape_marcell']).toBe('Yape Marcell');
+    expect(etiquetasDe('metodos_pago')['yape_angel']).toBe('Yape Ángel');
     expect(motivosObservacion().map(m => m.valor)).toContain('yape_falso');
+  });
+
+  // Issue #125: dos números de Yape; el `yape` de antes solo se lee.
+  it('el método heredado no se ofrece, pero conserva su nombre para los pagos antiguos', () => {
+    expect(metodosPago()).not.toContain('yape');
+    expect(metodosPagoHeredados()).toEqual(['yape']);
+    expect(etiquetaDe('metodos_pago', 'yape')).toBe('Yape (sin especificar)');
+  });
+
+  it('metodosPagoCon() agrega el heredado solo cuando es el valor guardado', () => {
+    // Al editar una orden vieja, el desplegable no puede quedar vacío.
+    expect(metodosPagoCon('yape')).toEqual(['efectivo', 'yape_marcell', 'yape_angel', 'transferencia', 'yape']);
+    expect(metodosPagoCon('yape_angel')).toEqual(['efectivo', 'yape_marcell', 'yape_angel', 'transferencia']);
+    expect(metodosPagoCon(undefined)).toEqual(['efectivo', 'yape_marcell', 'yape_angel', 'transferencia']);
   });
 
   it('un valor sin etiqueta se muestra legible, no crudo', () => {

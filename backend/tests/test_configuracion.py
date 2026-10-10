@@ -46,6 +46,24 @@ async def test_los_catalogos_cubren_todos_los_valores(cliente_api, admin):
             )
 
 
+async def test_los_dos_yape_se_ofrecen_y_el_yape_de_antes_queda_solo_para_leer(
+    cliente_api, admin
+):
+    """#125: el desplegable ofrece cada número; el `yape` anterior solo se muestra."""
+    datos = (
+        await cliente_api.get("/api/configuracion", headers=cabecera_token(admin))
+    ).json()["data"]["catalogos"]["metodos_pago"]
+    por_valor = {item["valor"]: item for item in datos}
+
+    assert por_valor["yape_marcell"]["etiqueta"] == "Yape Marcell"
+    assert por_valor["yape_angel"]["etiqueta"] == "Yape Ángel"
+    assert por_valor["yape"]["etiqueta"] == "Yape (sin especificar)"
+
+    assert por_valor["yape"].get("heredado") is True
+    ofrecidos = [valor for valor, item in por_valor.items() if not item.get("heredado")]
+    assert ofrecidos == ["efectivo", "yape_marcell", "yape_angel", "transferencia"]
+
+
 async def test_las_etiquetas_no_estan_vacias_ni_repetidas(cliente_api, admin):
     datos = (
         await cliente_api.get("/api/configuracion", headers=cabecera_token(admin))

@@ -133,6 +133,8 @@ def serializar_consumo(consumo) -> dict[str, Any]:
         "fecha": iso(consumo.fecha),
         "usuario": consumo.usuario.nombre if consumo.usuario else "",
         "nota": consumo.nota,
+        # Lo descontó la orden sola al crearse (#127), no se registró a mano.
+        "automatico": consumo.automatico,
     }
 
 
@@ -238,7 +240,7 @@ def _serializar_materiales(orden) -> dict[str, list[dict[str, Any]]]:
     for linea in orden.materiales:
         estimada = num(linea.cantidad_estimada)
         base = {"id_material": linea.material_id, "nombre": linea.nombre, "cantidad": estimada}
-        estimados.append({**base, "unidad": linea.unidad})
+        estimados.append({**base, "unidad": linea.unidad, "pieza_id": linea.pieza_id})
 
         if linea.cantidad_real is None:
             continue
@@ -345,6 +347,8 @@ def serializar_cierre(cierre) -> dict[str, Any]:
         "usuario": cierre.usuario.nombre if cierre.usuario else "",
         "monto_efectivo": num(cierre.monto_efectivo),
         "monto_yape": num(cierre.monto_yape),
+        "monto_yape_marcell": num(cierre.monto_yape_marcell),
+        "monto_yape_angel": num(cierre.monto_yape_angel),
         "monto_transferencia": num(cierre.monto_transferencia),
         "total": num(cierre.total),
         "monto_gastos": num(cierre.monto_gastos),

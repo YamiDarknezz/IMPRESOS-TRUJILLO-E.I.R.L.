@@ -68,6 +68,45 @@ describe('OrdenesService', () => {
     expect(inventarioFalso.recargar).toHaveBeenCalledTimes(1);
   });
 
+  // Issue #123: Imprenta / Gigantografías y "pendientes de hoy" se piden al servidor.
+  describe('filtros del servidor (#123)', () => {
+    it('filtrarPor({ local }) pide la lista y las métricas de ese local', async () => {
+      await servicio.filtrarPor({ local: 'imprenta' });
+
+      expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes?unidad_negocio=imprenta&limit=100&offset=0');
+      expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes/metricas?unidad_negocio=imprenta');
+      expect(servicio.local()).toBe('imprenta');
+    });
+
+    it('combina el local con los pendientes de hoy', async () => {
+      await servicio.filtrarPor({ local: 'gigantografias', soloPendientesHoy: true });
+
+      expect(apiFalsa.get).toHaveBeenCalledWith(
+        '/api/ordenes?unidad_negocio=gigantografias&pendientes_hoy=true&limit=100&offset=0'
+      );
+    });
+
+    it('quitar los filtros vuelve a la lista completa y a las métricas de todo el negocio', async () => {
+      await servicio.filtrarPor({ local: 'imprenta', soloPendientesHoy: true });
+      apiFalsa.get.mockClear();
+
+      await servicio.filtrarPor({ local: '', soloPendientesHoy: false });
+
+      expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes?limit=100&offset=0');
+      expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes/metricas');
+    });
+
+    it('recargar tras una operación conserva el local elegido', async () => {
+      await servicio.filtrarPor({ local: 'imprenta' });
+      apiFalsa.post.mockResolvedValue({ status: 'success', data: {} });
+      apiFalsa.get.mockClear();
+
+      await servicio.cancelar(1);
+
+      expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes?unidad_negocio=imprenta&limit=100&offset=0');
+    });
+  });
+
   it('cancelar() postea al endpoint de cancelar', async () => {
     apiFalsa.post.mockResolvedValue({ status: 'success', data: {} });
     await servicio.cancelar(1);
@@ -361,6 +400,36 @@ describe('funciones puras de órdenes', () => {
 
     it('"todos" no filtra por estado', () => {
       expect(filtrarOrdenes(ordenes, { estado: 'todos' })).toEqual(ordenes);
+    });
+
+    // Issue #122: el teléfono del pedido se busca sin importar cómo se escribió.
+    it('filtra por teléfono, con espacios, guiones o pegado', () => {
+      const lista = [
+        ordenBase({ id_documento: 'A', telefono: '924 943 790' }),
+        ordenBase({ id_documento: 'B', telefono: '987-654-321' }),
+        ordenBase({ id_documento: 'C', telefono: '' }),
+      ];
+
+      expect(filtrarOrdenes(lista, { texto: '924943790' }).map(o => o.id_documento)).toEqual(['A']);
+      expect(filtrarOrdenes(lista, { texto: '943 790' }).map(o => o.id_documento)).toEqual(['A']);
+      expect(filtrarOrdenes(lista, { texto: '987654' }).map(o => o.id_documento)).toEqual(['B']);
+    });
+
+    it('con menos de tres dígitos no busca por teléfono', () => {
+      const lista = [ordenBase({ id_documento: 'A', telefono: '924 943 790' })];
+
+      expect(filtrarOrdenes(lista, { texto: '92' })).toEqual([]);
+    });
+
+    // Issue #123: escribir el nombre del local en el buscador filtra por local.
+    it('el buscador reconoce el nombre del local, con o sin tilde', () => {
+      const lista = [
+        ordenBase({ id_documento: 'A', unidad_negocio: 'imprenta' }),
+        ordenBase({ id_documento: 'B', unidad_negocio: 'gigantografias' }),
+      ];
+
+      expect(filtrarOrdenes(lista, { texto: 'imprenta' }).map(o => o.id_documento)).toEqual(['A']);
+      expect(filtrarOrdenes(lista, { texto: 'Gigantografías' }).map(o => o.id_documento)).toEqual(['B']);
     });
 
     it('filtra por texto libre (código o cliente)', () => {

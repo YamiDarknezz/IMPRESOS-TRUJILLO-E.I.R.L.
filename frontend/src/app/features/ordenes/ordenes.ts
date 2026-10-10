@@ -24,6 +24,8 @@ import {
   MetodoPago,
   Orden,
   RollosDeOrden,
+  UNIDADES_NEGOCIO,
+  UnidadNegocio,
 } from '../../core/models';
 import { formatearFecha } from '../../shared/utilidades/fechas';
 import { mensajeDeError } from '../../shared/utilidades/errores';
@@ -32,6 +34,7 @@ import {
   etiquetasCanal,
   etiquetasMetodo,
   metodosPago as metodosDelServidor,
+  metodosPagoHeredados,
 } from '../../core/estado/catalogos';
 import {
   CapturaElegida,
@@ -80,6 +83,10 @@ export class OrdenesComponent {
   readonly busqueda = signal('');
   /** Vía de ingreso a la que se limita la lista; vacío = todas (#69). */
   readonly filtroCanal = signal('');
+  /** Local y "pendientes de hoy" viven en el servicio: se piden al servidor (#123). */
+  readonly local = this.ordenesService.local;
+  readonly soloPendientesHoy = this.ordenesService.soloPendientesHoy;
+  readonly unidades = UNIDADES_NEGOCIO;
   readonly desde = signal('');
   readonly hasta = signal('');
 
@@ -105,6 +112,34 @@ export class OrdenesComponent {
   );
 
   readonly hayFiltroFecha = computed(() => !!(this.desde() || this.hasta()));
+
+  /**
+   * Con qué se dejó el adelanto: un método, o todos los de las partes (#124),
+   * p. ej. "Efectivo + Yape Ángel". Sin detalle de pagos, el método guardado en la orden.
+   */
+  metodosDelAdelanto(orden: Orden): string {
+    const etiquetas = this.etiquetaMetodo();
+    const metodos = [
+      ...new Set(
+        (orden.finanzas?.pagos ?? [])
+          .filter(p => p.tipo === 'adelanto' && (p.estado_pago ?? 'conforme') === 'conforme')
+          .map(p => p.metodo)
+      ),
+    ];
+    if (metodos.length === 0) {
+      const guardado = orden.finanzas?.metodo_pago_adelanto;
+      return guardado ? (etiquetas[guardado] ?? guardado) : '';
+    }
+    return metodos.map(m => etiquetas[m] ?? m).join(' + ');
+  }
+
+  cambiarLocal(valor: string): void {
+    void this.ordenesService.filtrarPor({ local: valor as UnidadNegocio | '' });
+  }
+
+  alternarPendientesHoy(): void {
+    void this.ordenesService.filtrarPor({ soloPendientesHoy: !this.soloPendientesHoy() });
+  }
 
   // ── Estado de la interfaz ────────────────────────────────────────────────
   readonly error = signal('');
@@ -339,7 +374,10 @@ export class OrdenesComponent {
 
   abrirCobro(orden: Orden): void {
     this.ordenACobrar.set(orden);
-    this.metodoPago.set(orden.finanzas?.metodo_pago_adelanto ?? 'efectivo');
+    // Por defecto, el mismo método del adelanto; si fue el `yape` de antes de
+    // poder elegir el número (#125) ya no se ofrece, así que se parte de efectivo.
+    const previo = orden.finanzas?.metodo_pago_adelanto ?? 'efectivo';
+    this.metodoPago.set(metodosPagoHeredados().includes(previo) ? 'efectivo' : previo);
     this.referenciaPago.set('');
     this.descripcionPago.set('');
     this.limpiarAdjuntosCobro();

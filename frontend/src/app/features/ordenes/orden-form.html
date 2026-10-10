@@ -224,6 +224,10 @@
               [disabled]="!materialSelId()">Añadir</button>
     </div>
 
+    @if (errores()['materiales']) {
+      <span class="field-error">{{ errores()['materiales'] }}</span>
+    }
+
     @if (form().materiales.length > 0) {
       <ul class="material-list">
         @for (mat of form().materiales; track $index) {
@@ -234,6 +238,19 @@
                 <small class="text-muted">· Ubicación: {{ ubicacion }}</small>
               }
             </span>
+            <!-- Rollo del que sale (#127): la orden le descuenta los metros al crearse. -->
+            @if (esDeRollo(mat.id_material)) {
+              <select class="rollo-select" [ngModel]="mat.pieza_id || ''"
+                      (ngModelChange)="elegirRollo($index, $event)"
+                      [name]="'rollo' + $index" aria-label="Rollo del que sale este material">
+                <option value="">Sin descontar de un rollo</option>
+                @for (rollo of rollosDe(mat.id_material); track rollo.id) {
+                  <option [value]="rollo.id">
+                    {{ rollo.codigo_identificador }} — quedan {{ saldoDelRollo(rollo.id, mat.id_material) }} {{ rollo.unidad_medida }}
+                  </option>
+                }
+              </select>
+            }
             <button type="button" class="delete-btn" (click)="quitarMaterial($index)" title="Quitar material" aria-label="Quitar material">
               <app-icon name="x" [size]="13" />
             </button>
@@ -324,7 +341,7 @@
       <div class="input-group">
         <label>Método del adelanto</label>
         <select [ngModel]="form().metodoPago" (ngModelChange)="actualizar('metodoPago', $event)" name="metodoPago">
-          @for (m of metodosPago(); track m) {
+          @for (m of metodosPrimeraParte(); track m) {
             <option [value]="m">{{ etiquetaMetodo()[m] }}</option>
           }
         </select>
@@ -336,6 +353,43 @@
                (ngModelChange)="actualizar('adelantoDescripcion', $event)" maxlength="200"
                placeholder="Ej: Adelanto por los banners del evento">
         <span class="field-hint">Queda en el historial de pagos del cliente y de la orden.</span>
+      </div>
+
+      <!-- Adelanto repartido (#124): lo que el cliente deja en otro método, como otro pago. -->
+      @for (parte of form().adelantoExtra; track $index; let i = $index) {
+        <div class="input-group">
+          <label>Otro método del adelanto</label>
+          <select [ngModel]="parte.metodo" (ngModelChange)="actualizarParteAdelanto(i, 'metodo', $event)"
+                  [name]="'metodoParte' + i">
+            @for (m of metodosDeLaParte(i); track m) {
+              <option [value]="m">{{ etiquetaMetodo()[m] }}</option>
+            }
+          </select>
+        </div>
+        <div class="input-group">
+          <label>Monto en ese método (S/)</label>
+          <input type="number" [ngModel]="parte.monto" [name]="'montoParte' + i"
+                 (ngModelChange)="actualizarParteAdelanto(i, 'monto', $event)" min="0" step="0.01">
+        </div>
+        <div class="input-group campo-completo fila-parte-adelanto">
+          <input type="text" [ngModel]="parte.descripcion" [name]="'descParte' + i" maxlength="200"
+                 (ngModelChange)="actualizarParteAdelanto(i, 'descripcion', $event)"
+                 placeholder="Descripción de esta parte (opcional)">
+          <button type="button" class="btn-secondary btn-sm" (click)="quitarParteAdelanto(i)">Quitar</button>
+        </div>
+      }
+
+      <div class="input-group campo-completo">
+        <div class="fila-parte-adelanto">
+          <button type="button" class="btn-secondary btn-sm" (click)="agregarParteAdelanto()"
+                  [disabled]="!puedeAgregarParte()">+ Agregar otro método</button>
+          @if (form().adelantoExtra.length > 0) {
+            <span class="field-hint">Adelanto total: S/ {{ adelantoTotal() | number:'1.2-2' }}</span>
+          }
+        </div>
+        @if (errores()['adelantoPartes']) {
+          <span class="field-error">{{ errores()['adelantoPartes'] }}</span>
+        }
       </div>
 
       <!-- Captura del adelanto: opcional, es el respaldo de la conciliación. -->

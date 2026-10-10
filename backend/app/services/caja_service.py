@@ -19,6 +19,7 @@ from app.models import (
     EstadoOrden,
     EstadoPago,
     GastoCaja,
+    MetodoPago,
     MotivoObservacionPago,
     Orden,
     PagoOrden,
@@ -32,11 +33,13 @@ from app.models import (
 from app.schemas.caja import GastoCajaData
 from app.services.ordenes_service import _obtener_para_escritura, _recalcular_finanzas
 
-METODOS = ("efectivo", "yape", "transferencia")
+# Todos los métodos del enum: un método nuevo (p. ej. un segundo número de Yape,
+# #125) entra al arqueo solo, sin tocar esta lista ni caer en un total ajeno.
+METODOS = tuple(metodo.value for metodo in MetodoPago)
 
 
 def _acumulado() -> dict:
-    return {"efectivo": 0.0, "yape": 0.0, "transferencia": 0.0, "total": 0.0}
+    return {**{metodo: 0.0 for metodo in METODOS}, "total": 0.0}
 
 
 def _sumar(acumulado: dict, pago: PagoOrden) -> None:
@@ -324,13 +327,12 @@ async def observar_pago(
     # financieras sobre la misma orden no deben poder pisarse entre sí.
     orden = await _obtener_para_escritura(sesion, pago.orden_id)
 
-    if orden.estado == EstadoOrden.ENTREGADA:
-        # El resto del sistema trata la entrega como definitiva (no admite
-        # más cambios de estado); reabrir su deuda sería la única excepción.
-        raise ErrorDeNegocio(
-            "No se puede observar un pago de una orden ya entregada: "
-            "la entrega es definitiva."
-        )
+    # Una orden ya entregada SÍ se puede observar (#126): el billete falso a
+    # veces se descubre después de entregar y cobrar todo, y el dinero falso no
+    # deja de serlo porque la orden esté cerrada. La entrega sigue siendo
+    # definitiva (el estado no cambia); lo que cambia es el saldo: se recalcula
+    # solo con pagos conformes, así que la orden queda entregada con deuda, que
+    # es justo lo que `entregada_con_saldo` ya expresa.
 
     # El cierre congelado es el documento de control de gerencia: si el pago
     # ya quedó dentro de uno, no se toca más (issue #19 trata el resto de ese
@@ -443,6 +445,8 @@ async def cerrar_caja(
         usuario=usuario,
         monto_efectivo=acumulado["efectivo"],
         monto_yape=acumulado["yape"],
+        monto_yape_marcell=acumulado["yape_marcell"],
+        monto_yape_angel=acumulado["yape_angel"],
         monto_transferencia=acumulado["transferencia"],
         total=acumulado["total"],
         monto_gastos=gastos_del_usuario,

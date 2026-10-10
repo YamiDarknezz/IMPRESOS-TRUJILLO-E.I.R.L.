@@ -49,33 +49,19 @@
 
   <!-- ═══ Totales del día ══════════════════════════════════════════════════ -->
   <div class="stats-row">
-    <div class="stat-card">
-      <div class="stat-icon stat-icon-success">
-        <app-icon name="wallet" [size]="20" />
+    <!-- Una tarjeta por método (Efectivo, cada Yape, Transferencia): el método nuevo
+         aparece solo, y el heredado solo si hubo cobros con él (#125). -->
+    @for (m of metodosArqueo(); track m) {
+      <div class="stat-card">
+        <div class="stat-icon" [ngClass]="'stat-icon-' + colorDeMetodo(m)">
+          <app-icon [name]="iconoDeMetodo(m)" [size]="20" />
+        </div>
+        <div class="stat-body">
+          <span class="stat-label">{{ etiquetaMetodo()[m] || m }}</span>
+          <span class="stat-value" [ngClass]="colorDeMetodo(m) === 'neutral' ? '' : 'stat-color-' + colorDeMetodo(m)">S/ {{ montoDe(datos.total, m) | number:'1.2-2' }}</span>
+        </div>
       </div>
-      <div class="stat-body">
-        <span class="stat-label">Efectivo</span>
-        <span class="stat-value stat-color-success">S/ {{ datos.total.efectivo | number:'1.2-2' }}</span>
-      </div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon stat-icon-warning">
-        <app-icon name="smartphone" [size]="20" />
-      </div>
-      <div class="stat-body">
-        <span class="stat-label">Yape</span>
-        <span class="stat-value stat-color-warning">S/ {{ datos.total.yape | number:'1.2-2' }}</span>
-      </div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon stat-icon-neutral">
-        <app-icon name="landmark" [size]="20" />
-      </div>
-      <div class="stat-body">
-        <span class="stat-label">Transferencia</span>
-        <span class="stat-value">S/ {{ datos.total.transferencia | number:'1.2-2' }}</span>
-      </div>
-    </div>
+    }
     <div class="stat-card">
       <div class="stat-icon stat-icon-danger">
         <app-icon name="receipt-text" [size]="20" />
@@ -126,9 +112,9 @@
           <span class="metodo-box-label">{{ etiquetaUnidad[u] }}</span>
           <span class="metodo-box-value">S/ {{ datos.por_unidad_negocio[u]?.total ?? 0 | number:'1.2-2' }}</span>
           <span class="metodo-label">
-            Efectivo: S/ {{ datos.por_unidad_negocio[u]?.efectivo ?? 0 | number:'1.2-2' }}
-            · Yape: S/ {{ datos.por_unidad_negocio[u]?.yape ?? 0 | number:'1.2-2' }}
-            · Transf: S/ {{ datos.por_unidad_negocio[u]?.transferencia ?? 0 | number:'1.2-2' }}
+            @for (m of metodosArqueo(); track m; let ultimo = $last) {
+              {{ etiquetaMetodo()[m] || m }}: S/ {{ montoDe(datos.por_unidad_negocio[u], m) | number:'1.2-2' }}{{ ultimo ? '' : ' ·' }}
+            }
           </span>
           <span class="metodo-label">
             Gastos: S/ {{ datos.por_unidad_negocio[u]?.gastos ?? 0 | number:'1.2-2' }}
@@ -199,7 +185,7 @@
           <thead>
             <tr>
               <th>Usuario</th>
-              @for (m of metodos(); track m) { <th>{{ etiquetaMetodo()[m] }}</th> }
+              @for (m of metodosArqueo(); track m) { <th>{{ etiquetaMetodo()[m] || m }}</th> }
               <th>Total</th>
             </tr>
           </thead>
@@ -207,7 +193,7 @@
             @for (fila of datos.por_usuario; track fila.usuario_id ?? 0) {
               <tr>
                 <td><strong>{{ fila.nombre }}</strong></td>
-                @for (m of metodos(); track m) {
+                @for (m of metodosArqueo(); track m) {
                   <td>S/ {{ montoDe(fila, m) | number:'1.2-2' }}</td>
                 }
                 <td><strong>S/ {{ fila.total | number:'1.2-2' }}</strong></td>
@@ -269,9 +255,7 @@
             <tr>
               <th>Usuario</th>
               <th>Unidad</th>
-              <th>Efectivo</th>
-              <th>Yape</th>
-              <th>Transferencia</th>
+              @for (m of metodosCierres(); track m) { <th>{{ etiquetaMetodo()[m] || m }}</th> }
               <th>Total</th>
               <th>Gastos</th>
               <th>Neto</th>
@@ -285,9 +269,9 @@
               <tr>
                 <td><strong>{{ cierre.usuario }}</strong></td>
                 <td><span class="badge badge-neutral">{{ etiquetaUnidad[cierre.unidad_negocio] }}</span></td>
-                <td>S/ {{ cierre.monto_efectivo | number:'1.2-2' }}</td>
-                <td>S/ {{ cierre.monto_yape | number:'1.2-2' }}</td>
-                <td>S/ {{ cierre.monto_transferencia | number:'1.2-2' }}</td>
+                @for (m of metodosCierres(); track m) {
+                  <td>S/ {{ montoDeCierre(cierre, m) | number:'1.2-2' }}</td>
+                }
                 <td><strong>S/ {{ cierre.total | number:'1.2-2' }}</strong></td>
                 <td>S/ {{ cierre.monto_gastos ?? 0 | number:'1.2-2' }}</td>
                 <td><strong>S/ {{ cierre.neto ?? cierre.total | number:'1.2-2' }}</strong></td>

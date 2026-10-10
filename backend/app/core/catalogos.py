@@ -10,6 +10,7 @@ texto crudo porque la copia del frontend nadie la actualizó.
 """
 from app.core.config import settings
 from app.models.enums import (
+    METODOS_HEREDADOS,
     CanalIngreso,
     EstadoPago,
     MetodoPago,
@@ -23,8 +24,11 @@ from app.models.enums import (
 
 ETIQUETA_METODO_PAGO = {
     MetodoPago.EFECTIVO: "Efectivo",
-    MetodoPago.YAPE: "Yape",
+    MetodoPago.YAPE_MARCELL: "Yape Marcell",
+    MetodoPago.YAPE_ANGEL: "Yape Ángel",
     MetodoPago.TRANSFERENCIA: "Transferencia",
+    # Los pagos anteriores a #125 no dicen a qué número entraron.
+    MetodoPago.YAPE: "Yape (sin especificar)",
 }
 
 ETIQUETA_CANAL_INGRESO = {
@@ -112,10 +116,22 @@ def empresa() -> dict[str, str]:
     }
 
 
-def catalogos() -> dict[str, list[dict[str, str]]]:
+def _metodos_pago() -> list[dict[str, str | bool]]:
+    """
+    Todos los métodos, también el heredado: las tablas necesitan su nombre para
+    mostrar los pagos antiguos. El heredado va marcado para que los
+    desplegables no lo ofrezcan al registrar un pago nuevo (#125).
+    """
+    return [
+        {**opcion, "heredado": True} if MetodoPago(opcion["valor"]) in METODOS_HEREDADOS else opcion
+        for opcion in _como_lista(MetodoPago, ETIQUETA_METODO_PAGO)
+    ]
+
+
+def catalogos() -> dict[str, list[dict[str, str | bool]]]:
     """Listas de valores con su nombre legible, para los desplegables y las tablas."""
     return {
-        "metodos_pago": _como_lista(MetodoPago, ETIQUETA_METODO_PAGO),
+        "metodos_pago": _metodos_pago(),
         "canales_ingreso": _como_lista(CanalIngreso, ETIQUETA_CANAL_INGRESO),
         "tipos_pago": _como_lista(TipoPago, ETIQUETA_TIPO_PAGO),
         "estados_pago": _como_lista(EstadoPago, ETIQUETA_ESTADO_PAGO),

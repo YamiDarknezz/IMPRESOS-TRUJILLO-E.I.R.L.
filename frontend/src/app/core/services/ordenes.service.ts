@@ -32,6 +32,8 @@ export interface ItemOrdenData {
 export interface MaterialEstimadoData {
   material_id: number;
   cantidad: number;
+  /** Rollo del que sale (#127). */
+  pieza_id?: number | null;
 }
 
 /** Datos que el formulario envía al crear o editar una orden. */
@@ -57,6 +59,15 @@ export interface DatosOrden {
   metodo_pago: MetodoPago;
   /** Para qué es el adelanto (#110). */
   adelanto_descripcion: string;
+  /** El adelanto repartido en varios métodos (#124); `adelanto_pago` es la suma. */
+  adelanto_partes?: ParteAdelantoData[];
+}
+
+/** Una parte del adelanto: cuánto se dejó y con qué método (#124). */
+export interface ParteAdelantoData {
+  metodo: MetodoPago;
+  monto: number;
+  descripcion?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -64,8 +75,32 @@ export class OrdenesService {
   private api = inject(ApiService);
   private inventario = inject(InventarioService);
 
+  /**
+   * Filtros que se resuelven en el servidor (#123): la lista llega por bloques
+   * de 100, y uno hecho en el navegador dejaría fuera lo que aún no se trajo.
+   * `local` es Imprenta o Gigantografías ('' = todos); `soloPendientesHoy` es
+   * lo que está en proceso con entrega hoy o vencida.
+   */
+  readonly local = signal<UnidadNegocio | ''>('');
+  readonly soloPendientesHoy = signal(false);
+
   /** Se pide por bloques de 100 y el backend informa cuántas hay en total. */
-  private lista = new ListaRemota<Orden>(this.api, '/api/ordenes', 100);
+  private lista = new ListaRemota<Orden>(this.api, () => this.rutaDeLista(), 100);
+
+  private rutaDeLista(): string {
+    const parametros = new URLSearchParams();
+    if (this.local()) parametros.set('unidad_negocio', this.local());
+    if (this.soloPendientesHoy()) parametros.set('pendientes_hoy', 'true');
+    const texto = parametros.toString();
+    return texto ? `/api/ordenes?${texto}` : '/api/ordenes';
+  }
+
+  /** Cambia los filtros del servidor y vuelve a traer la lista y el panel. */
+  async filtrarPor(cambios: { local?: UnidadNegocio | ''; soloPendientesHoy?: boolean }): Promise<void> {
+    if (cambios.local !== undefined) this.local.set(cambios.local);
+    if (cambios.soloPendientesHoy !== undefined) this.soloPendientesHoy.set(cambios.soloPendientesHoy);
+    await Promise.all([this.lista.recargar(), this.cargarMetricas()]);
+  }
 
   readonly ordenes = this.lista.items;
   readonly cargando = this.lista.cargando;
@@ -101,7 +136,10 @@ export class OrdenesService {
   /** Pide los indicadores del panel. Se llama al cargar y tras cada operación. */
   async cargarMetricas(): Promise<void> {
     try {
-      const res = await this.api.get<RespuestaItem<MetricasOrdenes>>('/api/ordenes/metricas');
+      // Las tarjetas siguen al local elegido: si la lista es de Imprenta, los números también.
+      const local = this.local();
+      const ruta = local ? `/api/ordenes/metricas?unidad_negocio=${local}` : '/api/ordenes/metricas';
+      const res = await this.api.get<RespuestaItem<MetricasOrdenes>>(ruta);
       this.metricas.set(res.data);
     } catch {
       // Se conserva lo último que se supo: es preferible a mostrar ceros.
@@ -243,6 +281,24 @@ export function claseEstado(estado: EstadoOrden): string {
   return 'badge-estado-' + estado.replace('_', '-');
 }
 
+function sinTildes(texto: string): string {
+  return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+/**
+ * ¿El teléfono de la orden contiene lo que se escribió?
+ *
+ * Se comparan solo los dígitos: el teléfono se guarda como lo escribió quien
+ * atendió ("924 943 790") y quien busca puede escribirlo pegado o con guiones.
+ * Con menos de tres dígitos no se busca por teléfono, para que "12" no traiga
+ * medio listado por casualidad.
+ */
+export function coincideTelefono(telefono: string | null | undefined, texto: string): boolean {
+  const buscado = texto.replace(/\D/g, '');
+  if (buscado.length < 3) return false;
+  return (telefono ?? '').replace(/\D/g, '').includes(buscado);
+}
+
 /** Filtra la lista por etapa, texto libre y rango de fechas de creación. */
 export function filtrarOrdenes(
   ordenes: Orden[],
@@ -263,7 +319,10 @@ export function filtrarOrdenes(
       const coincide =
         orden.id_documento?.toLowerCase().includes(texto) ||
         orden.cliente?.toLowerCase().includes(texto) ||
-        orden.descripcion?.toLowerCase().includes(texto);
+        orden.descripcion?.toLowerCase().includes(texto) ||
+        coincideTelefono(orden.telefono, texto) ||
+        // "imprenta" o "gigantografías" encuentran las órdenes de ese local (#123).
+        sinTildes(orden.unidad_negocio ?? '').includes(sinTildes(texto));
       if (!coincide) return false;
     }
 

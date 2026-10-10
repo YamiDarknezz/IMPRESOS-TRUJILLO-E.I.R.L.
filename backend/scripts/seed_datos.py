@@ -362,7 +362,7 @@ async def _sembrar_ordenes_demo(
         operario1,
     )
     await ordenes_service.confirmar_pago(
-        sesion, orden_entregada.id, MetodoPago.YAPE, "", admin
+        sesion, orden_entregada.id, MetodoPago.YAPE_MARCELL, "", admin
     )
     await ordenes_service.cambiar_estado(
         sesion, orden_entregada.id, EstadoOrden.ENTREGADA, admin

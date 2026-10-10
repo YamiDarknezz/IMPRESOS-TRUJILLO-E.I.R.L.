@@ -15,8 +15,6 @@ import { SesionService } from '../../core/services/sesion.service';
 import {
   ConsumoPieza,
   ConsumoPiezaCreateData,
-  ETIQUETA_METODO,
-  METODOS_PAGO,
   MaterialInventario,
   MovimientoStock,
   PiezaLoteCreateData,
@@ -24,7 +22,7 @@ import {
   TipoFormatoMaterial,
 } from '../../core/models';
 import { mensajeDeError } from '../../shared/utilidades/errores';
-import { etiquetaMovimiento } from '../../core/estado/catalogos';
+import { etiquetaMovimiento, etiquetasMetodo, metodosPago as metodosDelServidor } from '../../core/estado/catalogos';
 import { formatearFecha } from '../../shared/utilidades/fechas';
 import { IconComponent } from '../../shared/componentes/icon/icon.component';
 import { ModalComponent } from '../../shared/componentes/modal/modal.component';
@@ -135,8 +133,10 @@ export class InventarioComponent {
   });
 
   /** Opciones del cobro por corte (#57): el monto entra a Caja con su método. */
-  readonly metodosPago = METODOS_PAGO;
-  readonly etiquetaMetodo = ETIQUETA_METODO;
+  // Del servidor, como en el resto de las pantallas: así los dos Yape (#125)
+  // aparecen aquí sin repetir la lista.
+  readonly metodosPago = computed(() => metodosDelServidor());
+  readonly etiquetaMetodo = computed(() => etiquetasMetodo());
 
   readonly mostrarFormulario = signal(false);
   readonly form = signal<FormularioMaterial>(formularioVacio());
