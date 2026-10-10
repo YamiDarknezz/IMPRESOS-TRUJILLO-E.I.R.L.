@@ -416,6 +416,7 @@ def _reemplazar_materiales(
         orden.materiales.append(
             OrdenMaterial(
                 material_id=estimado.material_id,
+                pieza_id=estimado.pieza_id,
                 nombre=material.nombre,
                 unidad=(
                     (material.unidad.abreviatura or material.unidad.nombre)
@@ -592,6 +593,10 @@ async def crear_orden(sesion: AsyncSession, data: OrdenCreateData, usuario: Usua
             ],
             orden_id=orden.id,
             usuario_id=usuario.id,
+        )
+        # Y el rollo o plancha elegido (#127): sin volver a restar el material.
+        await inventario_service.descontar_cortes_de_orden(
+            sesion, orden, data.materiales_estimados, usuario
         )
 
     if data.adelanto_pago > 0:
@@ -775,9 +780,15 @@ async def actualizar(sesion: AsyncSession, id_orden: int, data: OrdenCreateData,
     materiales = await _cargar_materiales(
         sesion, {estimado.material_id for estimado in data.materiales_estimados}
     )
+    # Los cortes de rollo de la orden se rehacen según lo nuevo (#127): se devuelve
+    # lo descontado y se vuelve a descontar. Los cortes manuales no se tocan.
+    await inventario_service.devolver_cortes_de_orden(sesion, orden.id)
     _reemplazar_materiales(orden, data.materiales_estimados, materiales)
     await _sincronizar_adelanto(sesion, orden, data, usuario)
     await sesion.flush()
+    await inventario_service.descontar_cortes_de_orden(
+        sesion, orden, data.materiales_estimados, usuario
+    )
 
     if ajustes:
         # `_reemplazar_materiales` (arriba) ya garantiza que todo material_id
@@ -831,6 +842,8 @@ async def cancelar(sesion: AsyncSession, id_orden: int, usuario: Usuario) -> Ord
         usuario_id=usuario.id,
         exigir_material=False,  # un material borrado no debe bloquear la devolución
     )
+    # Y los metros que la orden le había descontado a cada rollo (#127).
+    await inventario_service.devolver_cortes_de_orden(sesion, orden.id)
 
     estado_anterior = orden.estado
     orden.estado = EstadoOrden.CANCELADA
@@ -1110,6 +1123,9 @@ async def completar(
             "cantidad": abs(float(exceso)),
         }
         (mermas if es_merma else devoluciones).append(registro)
+        # Si la línea viene de un rollo, este también sube o baja por lo realmente usado (#127).
+        if linea.pieza_id is not None:
+            await inventario_service.ajustar_corte_de_orden(sesion, orden.id, linea.pieza_id, exceso)
 
     await inventario_service.aplicar_ajustes(
         sesion,

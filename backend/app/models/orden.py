@@ -187,6 +187,11 @@ class OrdenMaterial(Base, TemporalMixin):
     unidad: Mapped[str] = mapped_column(String(10), default="", nullable=False)
     cantidad_estimada: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, nullable=False)
     cantidad_real: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2), nullable=True)
+    # De qué rollo o plancha sale este material (#127): al crear la orden se le
+    # descuentan los metros, sin ir a registrar el corte en Inventario.
+    pieza_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("piezas_lote_material.id"), nullable=True, index=True
+    )
 
     orden = relationship("Orden", back_populates="materiales")
     material = relationship("Material", lazy="joined")
