@@ -11,7 +11,7 @@ import {
   estadosDisponibles,
   filtrarOrdenes,
 } from '../../core/services/ordenes.service';
-import { SesionService } from '../../core/services/sesion.service';
+import { SesionService, nombreVisible } from '../../core/services/sesion.service';
 import { ComprobantesService } from '../../core/services/comprobantes.service';
 import {
   Comprobante,
@@ -148,6 +148,7 @@ export class OrdenesComponent {
   readonly estaVencida = estaVencida;
   readonly estadosDisponibles = estadosDisponibles;
   readonly claseEstado = claseEstado;
+  readonly nombreVisible = nombreVisible;
 
   constructor() {
     this.ordenesService.cargar();
@@ -238,6 +239,14 @@ export class OrdenesComponent {
       alert(mensajeDeError(e, 'No se pudo autorizar la entrega con saldo.'));
     } finally {
       this.guardando.set(false);
+    }
+  }
+
+  async asignar(orden: Orden, idUsuario: string): Promise<void> {
+    try {
+      await this.ordenesService.asignar(orden, idUsuario ? Number(idUsuario) : null);
+    } catch (e) {
+      alert(mensajeDeError(e, 'No se pudo asignar la orden.'));
     }
   }
 

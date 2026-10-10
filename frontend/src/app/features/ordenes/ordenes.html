@@ -159,6 +159,7 @@
             <th>Finanzas</th>
             <th>Pago</th>
             <th>Estado</th>
+            @if (sesion.esSupervisor()) { <th>Asignado</th> }
             <th>Acciones</th>
           </tr>
         </thead>
@@ -173,8 +174,8 @@
                 <small class="text-muted bloque">vía {{ etiquetaCanal()[orden.canal_ingreso] || orden.canal_ingreso }}</small>
               </td>
 
-              <!-- Teléfono del pedido (#122): para llamar sin abrir la orden. Quien la
-                   asigna lo hace desde la edición de la orden, no desde la lista. -->
+              <!-- Teléfono del pedido (#122): para llamar sin abrir la orden. Va junto al
+                   cliente; la asignación quedó al final de la fila, con menos peso. -->
               <td class="contacto-cell">
                 @if (orden.telefono) {
                   <a class="enlace-telefono" [href]="'tel:' + orden.telefono">{{ orden.telefono }}</a>
@@ -249,6 +250,23 @@
                   }
                 }
               </td>
+
+              @if (sesion.esSupervisor()) {
+                <td>
+                  @if (estaEnPipeline(orden)) {
+                    <select class="assign-select" [ngModel]="orden.asignado_a || ''"
+                            (ngModelChange)="asignar(orden, $event)"
+                            [name]="'asignado-' + orden.id_documento">
+                      <option value="">Sin asignar</option>
+                      @for (u of sesion.usuarios(); track u.id) {
+                        <option [value]="u.id">{{ nombreVisible(u) }}</option>
+                      }
+                    </select>
+                  } @else {
+                    {{ sesion.nombreDe(orden.asignado_a) || '—' }}
+                  }
+                </td>
+              }
 
               <td class="actions-cell">
                 <div class="actions-wrapper">
