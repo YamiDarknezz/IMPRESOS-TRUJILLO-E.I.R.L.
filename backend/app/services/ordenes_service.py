@@ -447,6 +447,69 @@ def _recalcular_finanzas(orden: Orden) -> None:
     orden.pagado_totalmente = _decimal(orden.total) <= total_pagado
 
 
+def _partes_del_adelanto(data: OrdenCreateData) -> list[tuple[MetodoPago, Decimal, str]]:
+    """
+    El adelanto como lista de (método, monto, descripción): las partes si el
+    cliente las mandó (#124), o el único adelanto de siempre.
+    """
+    if data.adelanto_partes:
+        return [
+            (parte.metodo, _redondear(_decimal(parte.monto)), parte.descripcion)
+            for parte in data.adelanto_partes
+        ]
+    monto = _redondear(_decimal(data.adelanto_pago))
+    return [(data.metodo_pago, monto, data.adelanto_descripcion)] if monto > 0 else []
+
+
+def _metodo_principal(data: OrdenCreateData) -> MetodoPago:
+    """
+    Método que se guarda en `Orden.metodo_pago_adelanto` cuando el adelanto está
+    repartido (#124): el de la parte más grande. Es lo que muestra la lista y el
+    método por defecto del cobro del saldo; el detalle está en los pagos.
+    """
+    partes = _partes_del_adelanto(data)
+    if not partes:
+        return data.metodo_pago
+    return max(partes, key=lambda parte: parte[1])[0]
+
+
+async def _exigir_cierre_no_congelado(
+    sesion: AsyncSession, orden: Orden, pago: PagoOrden
+) -> None:
+    """
+    El cierre congelado es el documento de control de gerencia: si el adelanto
+    ya quedó dentro de uno, cambiarlo aquí lo dejaría desincronizado sin ningún
+    aviso (issue #19).
+    """
+    cierre_del_dia = (
+        await sesion.execute(
+            select(CierreCaja).where(
+                CierreCaja.fecha == a_fecha_peru(pago.fecha),
+                CierreCaja.unidad_negocio == orden.unidad_negocio,
+                CierreCaja.usuario_id == pago.registrado_por,
+            )
+        )
+    ).scalar_one_or_none()
+    if cierre_del_dia is not None and cierre_del_dia.estado == EstadoCierre.CONGELADO:
+        raise ErrorDeNegocio(
+            "No se puede cambiar el adelanto: el cierre de caja de ese día ya está congelado."
+        )
+
+
+def _pago_de_adelanto(
+    usuario: Usuario, metodo: MetodoPago, monto: Decimal, descripcion: str
+) -> PagoOrden:
+    return PagoOrden(
+        # Nace con la colección vacía: leerla después sería un SELECT implícito.
+        comprobantes=[],
+        monto=monto,
+        metodo=metodo,
+        tipo=TipoPago.ADELANTO,
+        registrado_por=usuario.id,
+        descripcion=descripcion,
+    )
+
+
 async def _sincronizar_adelanto(
     sesion: AsyncSession, orden: Orden, data: OrdenCreateData, usuario: Usuario
 ) -> None:
@@ -454,28 +517,34 @@ async def _sincronizar_adelanto(
     Al editar una orden en proceso, el adelanto pactado puede cambiar. Se
     corrige el evento de pago de adelanto (la edición está permitida justo
     mientras la orden no se haya finalizado).
-    """
-    adelantos = [pago for pago in orden.pagos if pago.tipo == TipoPago.ADELANTO]
-    nuevo = _redondear(_decimal(data.adelanto_pago))
 
-    if adelantos:
-        # El cierre congelado es el documento de control de gerencia: si el
-        # adelanto ya quedó dentro de uno, cambiar su monto aquí lo dejaría
-        # desincronizado sin ningún aviso (issue #19).
-        primero = adelantos[0]
-        cierre_del_dia = (
-            await sesion.execute(
-                select(CierreCaja).where(
-                    CierreCaja.fecha == a_fecha_peru(primero.fecha),
-                    CierreCaja.unidad_negocio == orden.unidad_negocio,
-                    CierreCaja.usuario_id == primero.registrado_por,
-                )
-            )
-        ).scalar_one_or_none()
-        if cierre_del_dia is not None and cierre_del_dia.estado == EstadoCierre.CONGELADO:
-            raise ErrorDeNegocio(
-                "No se puede cambiar el adelanto: el cierre de caja de ese día ya está congelado."
-            )
+    Solo cuentan los adelantos conformes: uno observado ya no es dinero recibido
+    y queda en el historial como está.
+    """
+    vigentes = [
+        pago for pago in orden.pagos if pago.tipo == TipoPago.ADELANTO and pago.es_conforme
+    ]
+
+    if data.adelanto_partes:
+        await _sincronizar_adelanto_por_partes(sesion, orden, data, usuario, vigentes)
+        return
+
+    if len(vigentes) > 1:
+        # Sin esta guarda, un cliente de la API que no sabe de partes borraría
+        # en silencio todos los adelantos menos el primero, y ese dinero dejaría
+        # de contarse (#124).
+        raise ErrorDeNegocio(
+            "El adelanto de esta orden está repartido en varios métodos de pago: "
+            "edítalo por partes."
+        )
+
+    nuevo = _redondear(_decimal(data.adelanto_pago))
+    # Con un adelanto observado y ninguno vigente, editar la orden no debe crear
+    # uno nuevo que cuente como recibido (#15): se sigue tocando el que ya existe.
+    todos = [pago for pago in orden.pagos if pago.tipo == TipoPago.ADELANTO]
+    if todos:
+        primero = vigentes[0] if vigentes else todos[0]
+        await _exigir_cierre_no_congelado(sesion, orden, primero)
 
         primero.monto = nuevo
         primero.metodo = data.metodo_pago
@@ -483,21 +552,59 @@ async def _sincronizar_adelanto(
         # ya registrada por editar otra cosa de la orden.
         if "adelanto_descripcion" in data.model_fields_set:
             primero.descripcion = data.adelanto_descripcion
-        # Si hubiera más de un adelanto registrado, se conserva el primero.
-        for sobrante in adelantos[1:]:
-            orden.pagos.remove(sobrante)
     elif nuevo > 0:
         orden.pagos.append(
-            PagoOrden(
-                # Nace con la colección vacía: leerla después sería un SELECT implícito.
-                comprobantes=[],
-                monto=nuevo,
-                metodo=data.metodo_pago,
-                tipo=TipoPago.ADELANTO,
-                registrado_por=usuario.id,
-                descripcion=data.adelanto_descripcion,
-            )
+            _pago_de_adelanto(usuario, data.metodo_pago, nuevo, data.adelanto_descripcion)
         )
+
+
+async def _sincronizar_adelanto_por_partes(
+    sesion: AsyncSession,
+    orden: Orden,
+    data: OrdenCreateData,
+    usuario: Usuario,
+    vigentes: list[PagoOrden],
+) -> None:
+    """
+    El adelanto repartido (#124): deja los pagos vigentes iguales a las partes.
+
+    Se reutiliza el pago existente del mismo método (así sus capturas siguen
+    colgadas de él); lo que sobra de cada lado se empareja en orden, y lo que
+    no tiene pareja se crea o se quita.
+    """
+    partes = _partes_del_adelanto(data)
+    libres = list(vigentes)
+    pendientes: list[tuple[MetodoPago, Decimal, str]] = []
+    emparejadas: list[tuple[PagoOrden, tuple[MetodoPago, Decimal, str]]] = []
+
+    for parte in partes:
+        coincide = next((pago for pago in libres if pago.metodo == parte[0]), None)
+        if coincide is None:
+            pendientes.append(parte)
+        else:
+            libres.remove(coincide)
+            emparejadas.append((coincide, parte))
+
+    for parte in pendientes:
+        if libres:
+            emparejadas.append((libres.pop(0), parte))
+        else:
+            orden.pagos.append(_pago_de_adelanto(usuario, parte[0], parte[1], parte[2]))
+
+    for pago, (metodo, monto, descripcion) in emparejadas:
+        if (
+            pago.metodo != metodo
+            or _decimal(pago.monto) != monto
+            or (pago.descripcion or "") != descripcion
+        ):
+            await _exigir_cierre_no_congelado(sesion, orden, pago)
+        pago.metodo = metodo
+        pago.monto = monto
+        pago.descripcion = descripcion
+
+    for sobrante in libres:
+        await _exigir_cierre_no_congelado(sesion, orden, sobrante)
+        orden.pagos.remove(sobrante)
 
 
 def _auditar_orden(
@@ -559,7 +666,7 @@ async def crear_orden(sesion: AsyncSession, data: OrdenCreateData, usuario: Usua
         descuento=descuento,
         motivo_descuento=data.motivo_descuento,
         total=total,
-        metodo_pago_adelanto=data.metodo_pago,
+        metodo_pago_adelanto=_metodo_principal(data),
         # Las colecciones se inicializan vacías para poder agregar ítems,
         # materiales y pagos sin disparar una carga perezosa en async.
         items=[],
@@ -594,18 +701,11 @@ async def crear_orden(sesion: AsyncSession, data: OrdenCreateData, usuario: Usua
             usuario_id=usuario.id,
         )
 
-    if data.adelanto_pago > 0:
-        orden.pagos.append(
-            PagoOrden(
-                # Nace con la colección vacía: leerla después sería un SELECT implícito.
-                comprobantes=[],
-                monto=_redondear(_decimal(data.adelanto_pago)),
-                metodo=data.metodo_pago,
-                tipo=TipoPago.ADELANTO,
-                registrado_por=usuario.id,
-                descripcion=data.adelanto_descripcion,
-            )
-        )
+    # Un pago por cada parte del adelanto, todos en la misma transacción (#124).
+    partes = _partes_del_adelanto(data)
+    for metodo, monto, descripcion in partes:
+        orden.pagos.append(_pago_de_adelanto(usuario, metodo, monto, descripcion))
+    if partes:
         await sesion.flush()
 
     _recalcular_finanzas(orden)
@@ -769,7 +869,7 @@ async def actualizar(sesion: AsyncSession, id_orden: int, data: OrdenCreateData,
     orden.descuento = descuento
     orden.motivo_descuento = data.motivo_descuento
     orden.total = total
-    orden.metodo_pago_adelanto = data.metodo_pago
+    orden.metodo_pago_adelanto = _metodo_principal(data)
 
     _reemplazar_items(orden, data)
     materiales = await _cargar_materiales(
