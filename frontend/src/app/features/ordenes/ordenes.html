@@ -75,6 +75,21 @@
     }
   </select>
 
+  <!-- Imprenta o Gigantografías (#123): se filtra en el servidor, así vale con más de 100 órdenes. -->
+  <select class="search-input filtro-canal" [ngModel]="local()" (ngModelChange)="cambiarLocal($event)"
+          name="filtroLocal" aria-label="Filtrar por local">
+    <option value="">Todos los locales</option>
+    @for (u of unidades; track u) {
+      <option [value]="u">{{ etiquetaUnidad[u] }}</option>
+    }
+  </select>
+
+  <button type="button" class="filter-btn" [class.active]="soloPendientesHoy()"
+          (click)="alternarPendientesHoy()"
+          title="En proceso con entrega hoy o ya vencida">
+    Pendientes de hoy
+  </button>
+
   <div class="date-filter-group">
     <div class="date-filter-item">
       <label class="date-filter-label">Desde</label>
@@ -186,7 +201,10 @@
 
               <td class="desc-cell">
                 {{ orden.descripcion }}
-                <span class="metodo-label">{{ etiquetaUnidad[orden.unidad_negocio] }} · {{ orden.tipo_documento }}</span>
+                <span class="unidad-linea">
+                  <span class="badge" [ngClass]="orden.unidad_negocio === 'imprenta' ? 'badge-info' : 'badge-warning'">{{ etiquetaUnidad[orden.unidad_negocio] }}</span>
+                  <span class="metodo-label">{{ orden.tipo_documento }}</span>
+                </span>
               </td>
 
               <td class="fecha-cell fecha-cell-doble">

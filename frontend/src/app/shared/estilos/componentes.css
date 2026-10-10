@@ -1148,6 +1148,14 @@ select.date-filter-input:focus {
   box-shadow: 0 0 0 3px var(--ring);
 }
 
+/* Local y tipo de documento bajo la descripción de la orden (#123) */
+.unidad-linea {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.2rem;
+}
+
 /* Teléfono del pedido en la tabla de órdenes (#122) */
 .contacto-cell {
   white-space: nowrap;

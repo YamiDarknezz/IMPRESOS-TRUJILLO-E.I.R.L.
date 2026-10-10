@@ -51,6 +51,9 @@ describe('OrdenesComponent', () => {
     porCobrar: ReturnType<typeof signal<number>>;
     cargar: ReturnType<typeof vi.fn>;
     recargar: ReturnType<typeof vi.fn>;
+    local: ReturnType<typeof signal<string>>;
+    soloPendientesHoy: ReturnType<typeof signal<boolean>>;
+    filtrarPor: ReturnType<typeof vi.fn>;
     entregarConSaldo: ReturnType<typeof vi.fn>;
     rollosDeOrden: ReturnType<typeof vi.fn>;
     cambiarEstado: ReturnType<typeof vi.fn>;
@@ -76,6 +79,9 @@ describe('OrdenesComponent', () => {
       porCobrar: signal(0),
       cargar: vi.fn().mockResolvedValue(undefined),
       recargar: vi.fn().mockResolvedValue(undefined),
+      local: signal(''),
+      soloPendientesHoy: signal(false),
+      filtrarPor: vi.fn().mockResolvedValue(undefined),
       entregarConSaldo: vi.fn().mockResolvedValue(undefined),
       rollosDeOrden: vi.fn().mockResolvedValue({ data: [], resumen: [] }),
       cambiarEstado: vi.fn().mockResolvedValue(undefined),
@@ -345,6 +351,57 @@ describe('OrdenesComponent', () => {
       await fixture.componentInstance.cambiarEstado(orden, 'en_diseno');
 
       expect(ordenesFalso.cambiarEstado).toHaveBeenCalledWith(orden, 'en_diseno');
+    });
+  });
+
+  // Issue #123: el local y "pendientes de hoy" se piden al servidor.
+  describe('filtro por local (#123)', () => {
+    it('elegir un local lo pide al servidor', () => {
+      const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
+
+      componente.cambiarLocal('gigantografias');
+
+      expect(ordenesFalso.filtrarPor).toHaveBeenCalledWith({ local: 'gigantografias' });
+    });
+
+    it('"Todos los locales" quita el filtro', () => {
+      const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
+
+      componente.cambiarLocal('');
+
+      expect(ordenesFalso.filtrarPor).toHaveBeenCalledWith({ local: '' });
+    });
+
+    it('"Pendientes de hoy" se activa y se desactiva', () => {
+      const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
+
+      componente.alternarPendientesHoy();
+      expect(ordenesFalso.filtrarPor).toHaveBeenLastCalledWith({ soloPendientesHoy: true });
+
+      ordenesFalso.soloPendientesHoy.set(true);
+      componente.alternarPendientesHoy();
+      expect(ordenesFalso.filtrarPor).toHaveBeenLastCalledWith({ soloPendientesHoy: false });
+    });
+
+    it('la barra de filtros tiene el selector de local y el botón de pendientes de hoy', () => {
+      const fixture = TestBed.createComponent(OrdenesComponent);
+      // Corriendo todos los specs juntos las etiquetas importadas de los modelos quedan sin
+      // resolver en el bundler del test-runner (ver el spec de contacto): se fijan aquí.
+      Object.assign(fixture.componentInstance, {
+        etiquetaUnidad: { imprenta: 'Imprenta', gigantografias: 'Gigantografías' },
+        etiquetaEstado: { pendiente: 'Pendiente' },
+        unidades: ['imprenta', 'gigantografias'],
+      });
+      fixture.componentInstance.cargando.set(false);
+      fixture.detectChanges();
+
+      const pagina = fixture.nativeElement as HTMLElement;
+      const opciones = Array.from(
+        pagina.querySelectorAll('select[name="filtroLocal"] option')
+      ).map(o => o.textContent?.trim());
+
+      expect(opciones).toEqual(['Todos los locales', 'Imprenta', 'Gigantografías']);
+      expect(pagina.textContent).toContain('Pendientes de hoy');
     });
   });
 
