@@ -1155,6 +1155,16 @@ select.date-filter-input:focus {
   font-size: 0.8rem;
 }
 
+/* Partes del adelanto repartido en varios métodos (#124) */
+.fila-parte-adelanto {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.fila-parte-adelanto input {
+  flex: 1;
+}
+
 /* Local y tipo de documento bajo la descripción de la orden (#123) */
 .unidad-linea {
   display: flex;
