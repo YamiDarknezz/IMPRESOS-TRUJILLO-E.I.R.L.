@@ -1129,23 +1129,18 @@ select.date-filter-input:focus {
   box-shadow: 0 0 0 3px var(--ring);
 }
 
-/* Selector de asignación rápida en la tabla de órdenes */
-.assign-select {
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background-color: var(--surface);
-  color: var(--text);
-  font-size: 0.76rem;
-  padding: 0.22rem 1.2rem 0.22rem 0.4rem;
-  background-position: right 0.4rem center;
-  background-size: 8px 6px;
-  max-width: 120px;
-  cursor: pointer;
+/* Teléfono del pedido en la tabla de órdenes (#122) */
+.contacto-cell {
+  white-space: nowrap;
+  font-size: 0.85rem;
 }
-.assign-select:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--ring);
+.enlace-telefono {
+  color: var(--text);
+  text-decoration: none;
+}
+.enlace-telefono:hover {
+  color: var(--accent);
+  text-decoration: underline;
 }
 
 /* ─── Finanzas ───────────────────────────────────────────────────────────── */

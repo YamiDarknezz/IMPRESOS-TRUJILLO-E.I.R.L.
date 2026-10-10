@@ -481,6 +481,13 @@ export class OrdenFormComponent {
       if (editando) {
         await this.ordenesService.actualizar(editando.id, datos);
         idOrden = editando.id;
+        // El PATCH de la orden no cambia quién la tiene (a propósito: Secretaría
+        // la desasignaba sin querer, #21). La asignación se hace por su propio
+        // endpoint, solo para supervisión y solo si cambió (#122: ya no se asigna
+        // desde la lista).
+        if (this.sesion.esSupervisor() && form.asignadoA !== (editando.asignado_a ?? null)) {
+          await this.ordenesService.asignar(editando, form.asignadoA);
+        }
       } else {
         // La orden se crea primero: la captura necesita a quién pertenecer.
         idOrden = (await this.ordenesService.crear(datos)).id;

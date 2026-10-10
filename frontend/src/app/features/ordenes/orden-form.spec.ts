@@ -61,6 +61,7 @@ describe('OrdenFormComponent', () => {
     cargar: ReturnType<typeof vi.fn>;
     crear: ReturnType<typeof vi.fn>;
     actualizar: ReturnType<typeof vi.fn>;
+    asignar: ReturnType<typeof vi.fn>;
   };
   let sesionFalsa: { esSupervisor: ReturnType<typeof signal<boolean>> };
   let routerFalso: { navigate: ReturnType<typeof vi.fn> };
@@ -76,6 +77,7 @@ describe('OrdenFormComponent', () => {
       // las capturas del adelanto (RF-11).
       crear: vi.fn().mockResolvedValue({ id: 7 }),
       actualizar: vi.fn().mockResolvedValue(undefined),
+      asignar: vi.fn().mockResolvedValue(undefined),
     };
     sesionFalsa = { esSupervisor: signal(true) };
     routerFalso = { navigate: vi.fn() };
@@ -114,6 +116,51 @@ describe('OrdenFormComponent', () => {
 
       expect(fixture.componentInstance.editando()?.id).toBe(9);
       expect(fixture.componentInstance.form().descripcion).toBe('Banners');
+    });
+
+    // Issue #122: la lista ya no asigna; se asigna al editar la orden, por su propio endpoint.
+    async function editarConAsignado(actual: number | null, nuevo: number | null) {
+      ordenesFalso.ordenes.set([ordenExistente({ asignado_a: actual })]);
+      const fixture = TestBed.createComponent(OrdenFormComponent);
+      await Promise.resolve();
+      await Promise.resolve();
+      const componente = fixture.componentInstance;
+      componente.actualizar('adelanto', 100);
+      componente.actualizar('precioTotal', 100);
+      componente.actualizar('asignadoA', nuevo);
+      await componente.guardar();
+      return componente;
+    }
+
+    it('al cambiar el asignado, supervisión lo asigna por su endpoint después de guardar', async () => {
+      configurar('9');
+      await editarConAsignado(null, 7);
+
+      expect(ordenesFalso.actualizar).toHaveBeenCalledTimes(1);
+      expect(ordenesFalso.asignar).toHaveBeenCalledWith(expect.objectContaining({ id: 9 }), 7);
+    });
+
+    it('permite quitar la asignación', async () => {
+      configurar('9');
+      await editarConAsignado(5, null);
+
+      expect(ordenesFalso.asignar).toHaveBeenCalledWith(expect.objectContaining({ id: 9 }), null);
+    });
+
+    it('si el asignado no cambió, no llama a asignar', async () => {
+      configurar('9');
+      await editarConAsignado(5, 5);
+
+      expect(ordenesFalso.actualizar).toHaveBeenCalledTimes(1);
+      expect(ordenesFalso.asignar).not.toHaveBeenCalled();
+    });
+
+    it('quien no es supervisor no asigna al editar', async () => {
+      configurar('9');
+      sesionFalsa.esSupervisor.set(false);
+      await editarConAsignado(null, 7);
+
+      expect(ordenesFalso.asignar).not.toHaveBeenCalled();
     });
 
     it('con un id que no existe en la lista, vuelve a /ordenes', async () => {

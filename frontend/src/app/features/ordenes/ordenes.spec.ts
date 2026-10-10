@@ -348,15 +348,45 @@ describe('OrdenesComponent', () => {
     });
   });
 
-  it('asignar(): convierte el id de texto a número, o null si viene vacío', async () => {
-    const fixture = TestBed.createComponent(OrdenesComponent);
-    const orden = ordenBase();
+  // Issue #122: la lista muestra el teléfono y ya no tiene la columna "Asignado".
+  describe('columna de contacto (#122)', () => {
+    it('muestra el teléfono de cada orden como enlace para llamar y no tiene columna Asignado', () => {
+      ordenesFalso.ordenes.set([
+        ordenBase({ id: 1, id_documento: 'ORD-000001', telefono: '924 943 790' }),
+        ordenBase({ id: 2, id_documento: 'ORD-000002', telefono: '' }),
+      ]);
+      const fixture = TestBed.createComponent(OrdenesComponent);
+      // Corriendo todos los specs juntos, el bundler del test-runner deja sin resolver
+      // las etiquetas importadas de los modelos (pasa el spec solo): se fijan aquí para
+      // que la prueba mire el contacto y no ese detalle del entorno.
+      Object.assign(fixture.componentInstance, {
+        etiquetaUnidad: { imprenta: 'Imprenta', gigantografias: 'Gigantografías' },
+        etiquetaEstado: { pendiente: 'Pendiente' },
+      });
+      fixture.componentInstance.cargando.set(false);
+      fixture.detectChanges();
 
-    await fixture.componentInstance.asignar(orden, '5');
-    expect(ordenesFalso.asignar).toHaveBeenCalledWith(orden, 5);
+      const tabla = fixture.nativeElement as HTMLElement;
+      const encabezados = Array.from(tabla.querySelectorAll('th')).map(th => th.textContent?.trim());
+      expect(encabezados).toContain('Contacto');
+      expect(encabezados).not.toContain('Asignado');
 
-    await fixture.componentInstance.asignar(orden, '');
-    expect(ordenesFalso.asignar).toHaveBeenCalledWith(orden, null);
+      const enlaces = tabla.querySelectorAll('a.enlace-telefono');
+      expect(enlaces.length).toBe(1);
+      expect(enlaces[0].textContent?.trim()).toBe('924 943 790');
+      expect(enlaces[0].getAttribute('href')).toBe('tel:924 943 790');
+    });
+
+    it('la búsqueda encuentra la orden por su teléfono', () => {
+      const fixture = TestBed.createComponent(OrdenesComponent);
+      ordenesFalso.ordenes.set([
+        ordenBase({ id: 1, id_documento: 'ORD-000001', telefono: '924 943 790' }),
+        ordenBase({ id: 2, id_documento: 'ORD-000002', telefono: '987 654 321' }),
+      ]);
+      fixture.componentInstance.busqueda.set('924943');
+
+      expect(fixture.componentInstance.ordenesFiltradas().map(o => o.id_documento)).toEqual(['ORD-000001']);
+    });
   });
 
   it('cancelar(): pide confirmación antes de cancelar', async () => {

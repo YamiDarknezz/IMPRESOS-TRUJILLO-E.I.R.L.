@@ -363,6 +363,25 @@ describe('funciones puras de órdenes', () => {
       expect(filtrarOrdenes(ordenes, { estado: 'todos' })).toEqual(ordenes);
     });
 
+    // Issue #122: el teléfono del pedido se busca sin importar cómo se escribió.
+    it('filtra por teléfono, con espacios, guiones o pegado', () => {
+      const lista = [
+        ordenBase({ id_documento: 'A', telefono: '924 943 790' }),
+        ordenBase({ id_documento: 'B', telefono: '987-654-321' }),
+        ordenBase({ id_documento: 'C', telefono: '' }),
+      ];
+
+      expect(filtrarOrdenes(lista, { texto: '924943790' }).map(o => o.id_documento)).toEqual(['A']);
+      expect(filtrarOrdenes(lista, { texto: '943 790' }).map(o => o.id_documento)).toEqual(['A']);
+      expect(filtrarOrdenes(lista, { texto: '987654' }).map(o => o.id_documento)).toEqual(['B']);
+    });
+
+    it('con menos de tres dígitos no busca por teléfono', () => {
+      const lista = [ordenBase({ id_documento: 'A', telefono: '924 943 790' })];
+
+      expect(filtrarOrdenes(lista, { texto: '92' })).toEqual([]);
+    });
+
     it('filtra por texto libre (código o cliente)', () => {
       expect(filtrarOrdenes(ordenes, { texto: 'maría' })).toEqual([ordenes[1]]);
       expect(filtrarOrdenes(ordenes, { texto: 'C-0003' })).toEqual([ordenes[2]]);
