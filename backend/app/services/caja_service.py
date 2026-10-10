@@ -327,13 +327,12 @@ async def observar_pago(
     # financieras sobre la misma orden no deben poder pisarse entre sí.
     orden = await _obtener_para_escritura(sesion, pago.orden_id)
 
-    if orden.estado == EstadoOrden.ENTREGADA:
-        # El resto del sistema trata la entrega como definitiva (no admite
-        # más cambios de estado); reabrir su deuda sería la única excepción.
-        raise ErrorDeNegocio(
-            "No se puede observar un pago de una orden ya entregada: "
-            "la entrega es definitiva."
-        )
+    # Una orden ya entregada SÍ se puede observar (#126): el billete falso a
+    # veces se descubre después de entregar y cobrar todo, y el dinero falso no
+    # deja de serlo porque la orden esté cerrada. La entrega sigue siendo
+    # definitiva (el estado no cambia); lo que cambia es el saldo: se recalcula
+    # solo con pagos conformes, así que la orden queda entregada con deuda, que
+    # es justo lo que `entregada_con_saldo` ya expresa.
 
     # El cierre congelado es el documento de control de gerencia: si el pago
     # ya quedó dentro de uno, no se toca más (issue #19 trata el resto de ese

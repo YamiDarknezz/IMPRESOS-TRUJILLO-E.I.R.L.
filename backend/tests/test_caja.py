@@ -263,27 +263,86 @@ async def test_no_se_observa_un_pago_de_un_cierre_ya_congelado(sesion, admin, ma
         )
 
 
-async def test_no_se_observa_un_pago_de_una_orden_entregada(sesion, admin, material, cliente):
-    """Issue #20: la entrega es definitiva para el resto del sistema; reabrir
-    la deuda de una orden ya entregada necesita una decisión explícita, no
-    silenciosa."""
-    from app.models import EstadoOrden, MotivoObservacionPago
+async def _orden_entregada_y_pagada(sesion, admin, material, cliente, metodo=MetodoPago.EFECTIVO):
+    from app.models import EstadoOrden
     from app.schemas import MaterialEstimado
 
     orden = await _crear_cobro(
         sesion, admin, material, cliente,
-        precio_total=100, adelanto_pago=100, metodo_pago=MetodoPago.EFECTIVO,
+        precio_total=100, adelanto_pago=100, metodo_pago=metodo,
     )
-    pago = orden.pagos[0]
     await ordenes_service.completar(
         sesion, orden.id, [MaterialEstimado(material_id=material.id, cantidad=2)], admin
     )
     await ordenes_service.cambiar_estado(sesion, orden.id, EstadoOrden.ENTREGADA, admin)
+    return orden
 
-    with pytest.raises(ErrorDeNegocio, match="entregada"):
-        await caja_service.observar_pago(
-            sesion, pago.id, MotivoObservacionPago.YAPE_FALSO, "Tarde", admin
-        )
+
+async def test_se_observa_un_pago_de_una_orden_ya_entregada(sesion, admin, material, cliente):
+    """
+    Issue #126: el billete falso a veces aparece cuando todo ya se entregó y se
+    cobró. Se puede observar; la entrega sigue siendo definitiva (el estado no
+    cambia) y la orden queda entregada con deuda, que es lo que `#20` evitaba
+    hacer en silencio.
+    """
+    from app.models import EstadoOrden, EstadoPago, MotivoObservacionPago
+    from app.services.serializadores import serializar_orden
+
+    orden = await _orden_entregada_y_pagada(sesion, admin, material, cliente)
+    pago = orden.pagos[0]
+    assert orden.pagado_totalmente is True
+
+    resultado = await caja_service.observar_pago(
+        sesion, pago.id, MotivoObservacionPago.BILLETE_FALSO, "Lo detectó el banco", admin
+    )
+
+    assert resultado["estado_pago"] == EstadoPago.OBSERVADO.value
+    assert orden.estado == EstadoOrden.ENTREGADA
+    assert float(orden.saldo_pendiente) == 100
+    assert orden.pagado_totalmente is False
+    assert serializar_orden(orden)["entregada_con_saldo"] is True
+
+
+async def test_el_pago_observado_de_una_orden_entregada_deja_de_contar_en_caja_y_finanzas(
+    sesion, admin, material, cliente
+):
+    from app.models import MotivoObservacionPago
+    from app.services import finanzas_service
+
+    orden = await _orden_entregada_y_pagada(sesion, admin, material, cliente)
+    hoy = a_fecha_peru(ahora_utc())
+    assert (await caja_service.resumen_dia(sesion, hoy))["total"]["efectivo"] == 100
+
+    await caja_service.observar_pago(
+        sesion, orden.pagos[0].id, MotivoObservacionPago.BILLETE_FALSO, "Falso", admin
+    )
+
+    resumen = await caja_service.resumen_dia(sesion, hoy)
+    assert resumen["total"]["efectivo"] == 0
+    assert resumen["total_observado"] == 100
+    finanzas = await finanzas_service.resumen(sesion, admin)
+    assert finanzas["total_ingresos"] == 0
+
+
+async def test_se_observa_un_pago_de_otro_dia_sin_cierre_y_solo_cambia_ese_dia(
+    sesion, admin, material, cliente
+):
+    """Descubierto días después: el arqueo del día del cobro deja de contarlo, el de hoy no se toca."""
+    from app.models import MotivoObservacionPago
+
+    orden = await _orden_entregada_y_pagada(sesion, admin, material, cliente)
+    hoy = a_fecha_peru(ahora_utc())
+    ayer = hoy - timedelta(days=1)
+    orden.pagos[0].fecha = _mediodia_peru(ayer)
+    await sesion.flush()
+    assert (await caja_service.resumen_dia(sesion, ayer))["total"]["efectivo"] == 100
+
+    await caja_service.observar_pago(
+        sesion, orden.pagos[0].id, MotivoObservacionPago.BILLETE_FALSO, "Falso", admin
+    )
+
+    assert (await caja_service.resumen_dia(sesion, ayer))["total"]["efectivo"] == 0
+    assert (await caja_service.resumen_dia(sesion, hoy))["total_observado"] == 0
 
 
 async def test_observar_pago_recalcula_el_adelanto_de_la_orden(sesion, admin, material, cliente):
