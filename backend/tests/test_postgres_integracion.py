@@ -189,6 +189,44 @@ async def test_cierre_de_caja_en_postgres(sesion_pg, entorno_pg):
     assert congelado.validado_por == admin.id
 
 
+async def test_los_dos_yape_pasan_el_check_y_el_cierre_los_separa_en_postgres(
+    sesion_pg, entorno_pg
+):
+    """
+    #125: la base se construye con las migraciones, así que esto prueba que la
+    migración amplió el CHECK de `orden_pagos.metodo` y de
+    `ordenes.metodo_pago_adelanto` (un valor nuevo sin eso es un IntegrityError)
+    y que el cierre guarda cada número en su propia columna.
+    """
+    admin = entorno_pg["admin"]
+    for metodo, adelanto in ((MetodoPago.YAPE_MARCELL, 40), (MetodoPago.YAPE_ANGEL, 30)):
+        await ordenes_service.crear_orden(
+            sesion_pg,
+            datos_orden(
+                entorno_pg["material"].id,
+                cliente_id=entorno_pg["cliente"].id,
+                precio_total=adelanto * 2,
+                adelanto_pago=adelanto,
+                metodo_pago=metodo,
+            ),
+            admin,
+        )
+
+    hoy = a_fecha_peru(ahora_utc())
+    cierre = await caja_service.cerrar_caja(sesion_pg, hoy, UnidadNegocio.IMPRENTA, "", admin)
+
+    assert float(cierre.monto_yape_marcell) == 40
+    assert float(cierre.monto_yape_angel) == 30
+    assert float(cierre.monto_yape) == 0
+    assert float(cierre.total) == 70
+
+    with pytest.raises(IntegrityError):
+        async with sesion_pg.begin_nested():
+            await sesion_pg.execute(
+                text("UPDATE orden_pagos SET metodo = 'yape_otro' WHERE metodo = 'yape_angel'")
+            )
+
+
 async def test_check_de_enum_rechaza_un_valor_fuera_del_dominio(sesion_pg, entorno_pg):
     """
     El docstring de este módulo dice que los enums se guardan como `VARCHAR`

@@ -34,7 +34,15 @@ class CierreCaja(Base, TemporalMixin):
     usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), nullable=False)
 
     monto_efectivo: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, nullable=False)
+    # `monto_yape` es el Yape de antes de #125 (sin saber a qué número entró);
+    # desde entonces cada número tiene su propia columna.
     monto_yape: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, nullable=False)
+    monto_yape_marcell: Mapped[Decimal] = mapped_column(
+        Numeric(12, 2), default=0, server_default="0", nullable=False
+    )
+    monto_yape_angel: Mapped[Decimal] = mapped_column(
+        Numeric(12, 2), default=0, server_default="0", nullable=False
+    )
     monto_transferencia: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, nullable=False)
     total: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, nullable=False)
     # Lo que salió de la caja ese día por gastos (#112). `total` sigue siendo lo

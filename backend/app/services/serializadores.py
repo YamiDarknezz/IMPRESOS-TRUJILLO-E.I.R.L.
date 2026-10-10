@@ -345,6 +345,8 @@ def serializar_cierre(cierre) -> dict[str, Any]:
         "usuario": cierre.usuario.nombre if cierre.usuario else "",
         "monto_efectivo": num(cierre.monto_efectivo),
         "monto_yape": num(cierre.monto_yape),
+        "monto_yape_marcell": num(cierre.monto_yape_marcell),
+        "monto_yape_angel": num(cierre.monto_yape_angel),
         "monto_transferencia": num(cierre.monto_transferencia),
         "total": num(cierre.total),
         "monto_gastos": num(cierre.monto_gastos),

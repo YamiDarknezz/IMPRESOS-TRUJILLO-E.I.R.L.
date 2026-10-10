@@ -19,6 +19,7 @@ from app.models import (
     EstadoOrden,
     EstadoPago,
     GastoCaja,
+    MetodoPago,
     MotivoObservacionPago,
     Orden,
     PagoOrden,
@@ -32,11 +33,13 @@ from app.models import (
 from app.schemas.caja import GastoCajaData
 from app.services.ordenes_service import _obtener_para_escritura, _recalcular_finanzas
 
-METODOS = ("efectivo", "yape", "transferencia")
+# Todos los métodos del enum: un método nuevo (p. ej. un segundo número de Yape,
+# #125) entra al arqueo solo, sin tocar esta lista ni caer en un total ajeno.
+METODOS = tuple(metodo.value for metodo in MetodoPago)
 
 
 def _acumulado() -> dict:
-    return {"efectivo": 0.0, "yape": 0.0, "transferencia": 0.0, "total": 0.0}
+    return {**{metodo: 0.0 for metodo in METODOS}, "total": 0.0}
 
 
 def _sumar(acumulado: dict, pago: PagoOrden) -> None:
@@ -443,6 +446,8 @@ async def cerrar_caja(
         usuario=usuario,
         monto_efectivo=acumulado["efectivo"],
         monto_yape=acumulado["yape"],
+        monto_yape_marcell=acumulado["yape_marcell"],
+        monto_yape_angel=acumulado["yape_angel"],
         monto_transferencia=acumulado["transferencia"],
         total=acumulado["total"],
         monto_gastos=gastos_del_usuario,
