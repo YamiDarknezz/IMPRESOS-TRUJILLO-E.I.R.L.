@@ -598,8 +598,8 @@
         <select [ngModel]="formConsumo().metodo_pago || ''" name="metodoPagoCorte"
                 (ngModelChange)="actualizarConsumo('metodo_pago', $event || undefined)">
           <option value="">Sin cobro / elegir...</option>
-          @for (m of metodosPago; track m) {
-            <option [value]="m">{{ etiquetaMetodo[m] }}</option>
+          @for (m of metodosPago(); track m) {
+            <option [value]="m">{{ etiquetaMetodo()[m] }}</option>
           }
         </select>
       </div>

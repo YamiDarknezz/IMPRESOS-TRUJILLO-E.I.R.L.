@@ -29,6 +29,7 @@ import {
   etiquetasMetodo,
   igvPorcentaje,
   metodosPago as metodosDelServidor,
+  metodosPagoCon,
 } from '../../core/estado/catalogos';
 import {
   CapturaElegida,
@@ -125,6 +126,8 @@ export class OrdenFormComponent {
 
   // Catálogos para la plantilla
   readonly metodosPago = metodosDelServidor;
+  /** Lo que ofrece el desplegable: los métodos actuales y, al editar una orden vieja, el suyo. */
+  readonly metodosParaElegir = computed(() => metodosPagoCon(this.form().metodoPago));
   readonly canales = computed(() => canalesIngreso());
   readonly igvPorcentaje = igvPorcentaje;
   readonly adelantoPorcentaje = adelantoMinimoPorcentaje;

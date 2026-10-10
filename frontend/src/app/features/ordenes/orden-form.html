@@ -324,7 +324,7 @@
       <div class="input-group">
         <label>Método del adelanto</label>
         <select [ngModel]="form().metodoPago" (ngModelChange)="actualizar('metodoPago', $event)" name="metodoPago">
-          @for (m of metodosPago(); track m) {
+          @for (m of metodosParaElegir(); track m) {
             <option [value]="m">{{ etiquetaMetodo()[m] }}</option>
           }
         </select>

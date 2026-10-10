@@ -1,9 +1,16 @@
 import { UnidadNegocio } from './orden.model';
 
-/** Totales del arqueo por método de pago. */
+/**
+ * Totales del arqueo por método de pago: una clave por método, tal como las
+ * manda el servidor. Las pantallas las leen por nombre de método (`montoDe`),
+ * así que un método nuevo no obliga a tocarlas (#125).
+ */
 export interface AcumuladoCaja {
   efectivo: number;
+  /** El Yape de antes de poder elegir el número: solo lo ya cobrado. */
   yape: number;
+  yape_marcell?: number;
+  yape_angel?: number;
   transferencia: number;
   total: number;
 }
@@ -106,7 +113,10 @@ export interface CierreCaja {
   usuario_id: number;
   usuario: string;
   monto_efectivo: number;
+  /** El Yape de antes de poder elegir el número (#125). */
   monto_yape: number;
+  monto_yape_marcell?: number;
+  monto_yape_angel?: number;
   monto_transferencia: number;
   total: number;
   monto_gastos?: number;

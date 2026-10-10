@@ -91,7 +91,8 @@ describe('FinanzasService', () => {
     await servicio.cargar();
     expect(servicio.porMetodo()).toEqual([
       { metodo: 'Efectivo', monto: 1000 },
-      { metodo: 'Yape', monto: 800 },
+      // Sin catálogo del servidor, el respaldo local: `yape` es el de antes de #125.
+      { metodo: 'Yape (sin especificar)', monto: 800 },
       { metodo: 'Transferencia', monto: 200 },
     ]);
   });

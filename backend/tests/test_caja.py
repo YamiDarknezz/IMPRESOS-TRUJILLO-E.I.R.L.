@@ -5,8 +5,9 @@ import pytest
 
 from app.core.errores import Conflicto, ErrorDeNegocio
 from app.core.fechas import a_fecha_peru, ahora_utc, rango_dia_peru_a_utc
-from app.models import EstadoCierre, MetodoPago, UnidadNegocio
+from app.models import EstadoCierre, MetodoPago, MotivoObservacionPago, UnidadNegocio
 from app.services import caja_service, ordenes_service
+from app.services.serializadores import serializar_cierre
 from tests.apoyo import datos_orden
 
 
@@ -43,6 +44,73 @@ async def test_resumen_agrupa_por_metodo_y_unidad(sesion, admin, material, clien
     assert resumen["por_unidad_negocio"]["imprenta"]["total"] == 50
     assert resumen["por_unidad_negocio"]["gigantografias"]["total"] == 100
     assert len(resumen["detalle"]) == 2
+
+
+async def test_cada_numero_de_yape_tiene_su_propia_columna_en_el_arqueo(
+    sesion, admin, material, cliente
+):
+    """#125: dos números de Yape son dos cuentas; el arqueo no los puede mezclar."""
+    for metodo, adelanto in (
+        (MetodoPago.YAPE_MARCELL, 40),
+        (MetodoPago.YAPE_ANGEL, 30),
+        (MetodoPago.YAPE, 10),  # heredado: un pago de antes de poder elegir el número
+        (MetodoPago.EFECTIVO, 20),
+    ):
+        await _crear_cobro(
+            sesion, admin, material, cliente,
+            precio_total=adelanto * 2, adelanto_pago=adelanto, metodo_pago=metodo,
+        )
+
+    hoy = a_fecha_peru(ahora_utc())
+    resumen = await caja_service.resumen_dia(sesion, hoy)
+
+    assert resumen["total"]["yape_marcell"] == 40
+    assert resumen["total"]["yape_angel"] == 30
+    assert resumen["total"]["yape"] == 10
+    assert resumen["total"]["efectivo"] == 20
+    assert resumen["total"]["total"] == 100
+    # Cada fila por usuario trae las mismas columnas, para que la tabla no dependa de la lista.
+    assert resumen["por_usuario"][0]["yape_marcell"] == 40
+    assert resumen["por_unidad_negocio"]["imprenta"]["yape_angel"] == 30
+
+
+async def test_el_cierre_guarda_cada_yape_y_el_total_no_cambia(sesion, admin, material, cliente):
+    for metodo, adelanto in ((MetodoPago.YAPE_MARCELL, 40), (MetodoPago.YAPE_ANGEL, 30)):
+        await _crear_cobro(
+            sesion, admin, material, cliente,
+            precio_total=adelanto * 2, adelanto_pago=adelanto, metodo_pago=metodo,
+        )
+
+    hoy = a_fecha_peru(ahora_utc())
+    cierre = await caja_service.cerrar_caja(sesion, hoy, UnidadNegocio.IMPRENTA, "", admin)
+
+    assert float(cierre.monto_yape_marcell) == 40
+    assert float(cierre.monto_yape_angel) == 30
+    assert float(cierre.monto_yape) == 0
+    assert float(cierre.total) == 70
+
+    serializado = serializar_cierre(cierre)
+    assert serializado["monto_yape_marcell"] == 40
+    assert serializado["monto_yape_angel"] == 30
+
+
+async def test_un_yape_observado_se_descuenta_solo_de_su_numero(sesion, admin, material, cliente):
+    orden = await _crear_cobro(
+        sesion, admin, material, cliente,
+        precio_total=100, adelanto_pago=50, metodo_pago=MetodoPago.YAPE_ANGEL,
+    )
+    await _crear_cobro(
+        sesion, admin, material, cliente,
+        precio_total=100, adelanto_pago=50, metodo_pago=MetodoPago.YAPE_MARCELL,
+    )
+
+    await caja_service.observar_pago(
+        sesion, orden.pagos[0].id, MotivoObservacionPago.YAPE_FALSO, "No llegó", admin
+    )
+
+    resumen = await caja_service.resumen_dia(sesion, a_fecha_peru(ahora_utc()))
+    assert resumen["total"]["yape_angel"] == 0
+    assert resumen["total"]["yape_marcell"] == 50
 
 
 async def test_pagos_de_otro_dia_no_entran(sesion, admin, material, cliente):
