@@ -1,0 +1,47 @@
+# REGISTRO DE SCRUM DIARIO (DAILY SCRUMS) — SPRINT 2 (INICIAL / T1)
+## Universidad Privada del Norte — Ciclo 2026-II
+### Curso: Proyecto Capstone (Aula: 22643421416 | Grupo 2)
+### Proyecto: Implementación de un sistema web transaccional con módulos de inteligencia de negocios e inteligencia artificial para la optimización de los procesos operativos y financieros en Impresos Trujillo E.I.R.L.
+
+---
+
+### Metadatos y Encabezado del Formato Oficial
+* **PROYECTO:** Implementación de un sistema web transaccional con módulos de inteligencia de negocios e inteligencia artificial para la optimización de los procesos operativos y financieros en Impresos Trujillo E.I.R.L.
+* **PERÍODO:** 21/09/2026 al 26/09/2026 (Semana 05 de Entregables / Semana 06 de Calendario Universitario / Cierre T1)
+* **SPRINT:** Sprint 2 (Fase Inicial) — Talonario Virtual de Mostrador, Endpoints Transaccionales de Órdenes, Costeo EDT y Cierre Formal T1
+* **ENTORNO:** Desarrollo Local Contenerizado en Docker Compose (Angular 21 + FastAPI + PostgreSQL 16 nativo; sin despliegue en VPS en esta fase temprana)
+* **PLANTILLA BASE:** `SCRUM_DIARIO.xlsx` (Hoja: `DIARIO`)
+
+---
+
+### Directivas de Cátedra Integradas (Retroalimentación Docente Notas 5 y 7):
+1. **Actividades Reales del Período:** El registro diario incluye la formalización del costeo analítico de los 31 paquetes de la EDT, la estructuración de la guía de estilos UI de Angular 21, la publicación de contratos OpenAPI Swagger, y la reunión técnica presencial en taller con la gerencia para la firma del Acta de Aceptación (AAE-01).
+2. **Articulación Estricta con el Informe de Estado v2.0:** Relación transparente entre las tareas del tablero diario y los porcentajes de alcance, tiempo y costo justificados en el reporte semanal.
+
+---
+
+### Registro Diario de Trabajo — Período 21/09 al 26/09/2026
+
+| SPRINT | HACER | EN ESPERA | HACIENDO | TERMINADO |
+|:---|:---|:---|:---|:---|
+| **Sprint 2 — Día 1**<br>*(Lunes 21/09/2026)* | • [T-01] Sprint Planning 2: Planificación de historias HU-03 (Talonario Virtual) y HU-04 (Candado Digital).<br>• [T-02] Análisis de requisitos para la plantilla de Costeo por Paquetes de Trabajo de la EDT.<br>• [T-03] Diseño de arquitectura de componentes para el formulario reactivo del talonario virtual en Angular 21.<br>• [T-04] Especificación de endpoints CRUD para órdenes de trabajo en FastAPI (`/api/v1/orders`). | Sin impedimentos activos en el inicio del ciclo semanal. | • [T-01] Desglose de historias de usuario en tareas técnicas con el equipo de desarrollo. (Gerardo, Estibb, Diego)<br>• [T-02] Mapeo de actividades de los 31 paquetes EDT con recursos humanos, laptops y consumibles. (Gerardo)<br>• [T-03] Creación de mockups de alta fidelidad en código para la pantalla de mostrador. (Estibb) | • **[T-01]** Sprint Backlog 2 formalizado con metas de emisión de órdenes y control de cobro.<br>• **[T-02]** Esquema base de la hoja de costeo analítico estructurado conforme a la plantilla oficial de cátedra. |
+| **Sprint 2 — Día 2**<br>*(Martes 22/09/2026)* | • [T-05] Implementación de modelos SQLAlchemy y esquemas Pydantic para `Order`, `OrderItem` y `Payment`.<br>• [T-06] Maquetación de la cuadrícula interactiva de productos, medidas ($L \times A$) y sustratos en Angular.<br>• [T-07] Consolidación de costos de hardware: cálculo de depreciación semanal de 3 laptops de desarrollo.<br>• [T-08] Calibración de fórmulas de cálculo de metraje cuadrado ($\text{m}^2$) con demasía de 5 cm para taller. | Sin bloqueos en el desarrollo de componentes. | • [T-05] Definición de constraints y relaciones foráneas en PostgreSQL Docker. (Diego)<br>• [T-06] Programación de observadores reactivos en Angular para cálculo dinámico de subtotales. (Estibb)<br>• [T-07] Cuadre analítico de horas valorizadas (240h a S/ 20.00/h = S/ 4,800.00). (Gerardo) | • **[T-07]** Costeo de hardware y recursos humanos consolidado a nivel de borrador de trabajo.<br>• **[T-08]** Algoritmo de cálculo de metraje y demasías validado con fórmulas matemáticas de taller. |
+| **Sprint 2 — Día 3**<br>*(Miércoles 23/09/2026)* | • [T-09] Publicación y prueba interactiva de contratos de servicios RESTful en OpenAPI Swagger (`/docs`).<br>• [T-10] Integración del formulario de órdenes en Angular con validaciones síncronas de cliente y medidas.<br>• [T-11] Estructuración de la guía de estilos UI: paleta de colores corporativa y tipografía legible para taller.<br>• [T-12] Revisión del Capítulo 3 y Capítulo 5 del Informe Parcial T1 de Proyecto Capstone. | • **[T-10]** En espera de la publicación definitiva del endpoint de creación de órdenes con numeración correlativa. (Estibb) | • [T-05] Implementación de generador de número correlativo sin saltos (`ORD-YYYY-XXXXX`). (Diego)<br>• [T-09] Configuración de metadata y tags en FastAPI para documentación OpenAPI. (Diego)<br>• [T-11] Creación de clases CSS utilitarias en Angular para optimizar la vista en pantallas de 15 pulgadas. (Estibb) | • **[T-09]** Especificación OpenAPI Swagger completamente generada y visible en Swagger UI.<br>• **[T-11]** Guía de estilos y componentes UI finalizada y aprobada por el equipo. |
+| **Sprint 2 — Día 4**<br>*(Jueves 24/09/2026)* | • [T-13] Conexión de servicio Angular `OrderService` con endpoint REST de backend para emisión de órdenes.<br>• [T-14] Finalización de la hoja de cálculo `Plantilla Costeo x Paq Trabajo_v3.xlsx` para los 31 paquetes EDT.<br>• [T-15] Redacción de antecedentes en prosa continua y operacionalización de variables para el informe T1.<br>• [T-16] Coordinación de reunión técnica presencial en la imprenta para el cierre formal de T1. | Impedimento de [T-10] resuelto tras la implementación del servicio correlativo en backend. | • [T-13] Pruebas de envío de carga útil JSON (cliente, ítems, medidas, a cuenta y saldo). (Estibb)<br>• [T-14] Verificación de fórmulas automáticas de suma por paquete y total general de S/ 5,100. (Gerardo)<br>• [T-15] Integración de diagramas de Pareto e Ishikawa en el documento académico de T1. (Diego) | • **[T-14]** Documento de Costeo Analítico de los 31 paquetes de la EDT 100% culminado y verificado.<br>• **[T-16]** Cita técnica presencial agendada con Ángel Rodríguez y Marcell Vásquez para el 26/09/2026. |
+| **Sprint 2 — Día 5**<br>*(Viernes 25/09/2026)* | • [T-17] Pruebas funcionales de maquetación del talonario virtual en terminal de pruebas local.<br>• [T-18] Desarrollo de endpoints de registro de pagos y candado digital de cobro en backend FastAPI.<br>• [T-19] Preparación del portafolio documental consolidado de Semanas 1 a 6 para la Evaluación T1.<br>• [T-20] Elaboración del segundo Informe de Estado del Proyecto (v2.0) con semáforos verde justificados. | Sin impedimentos. Artefactos listos para validación con el cliente. | • [T-17] Validación del flujo de guardado de órdenes y cálculo reactivo de saldo pendiente. (Estibb)<br>• [T-18] Lógica de validación `saldo_pendiente > 0 -> Bloqueo de entrega` en backend. (Diego)<br>• [T-20] Cálculo de métricas de desempeño ($SV = -\text{S/ } 30$, $SPI = 0.98$, $CPI = 1.08$). (Gerardo) | • **[T-03/T-17]** Pantalla del Talonario Virtual de mostrador maquetada y probada al 100% (EDT 4.2.1).<br>• **[T-19]** Portafolio integral de entregables consolidado para la sustentación académica.<br>• **[T-20]** Informe de Estado del Proyecto v2.0 completado con sus tablas del Anexo 1. |
+| **Sprint 2 — Día 6**<br>*(Sábado 26/09/2026)* | • [T-21] Visita técnica presencial a la imprenta (Jr. Bolívar 945) para demostración técnica del avance.<br>• [T-22] Suscripción formal del Acta de Aceptación de Entregables (AAE-01) con la gerencia.<br>• [T-23] Documentación formal de Lecciones Aprendidas del marco Scrum (Sprint 1).<br>• [T-24] Cierre de la Evaluación Parcial T1 y archivo de evidencias en el repositorio oficial. | Cero impedimentos. Entregables aceptados formalmente por el cliente sin objeciones. | • [T-21] Demostración en laptop del entorno contenerizado en Docker, Swagger UI y Talonario Virtual. (Equipo)<br>• [T-22] Firma mancomunada del acta con Ángel Rodríguez (GG) y Marcell Vásquez (PO). (Equipo)<br>• [T-23] Sistematización de causas raíz y compromisos de mejora por el método de los 5 Porqués. (Equipo) | • **[T-21]** Demostración técnica presencial en taller concluida con plena satisfacción del cliente.<br>• **[T-22]** **Acta de Aceptación de Entregables (AAE-01)** suscrita y formalizada por la gerencia.<br>• **[T-23]** Formato oficial de Lecciones Aprendidas Scrum completado.<br>• **[T-24]** **Evaluación Parcial T1 cerrada al 100%** conforme a las directivas de cátedra. |
+
+---
+
+### Métrica Consolidada del Período (Cierre Evaluación T1)
+
+* **Total de Tareas Ejecutadas:** 24 tareas técnicas, analíticas y de gestión empresarial.
+* **Tareas Concluidas al 100%:** 22 tareas (91.7% de cumplimiento en el período).
+* **Tareas en Desarrollo Trasladadas a la Siguiente Semana:**
+  1. *[T-18]* Finalización y pruebas unitarias de endpoints de pagos y candado digital de cobro (EDT 4.1.2).
+  2. *[T-25]* Integración del servicio transaccional de órdenes con la base de datos de producción local.
+* **Hitos de Gestión Alcanzados:**
+  - Suscripción del **Acta de Aceptación de Entregables (AAE-01)** firmada por Ángel Rodríguez y Marcell Vásquez.
+  - Culminación del **Costeo Analítico de los 31 Paquetes de Trabajo** totalizando exactamente S/ 5,100.00.
+  - Cierre y aprobación del **Segundo Informe de Estado del Proyecto (v2.0)** con $SPI = 0.98$ y $CPI = 1.08$.
+  - Sistematización de **Lecciones Aprendidas Scrum** con causas raíz por 5 Porqués.

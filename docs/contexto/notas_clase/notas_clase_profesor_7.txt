@@ -1,0 +1,49 @@
+OBSERVACIONES DEL PROFESOR - GRUPO 2
+
+1. Justificar los porcentajes del semáforo.
+   - Explicar de dónde sale el 95%, 96.5% y 96%.
+   - Relacionar esos valores con las actividades realizadas durante la semana evaluada.
+
+2. El semáforo debe estar relacionado únicamente con el período evaluado.
+   - Solo considerar las actividades de la semana correspondiente.
+   - No mezclar actividades futuras.
+
+3. En el sustento del tiempo solo considerar las actividades ejecutadas durante la semana evaluada.
+
+4. Revisar el cálculo de amortización.
+   - Justificar laptops, hosting y recursos utilizados.
+   - Explicar cómo se obtuvo el valor colocado.
+
+5. Incorporar el Acta de Aceptación de Entregables (AAE).
+   - Si una actividad figura como TERMINADA al 100%, debe existir evidencia de aceptación por parte del cliente.
+   - Debe registrarse la fecha real de entrega al cliente.
+
+6. Revisar la columna "Fecha Real de Entrega".
+   - Debe indicar la fecha en la que se entregó realmente al cliente.
+   - No solamente la fecha planificada.
+
+7. Verificar que los entregables marcados como terminados tengan evidencia documental.
+
+8. Mostrar evidencias del software desarrollado.
+   - Módulo de Caja.
+   - Workflow de GitHub Actions.
+   - Logs de Docker.
+   - Evidencias de pruebas realizadas.
+
+9. En SCRUM Diario mostrar actividades reales del período.
+   - Digitalización.
+   - Depuración.
+   - Presupuesto.
+   - Antecedentes.
+   - Actividades desarrolladas durante la semana.
+
+10. Los Workflows y Logs Docker deben aparecer como evidencia.
+    - Si están terminados deben mostrarse.
+    - Deben existir capturas o pruebas de funcionamiento.
+
+11. Mantener relación entre:
+    - Informe de Estado.
+    - Scrum Diario.
+    - Avances reales del software.
+
+12. Explicar claramente qué se desarrolló y qué se entregó durante la semana evaluada.

@@ -1,0 +1,513 @@
+SEMANA 9 – OBSERVACIONES Y EXPLICACIÓN COMPLETA DEL PROFESOR
+
+El profesor explicó que para esta etapa del proyecto ya no basta con tener documentos, requerimientos o pantallas desarrolladas. A partir de ahora debemos demostrar que el software ha sido probado correctamente.
+
+Por eso aparecen dos documentos importantes:
+
+1. Plan de Pruebas Unitarias (PPU)
+2. Plan de Pruebas Funcionales (PPF)
+
+------------------------------------------------------------
+
+PLAN DE PRUEBAS UNITARIAS (PPU)
+
+Las pruebas unitarias se enfocan únicamente en el código.
+
+No se prueba la interfaz.
+
+No se prueba el formulario.
+
+No se prueba el diseño.
+
+Se prueban funciones internas del sistema.
+
+Por ejemplo:
+
+- grabarCliente()
+- guardarOrden()
+- actualizarInventario()
+- registrarPago()
+- login()
+
+El profesor indicó que la primera tabla solicita:
+
+Número de Caso de Prueba.
+Componente.
+Descripción.
+Prerrequisitos.
+
+El código puede ser:
+
+CA01
+CA02
+CA03
+CA04
+
+Ese código debe repetirse en TODAS las tablas posteriores.
+
+Si una prueba se llama CA01 arriba, en todas las tablas siguientes debe seguir llamándose CA01.
+
+No se deben inventar nuevos nombres después.
+
+------------------------------------------------------------
+
+COMPONENTE
+
+Cuando la plantilla pide "Componente" no significa módulo completo.
+
+Significa una función específica.
+
+Ejemplo:
+
+grabarMatricula()
+registrarCliente()
+guardarPago()
+
+Debe ser una función importante del sistema.
+
+El profesor dijo:
+
+"No todas las funciones. Solamente las más importantes."
+
+------------------------------------------------------------
+
+DESCRIPCIÓN
+
+Aquí se debe explicar qué se desea probar.
+
+Ejemplo:
+
+Verificar que el sistema registre correctamente un cliente nuevo.
+
+Verificar que el sistema valide el pago correctamente.
+
+Verificar que el sistema actualice inventario.
+
+------------------------------------------------------------
+
+PRERREQUISITOS
+
+Aquí se coloca qué necesita la prueba para funcionar.
+
+Ejemplo:
+
+- Base de datos activa.
+- Usuario autenticado.
+- Conexión disponible.
+- Cliente existente.
+
+Si no existe prerrequisito puede dejarse vacío.
+
+------------------------------------------------------------
+
+PONER EN APRIETOS A LA FUNCIÓN
+
+Esta fue una de las observaciones más importantes.
+
+El profesor dijo:
+
+"Las pruebas buscan encontrar errores."
+
+"No buscan demostrar que todo funciona."
+
+Muchos alumnos hacen esto:
+
+Nombre correcto.
+Apellido correcto.
+DNI correcto.
+
+Eso no sirve como prueba fuerte.
+
+Lo correcto es intentar romper la función.
+
+Ejemplos:
+
+DNI vacío.
+Correo inválido.
+Datos negativos.
+Campos obligatorios vacíos.
+Caracteres especiales.
+Datos excesivamente largos.
+
+La intención es descubrir errores.
+
+------------------------------------------------------------
+
+TABLA CA01
+
+La tabla tiene varias filas.
+
+El profesor aclaró:
+
+No significa que sean únicamente 6 intentos.
+
+Las filas representan intentos de prueba.
+
+Mientras más pruebas reales existan, mejor.
+
+------------------------------------------------------------
+
+MÉTODO
+
+Puede ser:
+
+Manual.
+Automático.
+
+Manual:
+El estudiante ejecuta la prueba.
+
+Automático:
+Se utilizan librerías de pruebas para generar múltiples ejecuciones.
+
+------------------------------------------------------------
+
+DATOS DE ENTRADA
+
+Aquí se colocan los datos que se utilizarán.
+
+Ejemplo:
+
+a
+2.5
+x
+
+o cualquier dato que sirva para intentar generar errores.
+
+------------------------------------------------------------
+
+SALIDA ESPERADA
+
+Aquí se indica cómo debería reaccionar el sistema.
+
+Ejemplos:
+
+True
+False
+0
+1
+Mensaje de error
+Mensaje de éxito
+
+Debe existir una respuesta esperada.
+
+------------------------------------------------------------
+
+OK / NOK
+
+OK:
+La prueba pasó.
+
+NOK:
+La prueba falló.
+
+También puede usarse:
+
+X
+
+si así lo desean.
+
+------------------------------------------------------------
+
+OBSERVACIONES
+
+Aquí se explica por qué ocurrió el resultado.
+
+Ejemplo:
+
+Permitió guardar datos inválidos.
+No detectó el error.
+Validó correctamente.
+
+------------------------------------------------------------
+
+PRUEBAS AUTOMÁTICAS
+
+El profesor dijo que si se usan pruebas automáticas:
+
+Se debe mostrar evidencia.
+
+No basta escribir:
+
+"Se probó automáticamente."
+
+Debe mostrarse:
+
+Capturas.
+Reportes.
+Resultados.
+
+------------------------------------------------------------
+
+DICCIONARIO DE DATOS
+
+El profesor mencionó que puede usarse una fuente de datos diversa.
+
+Por ejemplo:
+
+Diccionarios.
+Archivos de prueba.
+Listas de entradas.
+
+Con la finalidad de generar muchos datos distintos.
+
+------------------------------------------------------------
+
+PLAN DE PRUEBAS FUNCIONALES (PPF)
+
+Aquí ya no se prueban funciones.
+
+Aquí se prueba la interfaz.
+
+Ejemplos:
+
+Login.
+Clientes.
+Caja.
+Inventario.
+Dashboard.
+Reportes.
+
+------------------------------------------------------------
+
+1.1 OBJETO
+
+El profesor explicó que aquí se debe indicar:
+
+¿Por qué se está haciendo el documento?
+
+La respuesta:
+
+Para verificar que el software cumple los requerimientos.
+
+------------------------------------------------------------
+
+1.2 ALCANCE
+
+Aquí deben colocarse:
+
+Usuarios involucrados.
+
+Stakeholders.
+
+Áreas de la empresa.
+
+Personas que validarán el sistema.
+
+Porque al final quien aprueba no es el desarrollador.
+
+Es el cliente.
+
+------------------------------------------------------------
+
+TRAZABILIDAD
+
+Aquí aparecen:
+
+RF-001
+RF-002
+RF-003
+
+Cada RF debe relacionarse con un caso de prueba.
+
+Ejemplo:
+
+CP-01
+
+X
+
+RF-001
+
+La X indica que ese caso valida ese requerimiento.
+
+El profesor indicó:
+
+Todo RF debe tener al menos un caso de prueba asociado.
+
+------------------------------------------------------------
+
+CASOS DE PRUEBA FUNCIONALES
+
+Cada caso debe tener:
+
+Nombre.
+Código.
+Descripción.
+Prerrequisitos.
+Pasos.
+Resultado esperado.
+Resultado obtenido.
+
+------------------------------------------------------------
+
+¿PRUEBA DE DESPLIEGUE?
+
+El profesor hizo mucho énfasis aquí.
+
+Preguntó:
+
+¿La prueba fue realizada en la infraestructura de la empresa?
+
+Porque una prueba en una laptop no es despliegue.
+
+Si se realizó en la empresa:
+
+SI.
+
+Si se realizó en una laptop de desarrollo:
+
+NO.
+
+------------------------------------------------------------
+
+PASOS
+
+Los pasos deben redactarse correctamente.
+
+Ejemplo:
+
+Paso 1:
+Ingresar al Login.
+
+Paso 2:
+Ingresar usuario.
+
+Paso 3:
+Ingresar contraseña.
+
+Paso 4:
+Pulsar Ingresar.
+
+------------------------------------------------------------
+
+RESULTADO ESPERADO
+
+Qué debería suceder.
+
+Ejemplo:
+
+Ingresar correctamente al sistema.
+
+Mostrar mensaje de error.
+
+Registrar una orden.
+
+------------------------------------------------------------
+
+RESULTADO OBTENIDO
+
+Lo que sucedió realmente.
+
+------------------------------------------------------------
+
+ESTRATEGIA DE EJECUCIÓN DE PRUEBAS
+
+Aquí el profesor explicó una parte muy importante.
+
+Se debe definir el mínimo operable.
+
+Debe aparecer:
+
+Hardware.
+
+Software.
+
+------------------------------------------------------------
+
+HARDWARE
+
+RAM mínima.
+
+CPU mínima.
+
+Disco.
+
+Ejemplo:
+
+RAM:
+4 GB
+
+CPU:
+Core i3
+
+------------------------------------------------------------
+
+SOFTWARE
+
+Sistema Operativo.
+Navegador.
+Angular.
+FastAPI.
+PostgreSQL.
+
+Debe declararse todo.
+
+------------------------------------------------------------
+
+CICLOS DE PRUEBA
+
+El profesor explicó:
+
+Si una operación se realiza 2 veces al día.
+
+Durante 7 días.
+
+Entonces:
+
+2 x 7 = 14 ejecuciones.
+
+No basta probar una vez.
+
+Deben existir múltiples ciclos.
+
+------------------------------------------------------------
+
+RESULTADO FINAL
+
+Después de los ciclos deben registrar:
+
+Cuántas pruebas salieron correctas.
+
+Cuántas pruebas salieron incorrectas.
+
+Cuántas pasaron.
+
+Cuántas fallaron.
+
+------------------------------------------------------------
+
+ANEXOS
+
+Aquí deben colocarse todas las evidencias.
+
+Capturas si salió bien.
+
+Capturas si salió mal.
+
+Capturas de errores.
+
+Capturas de resultados.
+
+------------------------------------------------------------
+
+SEMANA 14
+
+El profesor indicó que para la Semana 14 todo debe estar concluido.
+
+Va a revisar:
+
+- Plan de Pruebas Unitarias.
+- Plan de Pruebas Funcionales.
+- Evidencias.
+- Capturas.
+- Casos aprobados.
+- Casos fallidos.
+- Estrategia de pruebas.
+- Trazabilidad RF → CP.
+- Resultados obtenidos.
+
+No basta decir:
+
+"Funciona."
+
+Debe demostrarse con pruebas, resultados y evidencias reales.
