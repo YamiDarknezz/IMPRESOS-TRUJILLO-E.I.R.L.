@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auditoria import registrar
 from app.core.database import obtener_sesion
 from app.core.errores import Conflicto, NoEncontrado
-from app.core.security import supervision, usuario_actual
+from app.core.security import registro_inventario, supervision, usuario_actual
 from app.models import (
     EstadoPieza,
     Material,
@@ -77,7 +77,7 @@ async def listar_movimientos(
 @router.post("")
 async def crear_material(
     data: MaterialCreateData,
-    usuario: Annotated[Usuario, Depends(supervision)],
+    usuario: Annotated[Usuario, Depends(registro_inventario)],
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
 ):
     existente = (
@@ -232,7 +232,7 @@ async def listar_piezas(
 @router.post("/piezas")
 async def registrar_pieza(
     data: PiezaLoteCreateData,
-    usuario: Annotated[Usuario, Depends(supervision)],
+    usuario: Annotated[Usuario, Depends(registro_inventario)],
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
 ):
     """Registra una nueva plancha pre-dimensionada o rollo continuo con costo."""
