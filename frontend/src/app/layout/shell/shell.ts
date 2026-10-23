@@ -59,6 +59,7 @@ export class ShellComponent {
       opciones.push({ ruta: '/clientes', icono: 'users', etiqueta: 'Clientes' });
     }
     if (this.sesion.esSupervisor()) {
+      opciones.push({ ruta: '/bi', icono: 'bar-chart', etiqueta: 'Inteligencia de negocio' });
       opciones.push({ ruta: '/cuentas-por-cobrar', icono: 'coins', etiqueta: 'Por cobrar' });
     }
     if (this.sesion.esAdmin()) {
