@@ -7,6 +7,7 @@ import { ETIQUETA_TIPO_DOCUMENTO, ETIQUETA_UNIDAD, Orden } from '../../core/mode
 import { canalesIngreso, empresa as empresaDelServidor, etiquetasMetodo } from '../../core/estado/catalogos';
 import { formatearFecha } from '../../shared/utilidades/fechas';
 import { mensajeDeError } from '../../shared/utilidades/errores';
+import { IconComponent } from '../../shared/componentes/icon/icon.component';
 
 /**
  * Vista imprimible del contrato o la proforma (#68).
@@ -20,7 +21,7 @@ import { mensajeDeError } from '../../shared/utilidades/errores';
 @Component({
   selector: 'app-orden-imprimir',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, IconComponent],
   templateUrl: './orden-imprimir.html',
 })
 export class OrdenImprimirComponent {

@@ -125,6 +125,36 @@
   gap: 0.6rem;
 }
 
+/* Filtros y acciones mantienen carriles propios en las barras de página. */
+.toolbar-organizada {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  margin-bottom: 1.1rem;
+}
+
+.toolbar-filtros,
+.toolbar-acciones {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.toolbar-acciones {
+  justify-content: flex-end;
+}
+
+.toolbar-filtros { grid-column: 1; }
+.toolbar-acciones { grid-column: 2; }
+
+@media (max-width: 1020px) {
+  .toolbar-organizada { grid-template-columns: minmax(0, 1fr); }
+  .toolbar-acciones { grid-column: 1; }
+}
+
 .toolbar-title {
   font-size: 0.875rem;
   color: var(--text-muted);
@@ -142,20 +172,27 @@
 }
 
 .filter-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
   background: none;
   border: none;
   border-right: 1px solid var(--border);
-  padding: 0.35rem 0.75rem;
+  min-height: var(--control-height-sm);
+  padding: 0 0.8rem;
   font-size: 0.78rem;
   font-weight: 600;
+  line-height: 1;
   color: var(--text-muted);
   cursor: pointer;
   transition: all 0.12s;
+  white-space: nowrap;
 }
 
 .filter-btn:last-child { border-right: none; }
 .filter-btn:hover { background: var(--surface-2); color: var(--accent); }
-.filter-btn.active { background: var(--primary); color: var(--primary-contrast); }
+.filter-btn.active { background: var(--info-bg); color: var(--info-fg); }
 
 /* ─── Card & Table ───────────────────────────────────────────────────────── */
 
@@ -305,7 +342,13 @@
 
 /* ─── Buttons ────────────────────────────────────────────────────────────── */
 
-.btn-sm { padding: 0.3rem 0.65rem; font-size: 0.78rem; font-weight: 600; line-height: 1.2; }
+.btn-sm {
+  min-height: var(--control-height-sm);
+  padding: 0 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1;
+}
 
 /* ─── Form card ──────────────────────────────────────────────────────────── */
 
@@ -398,7 +441,7 @@
   margin-top: 0.2rem;
 }
 
-.add-btn { height: 40px; }
+.add-btn { height: var(--control-height); }
 
 .material-list {
   list-style: none;
@@ -670,19 +713,14 @@ td.actions-cell {
   flex-wrap: nowrap;
 }
 
-.actions-wrapper .btn-sm {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
-  line-height: 1.15;
-}
-
 /* Botones de acción compactos con iconos (UX moderna y sin desborde horizontal) */
 .btn-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: var(--control-size-icon);
+  height: var(--control-size-icon);
+  min-width: var(--control-size-icon);
   padding: 0;
   border-radius: var(--r-sm, 6px);
   border: 1px solid var(--border);
@@ -711,6 +749,12 @@ td.actions-cell {
   opacity: 0.45;
   cursor: not-allowed;
   transform: none;
+}
+
+.inline-icon-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .btn-icon-complete {
@@ -1372,7 +1416,13 @@ select.date-filter-input:focus {
   .stat-card { padding: 0.9rem 1rem; gap: 0.7rem; }
   .stat-icon { width: 42px; height: 42px; font-size: 1.2rem; }
   .stat-value { font-size: 1.5rem; }
-  .filter-btn { padding: 0.4rem 0.7rem; font-size: 0.78rem; }
+  .filter-btn { padding-inline: 0.7rem; font-size: 0.78rem; }
+  .btn-icon { width: 40px; height: 40px; min-width: 40px; }
+  .toolbar-organizada .toolbar-filtros,
+  .toolbar-organizada .toolbar-acciones { width: 100%; }
+  .toolbar-organizada .toolbar-acciones { justify-content: stretch; }
+  .toolbar-organizada .toolbar-acciones > .btn-primary,
+  .toolbar-organizada .toolbar-acciones > .btn-secondary { flex: 1 1 160px; }
 
   /* Issue #41: Fecha + Hoy/Ayer + Unidad sin apilarse ni comprimir la fecha */
 .date-filter-group {

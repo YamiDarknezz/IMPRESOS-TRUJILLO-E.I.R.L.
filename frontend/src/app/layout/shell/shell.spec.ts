@@ -43,45 +43,57 @@ describe('ShellComponent', () => {
   it('el menú de operación es el mismo para todo el personal', () => {
     const fixture = TestBed.createComponent(ShellComponent);
     expect(fixture.componentInstance.menuOperacion.map(o => o.ruta)).toEqual([
-      '/ordenes', '/inventario', '/caja', '/finanzas',
+      '/ordenes', '/caja', '/inventario',
     ]);
   });
 
-  describe('menú de administración, según permisos', () => {
-    it('sin ningún permiso, no muestra nada', () => {
+  describe('grupos del menú, según permisos', () => {
+    it('mantiene Finanzas para el personal y oculta los grupos sin opciones', () => {
       const fixture = TestBed.createComponent(ShellComponent);
-      expect(fixture.componentInstance.menuAdministracion).toEqual([]);
+      const componente = fixture.componentInstance;
+      expect(componente.menuComercial()).toEqual([]);
+      expect(componente.menuAnalitica()).toEqual([]);
+      expect(componente.menuAdministracion()).toEqual([]);
+      expect(componente.gruposMenu().map(g => [g.clave, g.opciones.map(o => o.ruta)])).toEqual([
+        ['operacion', ['/ordenes', '/caja', '/inventario']],
+        ['finanzas', ['/finanzas']],
+      ]);
     });
 
     it('quien gestiona órdenes ve "Clientes"', () => {
       sesionFalsa.puedeGestionarOrdenes.set(true);
       const fixture = TestBed.createComponent(ShellComponent);
-      expect(fixture.componentInstance.menuAdministracion.map(o => o.ruta)).toEqual(['/clientes']);
+      expect(fixture.componentInstance.menuComercial().map(o => o.ruta)).toEqual(['/clientes']);
     });
 
-    // Issue #25: la ruta de Productos es solo-admin (`rolesGuard('admin')`);
-    // antes se ofrecía también al subgerente y lo redirigía en silencio.
-    it('la supervisión por sí sola (sin ser admin) no ve "Productos" pero sí "Por cobrar"', () => {
+    it('la supervisión ve BI y Cuentas por cobrar, no el catálogo admin-only', () => {
       sesionFalsa.esSupervisor.set(true);
       const fixture = TestBed.createComponent(ShellComponent);
-      expect(fixture.componentInstance.menuAdministracion.map(o => o.ruta)).toEqual(['/bi', '/cuentas-por-cobrar']);
+      const componente = fixture.componentInstance;
+      expect(componente.menuAnalitica().map(o => o.ruta)).toEqual(['/bi']);
+      expect(componente.menuFinanzas().map(o => o.ruta)).toEqual(['/finanzas', '/cuentas-por-cobrar']);
+      expect(componente.menuComercial().map(o => o.ruta)).toEqual([]);
     });
 
     it('el admin ve Productos, Unidades, Usuarios y Auditoría', () => {
       sesionFalsa.esAdmin.set(true);
       const fixture = TestBed.createComponent(ShellComponent);
-      expect(fixture.componentInstance.menuAdministracion.map(o => o.ruta)).toEqual([
-        '/productos', '/unidades', '/usuarios', '/auditoria',
-      ]);
+      const componente = fixture.componentInstance;
+      expect(componente.menuComercial().map(o => o.ruta)).toEqual(['/productos']);
+      expect(componente.menuAdministracion().map(o => o.ruta)).toEqual(['/unidades', '/usuarios', '/auditoria']);
     });
 
-    it('un admin que también es supervisor y gestiona órdenes ve todo, en orden', () => {
+    it('ordena los grupos por tarea para quien tiene todos los permisos', () => {
       sesionFalsa.puedeGestionarOrdenes.set(true);
       sesionFalsa.esSupervisor.set(true);
       sesionFalsa.esAdmin.set(true);
       const fixture = TestBed.createComponent(ShellComponent);
-      expect(fixture.componentInstance.menuAdministracion.map(o => o.ruta)).toEqual([
-        '/clientes', '/bi', '/cuentas-por-cobrar', '/productos', '/unidades', '/usuarios', '/auditoria',
+      expect(fixture.componentInstance.gruposMenu().map(g => [g.clave, g.opciones.map(o => o.ruta)])).toEqual([
+        ['operacion', ['/ordenes', '/caja', '/inventario']],
+        ['comercial', ['/clientes', '/productos']],
+        ['finanzas', ['/finanzas', '/cuentas-por-cobrar']],
+        ['analitica', ['/bi']],
+        ['administracion', ['/unidades', '/usuarios', '/auditoria']],
       ]);
     });
   });

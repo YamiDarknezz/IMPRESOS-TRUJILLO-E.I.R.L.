@@ -4,7 +4,10 @@
   <header class="topbar">
     <div class="topbar-left">
       <button class="btn-hamburger" (click)="cajonAbierto.set(!cajonAbierto())"
-              title="Menú" aria-label="Abrir menú">
+              [title]="cajonAbierto() ? 'Cerrar menú' : 'Abrir menú'"
+              [attr.aria-label]="cajonAbierto() ? 'Cerrar menú' : 'Abrir menú'"
+              aria-controls="sidebar-navigation"
+              [attr.aria-expanded]="cajonAbierto()">
         <app-icon name="menu" [size]="20" />
       </button>
       <div class="brand">
@@ -60,13 +63,14 @@
   <div class="layout-body">
 
     <!-- ═══ Menú lateral ══════════════════════════════════════════════════ -->
-    <aside class="sidebar" [class.collapsed]="colapsado()" [class.mobile-open]="cajonAbierto()">
+    <aside id="sidebar-navigation" class="sidebar" [class.collapsed]="colapsado()" [class.mobile-open]="cajonAbierto()">
       
       <!-- Control superior para ocultar / expandir el panel -->
       <div class="sidebar-header">
         <button class="sidebar-toggle-btn" (click)="alternarColapsado()"
-                [title]="colapsado() ? 'Expandir menú lateral' : 'Ocultar menú lateral'"
-                [attr.aria-label]="colapsado() ? 'Expandir menú lateral' : 'Ocultar menú lateral'">
+                [title]="colapsado() ? 'Expandir navegación' : 'Contraer navegación'"
+                [attr.aria-label]="colapsado() ? 'Expandir navegación' : 'Contraer navegación'"
+                [attr.aria-expanded]="!colapsado()" aria-controls="sidebar-nav">
           <span class="sidebar-toggle-icon">
             @if (colapsado()) {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -82,34 +86,21 @@
               </svg>
             }
           </span>
-          <span class="sidebar-toggle-label">Ocultar menú</span>
+          <span class="sidebar-toggle-label">{{ colapsado() ? 'Expandir navegación' : 'Contraer navegación' }}</span>
         </button>
       </div>
 
-      <nav class="sidebar-nav">
-
-        <div class="sidebar-group">
-          <span class="sidebar-group-label">Operación</span>
-          @for (opcion of menuOperacion; track opcion.ruta) {
-            <a class="sidebar-item" [routerLink]="opcion.ruta"
-               routerLinkActive="active" [title]="opcion.etiqueta"
-               (click)="cerrarCajon()">
-              <span class="sidebar-icon"><app-icon [name]="opcion.icono" [size]="16" /></span>
-              <span class="sidebar-label">{{ opcion.etiqueta }}</span>
-            </a>
-          }
-        </div>
-
-        <!-- La administración solo se muestra según el rol; el backend además
-             la bloquea en cada petición. -->
-        @if (menuAdministracion.length > 0) {
-          <div class="sidebar-group">
-            <span class="sidebar-group-label">Administración</span>
-            @for (opcion of menuAdministracion; track opcion.ruta) {
+      <nav id="sidebar-nav" class="sidebar-nav" aria-label="Navegación principal">
+        @for (grupo of gruposMenu(); track grupo.clave) {
+          <div class="sidebar-group" [class.sidebar-group-analitica]="grupo.clave === 'analitica'">
+            <span class="sidebar-group-label">{{ grupo.etiqueta }}</span>
+            @for (opcion of grupo.opciones; track opcion.ruta) {
               <a class="sidebar-item" [routerLink]="opcion.ruta"
-                 routerLinkActive="active" [title]="opcion.etiqueta"
+                 routerLinkActive="active" ariaCurrentWhenActive="page"
+                 [title]="opcion.etiqueta"
+                 [attr.aria-label]="colapsado() ? opcion.etiqueta : null"
                  (click)="cerrarCajon()">
-                <span class="sidebar-icon"><app-icon [name]="opcion.icono" [size]="16" /></span>
+                <span class="sidebar-icon" aria-hidden="true"><app-icon [name]="opcion.icono" [size]="18" /></span>
                 <span class="sidebar-label">{{ opcion.etiqueta }}</span>
               </a>
             }

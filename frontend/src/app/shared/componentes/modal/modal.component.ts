@@ -1,4 +1,5 @@
 import { Component, ElementRef, HostListener, OnDestroy, afterNextRender, inject, input, output, viewChild } from '@angular/core';
+import { IconComponent } from '../icon/icon.component';
 
 /** Elementos que reciben el foco con el teclado dentro del diálogo. */
 const FOCALIZABLES =
@@ -24,6 +25,7 @@ let contador = 0;
 @Component({
   selector: 'app-modal',
   standalone: true,
+  imports: [IconComponent],
   templateUrl: './modal.component.html',
 })
 export class ModalComponent implements OnDestroy {
@@ -32,7 +34,7 @@ export class ModalComponent implements OnDestroy {
   readonly claseTitulo = input('');
   /** Clase extra para la caja del diálogo (p. ej. `modal-visor`). */
   readonly claseContenido = input('');
-  /** Muestra el botón ✕ en la cabecera. */
+  /** Muestra el botón de cierre en la cabecera. */
   readonly conBotonCerrar = input(false);
   /**
    * Cerrar al hacer clic en el fondo. Se apaga en los formularios largos,
@@ -96,7 +98,7 @@ export class ModalComponent implements OnDestroy {
       .filter(el => !el.hidden);
   }
 
-  /** El primer campo del contenido; el ✕ solo si no hay otro, y si no, el propio diálogo. */
+  /** El primer campo del contenido; el botón de cierre solo si no hay otro, y si no, el propio diálogo. */
   private enfocarPrimerControl(): void {
     const dialogo = this.dialogo().nativeElement;
     const destino =

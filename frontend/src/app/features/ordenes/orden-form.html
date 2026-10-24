@@ -7,7 +7,9 @@
         <span class="edit-orden-id">{{ orden.id_documento }}</span>
       }
     </div>
-    <button class="btn-secondary btn-sm" (click)="volver()">← Volver</button>
+    <button type="button" class="btn-secondary btn-sm" (click)="volver()">
+      <app-icon name="arrow-left" [size]="16" /> Volver
+    </button>
   </div>
 
   <form (ngSubmit)="guardar()">
@@ -31,7 +33,8 @@
 
         <button type="button" class="link-btn"
                 (click)="mostrarNuevoCliente.set(!mostrarNuevoCliente())">
-          {{ mostrarNuevoCliente() ? '− Cancelar' : '+ Cliente nuevo' }}
+          <app-icon [name]="mostrarNuevoCliente() ? 'x' : 'plus'" [size]="15" />
+          {{ mostrarNuevoCliente() ? 'Cancelar' : 'Cliente nuevo' }}
         </button>
 
         @if (mostrarNuevoCliente()) {
@@ -198,7 +201,9 @@
       }
     }
 
-    <button type="button" class="btn-secondary btn-sm" (click)="agregarLinea()">+ Agregar línea</button>
+    <button type="button" class="btn-secondary btn-sm" (click)="agregarLinea()">
+      <app-icon name="plus" [size]="15" /> Agregar línea
+    </button>
 
     <!-- ═══ Materiales ════════════════════════════════════════════════════ -->
     <h4 class="section-title">Materiales</h4>
@@ -382,7 +387,7 @@
       <div class="input-group campo-completo">
         <div class="fila-parte-adelanto">
           <button type="button" class="btn-secondary btn-sm" (click)="agregarParteAdelanto()"
-                  [disabled]="!puedeAgregarParte()">+ Agregar otro método</button>
+                  [disabled]="!puedeAgregarParte()"><app-icon name="plus" [size]="15" /> Agregar otro método</button>
           @if (form().adelantoExtra.length > 0) {
             <span class="field-hint">Adelanto total: S/ {{ adelantoTotal() | number:'1.2-2' }}</span>
           }
