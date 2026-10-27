@@ -189,6 +189,44 @@ async def test_cierre_de_caja_en_postgres(sesion_pg, entorno_pg):
     assert congelado.validado_por == admin.id
 
 
+async def test_los_dos_yape_pasan_el_check_y_el_cierre_los_separa_en_postgres(
+    sesion_pg, entorno_pg
+):
+    """
+    #125: la base se construye con las migraciones, así que esto prueba que la
+    migración amplió el CHECK de `orden_pagos.metodo` y de
+    `ordenes.metodo_pago_adelanto` (un valor nuevo sin eso es un IntegrityError)
+    y que el cierre guarda cada número en su propia columna.
+    """
+    admin = entorno_pg["admin"]
+    for metodo, adelanto in ((MetodoPago.YAPE_MARCELL, 40), (MetodoPago.YAPE_ANGEL, 30)):
+        await ordenes_service.crear_orden(
+            sesion_pg,
+            datos_orden(
+                entorno_pg["material"].id,
+                cliente_id=entorno_pg["cliente"].id,
+                precio_total=adelanto * 2,
+                adelanto_pago=adelanto,
+                metodo_pago=metodo,
+            ),
+            admin,
+        )
+
+    hoy = a_fecha_peru(ahora_utc())
+    cierre = await caja_service.cerrar_caja(sesion_pg, hoy, UnidadNegocio.IMPRENTA, "", admin)
+
+    assert float(cierre.monto_yape_marcell) == 40
+    assert float(cierre.monto_yape_angel) == 30
+    assert float(cierre.monto_yape) == 0
+    assert float(cierre.total) == 70
+
+    with pytest.raises(IntegrityError):
+        async with sesion_pg.begin_nested():
+            await sesion_pg.execute(
+                text("UPDATE orden_pagos SET metodo = 'yape_otro' WHERE metodo = 'yape_angel'")
+            )
+
+
 async def test_check_de_enum_rechaza_un_valor_fuera_del_dominio(sesion_pg, entorno_pg):
     """
     El docstring de este módulo dice que los enums se guardan como `VARCHAR`
@@ -345,3 +383,232 @@ async def test_borrar_un_comprobante_en_postgres(sesion_pg, entorno_pg):
 
     queda = await sesion_pg.get(Comprobante, id_comprobante)
     assert queda is None
+
+
+async def test_canal_de_ingreso_con_check_y_valor_por_defecto_en_postgres(sesion_pg, entorno_pg):
+    """
+    #69: la columna nueva entra a una tabla con filas gracias al
+    `server_default` ("otro"), y su CHECK rechaza un canal fuera del dominio.
+    """
+    admin, material, cliente = entorno_pg["admin"], entorno_pg["material"], entorno_pg["cliente"]
+    orden = await ordenes_service.crear_orden(
+        sesion_pg, datos_orden(material.id, cliente_id=cliente.id), admin
+    )
+    assert orden.canal_ingreso.value == "otro"
+
+    # Una fila escrita sin el campo (como las anteriores a la migración) lo recibe de la base.
+    guardado = (
+        await sesion_pg.execute(
+            text("SELECT canal_ingreso FROM ordenes WHERE id = :id"), {"id": orden.id}
+        )
+    ).scalar_one()
+    assert guardado == "otro"
+
+    with pytest.raises(IntegrityError):
+        async with sesion_pg.begin_nested():
+            await sesion_pg.execute(
+                text("UPDATE ordenes SET canal_ingreso = 'paloma' WHERE id = :id"), {"id": orden.id}
+            )
+
+
+async def test_gasto_de_caja_exige_monto_positivo_en_postgres(sesion_pg, entorno_pg):
+    """#112: el CHECK `monto > 0` de gastos_caja existe de verdad en la base."""
+    from datetime import date
+
+    from app.models import GastoCaja
+
+    admin = entorno_pg["admin"]
+    sesion_pg.add(
+        GastoCaja(
+            fecha=date(2026, 10, 3), unidad_negocio=UnidadNegocio.IMPRENTA, monto=5,
+            motivo="Tinta", registrado_por=admin.id,
+        )
+    )
+    await sesion_pg.flush()
+
+    with pytest.raises(IntegrityError):
+        async with sesion_pg.begin_nested():
+            sesion_pg.add(
+                GastoCaja(
+                    fecha=date(2026, 10, 3), unidad_negocio=UnidadNegocio.IMPRENTA, monto=0,
+                    motivo="Nada", registrado_por=admin.id,
+                )
+            )
+            await sesion_pg.flush()
+
+
+async def test_corte_asignado_a_un_pedido_se_serializa_sin_cargas_perezosas_en_postgres(
+    sesion_pg, entorno_pg
+):
+    """
+    #71: serializar un corte recién creado lee `consumo.orden` y la pieza. En
+    SQLite una carga perezosa pasa sin avisar; en PostgreSQL con asyncpg
+    revienta con MissingGreenlet (le pasó tres veces a este proyecto).
+    """
+    from app.schemas.inventario import ConsumoPiezaCreateData, PiezaLoteCreateData
+    from app.services import inventario_service
+    from app.services.serializadores import serializar_consumo
+
+    admin, material, cliente = entorno_pg["admin"], entorno_pg["material"], entorno_pg["cliente"]
+    orden = await ordenes_service.crear_orden(
+        sesion_pg, datos_orden(material.id, cliente_id=cliente.id), admin
+    )
+    pieza = await inventario_service.registrar_pieza(
+        sesion_pg,
+        PiezaLoteCreateData(
+            material_id=material.id, codigo_identificador=f"R71-{SUFIJO}", capacidad_inicial=5,
+            unidad_medida="m",
+        ),
+        admin,
+    )
+
+    consumo = await inventario_service.registrar_consumo_pieza(
+        sesion_pg,
+        pieza.id,
+        ConsumoPiezaCreateData(trabajo_descripcion="Banner", cantidad_consumida=2, orden_id=orden.id),
+        admin,
+    )
+    fila = serializar_consumo(consumo)
+
+    assert fila["orden_codigo"] == orden.codigo
+    assert fila["pieza_codigo"] == f"R71-{SUFIJO}"
+    assert fila["saldo_restante_pieza"] == 3
+    delante = await inventario_service.consumos_de_orden(sesion_pg, orden.id)
+    assert [c.id for c in delante] == [consumo.id]
+
+
+async def test_la_orden_descuenta_el_rollo_y_lo_devuelve_al_cancelar_en_postgres(
+    sesion_pg, entorno_pg
+):
+    """
+    #127: el corte automático escribe las columnas nuevas (`orden_materiales.pieza_id`,
+    `consumos_pieza.automatico`), bloquea la fila del rollo con FOR UPDATE OF, no
+    vuelve a restar el material y el serializador no lee nada perezoso.
+    """
+    from app.models import EstadoPieza
+    from app.schemas import MaterialEstimado
+    from app.schemas.inventario import PiezaLoteCreateData
+    from app.services import inventario_service
+    from app.services.serializadores import serializar_consumo
+
+    admin, material, cliente = entorno_pg["admin"], entorno_pg["material"], entorno_pg["cliente"]
+    pieza = await inventario_service.registrar_pieza(
+        sesion_pg,
+        PiezaLoteCreateData(
+            material_id=material.id, codigo_identificador=f"R127-{SUFIJO}", capacidad_inicial=5,
+            unidad_medida="ml",
+        ),
+        admin,
+    )
+    stock = float(material.stock_actual)
+
+    orden = await ordenes_service.crear_orden(
+        sesion_pg,
+        datos_orden(
+            material.id,
+            cliente_id=cliente.id,
+            materiales_estimados=[MaterialEstimado(material_id=material.id, cantidad=2, pieza_id=pieza.id)],
+        ),
+        admin,
+    )
+
+    assert float(pieza.saldo_restante) == 3
+    assert pieza.estado == EstadoPieza.EN_USO
+    assert float(material.stock_actual) == stock - 2
+    (corte,) = await inventario_service.consumos_de_orden(sesion_pg, orden.id)
+    fila = serializar_consumo(corte)
+    assert fila["automatico"] is True and fila["saldo_restante_pieza"] == 3
+
+    await ordenes_service.cancelar(sesion_pg, orden.id, admin)
+
+    assert float(pieza.saldo_restante) == 5
+    assert pieza.estado == EstadoPieza.DISPONIBLE
+    assert await inventario_service.consumos_de_orden(sesion_pg, orden.id) == []
+
+
+async def test_entrega_con_saldo_autorizada_y_cuentas_por_cobrar_en_postgres(sesion_pg, entorno_pg):
+    """
+    #72: autorizar una entrega con saldo escribe las columnas nuevas (FK a
+    usuarios incluida), serializa sin cargas perezosas y aparece en la vista de
+    cuentas por cobrar con su antigüedad.
+    """
+    from app.models import Cliente
+    from app.schemas import MaterialEstimado
+    from app.services import finanzas_service
+    from app.services.serializadores import serializar_orden
+
+    admin, material = entorno_pg["admin"], entorno_pg["material"]
+    corporativo = Cliente(nombre=f"Cliente PG proforma {SUFIJO}")
+    sesion_pg.add(corporativo)
+    await sesion_pg.flush()
+
+    orden = await ordenes_service.crear_orden(
+        sesion_pg,
+        datos_orden(material.id, cliente_id=corporativo.id, tipo_documento="proforma"),
+        admin,
+    )
+    await ordenes_service.completar(
+        sesion_pg, orden.id, [MaterialEstimado(material_id=material.id, cantidad=2)], admin
+    )
+    entregada = await ordenes_service.cambiar_estado(
+        sesion_pg, orden.id, EstadoOrden.ENTREGADA, admin,
+        autorizar_saldo=True, motivo="Orden de compra mensual",
+    )
+    datos = serializar_orden(entregada)
+
+    assert datos["entregada_con_saldo"] is True
+    assert datos["entrega_autorizada"]["por"] == admin.nombre
+    assert datos["entrega_autorizada"]["motivo"] == "Orden de compra mensual"
+
+    cuentas = await finanzas_service.cuentas_por_cobrar(sesion_pg)
+    fila = next(f for f in cuentas["clientes"] if f["cliente_id"] == corporativo.id)
+    assert fila["saldo_pendiente"] == 50
+    assert fila["ordenes"][0]["dias"] == 0
+    assert fila["ordenes"][0]["entrega_autorizada_por"] == admin.nombre
+
+
+async def test_corte_cobrado_entra_a_caja_y_serializa_en_postgres(sesion_pg, entorno_pg):
+    """
+    #57: un corte cobrado sin pedido crea su venta rápida (pago conforme), el
+    corte serializado la referencia y el monto aparece en el arqueo real.
+    """
+    from app.schemas.inventario import ConsumoPiezaCreateData, PiezaLoteCreateData
+    from app.services import inventario_service
+    from app.services.serializadores import serializar_consumo
+
+    admin, material = entorno_pg["admin"], entorno_pg["material"]
+    pieza = await inventario_service.registrar_pieza(
+        sesion_pg,
+        PiezaLoteCreateData(
+            material_id=material.id,
+            codigo_identificador=f"R57-{SUFIJO}",
+            capacidad_inicial=5,
+            unidad_medida="m",
+            costo_adquisicion=100,
+        ),
+        admin,
+    )
+
+    consumo = await inventario_service.registrar_consumo_pieza(
+        sesion_pg,
+        pieza.id,
+        ConsumoPiezaCreateData(
+            trabajo_descripcion="Stickers UV DTF",
+            cantidad_consumida=1,
+            monto_cobrado=30,
+            metodo_pago=MetodoPago.EFECTIVO,
+        ),
+        admin,
+    )
+
+    fila = serializar_consumo(consumo)
+    assert fila["orden_codigo"] is not None
+    assert fila["monto_cobrado"] == 30
+
+    # La base del CI ya trae los datos demo del seed: se ubica el cobro por su
+    # orden en vez de comparar el total del día.
+    resumen = await caja_service.resumen_dia(sesion_pg, a_fecha_peru(ahora_utc()))
+    cobro = next(f for f in resumen["detalle"] if f["orden_id"] == consumo.orden_id)
+    assert cobro["monto"] == 30
+    assert cobro["metodo"] == "efectivo"
+

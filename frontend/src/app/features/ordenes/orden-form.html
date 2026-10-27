@@ -61,6 +61,21 @@
       </div>
 
       <div class="input-group">
+        <label>Canal por el que entró el pedido *</label>
+        <select [ngModel]="form().canalIngreso" name="canalIngreso"
+                (ngModelChange)="actualizar('canalIngreso', $event)"
+                [class.input-error]="errores()['canalIngreso']">
+          <option value="">— Selecciona —</option>
+          @for (c of canales(); track c.valor) {
+            <option [value]="c.valor">{{ c.etiqueta }}</option>
+          }
+        </select>
+        @if (errores()['canalIngreso']) {
+          <span class="field-error">{{ errores()['canalIngreso'] }}</span>
+        }
+      </div>
+
+      <div class="input-group">
         <label>Unidad de negocio</label>
         <select [ngModel]="form().unidadNegocio" name="unidadNegocio"
                 (ngModelChange)="actualizar('unidadNegocio', $event)">
@@ -120,7 +135,7 @@
 
     <!-- ═══ Líneas del contrato (medidas) ═════════════════════════════════ -->
     <h4 class="section-title">Líneas del contrato (opcional)</h4>
-    <p class="field-hint" style="margin-top:-0.5rem">
+    <p class="field-hint field-hint-pegado">
       Para gigantografías y gran formato: medidas en metros (alto × ancho) y precio pactado.
       Si no detallás líneas, usá el total directo en Finanzas.
     </p>
@@ -195,6 +210,7 @@
           @for (mat of materiales(); track mat.id) {
             <option [value]="mat.id">
               {{ mat.nombre }} — Stock: {{ mat.stock_actual }} {{ mat.unidad }}
+              @if (mat.ubicacion_estante) { · Ubicación: {{ mat.ubicacion_estante }} }
             </option>
           }
         </select>
@@ -208,11 +224,33 @@
               [disabled]="!materialSelId()">Añadir</button>
     </div>
 
+    @if (errores()['materiales']) {
+      <span class="field-error">{{ errores()['materiales'] }}</span>
+    }
+
     @if (form().materiales.length > 0) {
       <ul class="material-list">
         @for (mat of form().materiales; track $index) {
           <li>
-            <span>{{ mat.cantidad }} {{ mat.unidad || '' }} × {{ mat.nombre }}</span>
+            <span>
+              {{ mat.cantidad }} {{ mat.unidad || '' }} × {{ mat.nombre }}
+              @if (ubicacionDe(mat.id_material); as ubicacion) {
+                <small class="text-muted">· Ubicación: {{ ubicacion }}</small>
+              }
+            </span>
+            <!-- Rollo del que sale (#127): la orden le descuenta los metros al crearse. -->
+            @if (esDeRollo(mat.id_material)) {
+              <select class="rollo-select" [ngModel]="mat.pieza_id || ''"
+                      (ngModelChange)="elegirRollo($index, $event)"
+                      [name]="'rollo' + $index" aria-label="Rollo del que sale este material">
+                <option value="">Sin descontar de un rollo</option>
+                @for (rollo of rollosDe(mat.id_material); track rollo.id) {
+                  <option [value]="rollo.id">
+                    {{ rollo.codigo_identificador }} — quedan {{ saldoDelRollo(rollo.id, mat.id_material) }} {{ rollo.unidad_medida }}
+                  </option>
+                }
+              </select>
+            }
             <button type="button" class="delete-btn" (click)="quitarMaterial($index)" title="Quitar material" aria-label="Quitar material">
               <app-icon name="x" [size]="13" />
             </button>
@@ -281,7 +319,9 @@
         <input type="number" [ngModel]="form().adelanto" name="adelanto"
                (ngModelChange)="actualizar('adelanto', $event)" min="0" step="0.01"
                [class.input-error]="errores()['adelanto']">
-        @if (clienteSeleccionado()?.es_corporativo) {
+        @if (form().tipoDocumento === 'proforma') {
+          <span class="field-hint">Proforma: no exige adelanto (cliente de confianza o que paga a plazo).</span>
+        } @else if (clienteSeleccionado()?.es_corporativo) {
           <span class="field-hint">Cliente corporativo: puede autorizarse sin adelanto mínimo.</span>
         } @else {
           <span class="field-hint">
@@ -301,10 +341,55 @@
       <div class="input-group">
         <label>Método del adelanto</label>
         <select [ngModel]="form().metodoPago" (ngModelChange)="actualizar('metodoPago', $event)" name="metodoPago">
-          @for (m of metodosPago(); track m) {
+          @for (m of metodosPrimeraParte(); track m) {
             <option [value]="m">{{ etiquetaMetodo()[m] }}</option>
           }
         </select>
+      </div>
+
+      <div class="input-group campo-completo">
+        <label>Descripción del adelanto (opcional)</label>
+        <input type="text" [ngModel]="form().adelantoDescripcion" name="adelantoDescripcion"
+               (ngModelChange)="actualizar('adelantoDescripcion', $event)" maxlength="200"
+               placeholder="Ej: Adelanto por los banners del evento">
+        <span class="field-hint">Queda en el historial de pagos del cliente y de la orden.</span>
+      </div>
+
+      <!-- Adelanto repartido (#124): lo que el cliente deja en otro método, como otro pago. -->
+      @for (parte of form().adelantoExtra; track $index; let i = $index) {
+        <div class="input-group">
+          <label>Otro método del adelanto</label>
+          <select [ngModel]="parte.metodo" (ngModelChange)="actualizarParteAdelanto(i, 'metodo', $event)"
+                  [name]="'metodoParte' + i">
+            @for (m of metodosDeLaParte(i); track m) {
+              <option [value]="m">{{ etiquetaMetodo()[m] }}</option>
+            }
+          </select>
+        </div>
+        <div class="input-group">
+          <label>Monto en ese método (S/)</label>
+          <input type="number" [ngModel]="parte.monto" [name]="'montoParte' + i"
+                 (ngModelChange)="actualizarParteAdelanto(i, 'monto', $event)" min="0" step="0.01">
+        </div>
+        <div class="input-group campo-completo fila-parte-adelanto">
+          <input type="text" [ngModel]="parte.descripcion" [name]="'descParte' + i" maxlength="200"
+                 (ngModelChange)="actualizarParteAdelanto(i, 'descripcion', $event)"
+                 placeholder="Descripción de esta parte (opcional)">
+          <button type="button" class="btn-secondary btn-sm" (click)="quitarParteAdelanto(i)">Quitar</button>
+        </div>
+      }
+
+      <div class="input-group campo-completo">
+        <div class="fila-parte-adelanto">
+          <button type="button" class="btn-secondary btn-sm" (click)="agregarParteAdelanto()"
+                  [disabled]="!puedeAgregarParte()">+ Agregar otro método</button>
+          @if (form().adelantoExtra.length > 0) {
+            <span class="field-hint">Adelanto total: S/ {{ adelantoTotal() | number:'1.2-2' }}</span>
+          }
+        </div>
+        @if (errores()['adelantoPartes']) {
+          <span class="field-error">{{ errores()['adelantoPartes'] }}</span>
+        }
       </div>
 
       <!-- Captura del adelanto: opcional, es el respaldo de la conciliación. -->

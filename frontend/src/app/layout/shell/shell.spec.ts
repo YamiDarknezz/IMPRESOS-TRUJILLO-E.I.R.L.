@@ -61,10 +61,10 @@ describe('ShellComponent', () => {
 
     // Issue #25: la ruta de Productos es solo-admin (`rolesGuard('admin')`);
     // antes se ofrecía también al subgerente y lo redirigía en silencio.
-    it('la supervisión por sí sola (sin ser admin) no ve "Productos"', () => {
+    it('la supervisión por sí sola (sin ser admin) no ve "Productos" pero sí "Por cobrar"', () => {
       sesionFalsa.esSupervisor.set(true);
       const fixture = TestBed.createComponent(ShellComponent);
-      expect(fixture.componentInstance.menuAdministracion).toEqual([]);
+      expect(fixture.componentInstance.menuAdministracion.map(o => o.ruta)).toEqual(['/cuentas-por-cobrar']);
     });
 
     it('el admin ve Productos, Unidades, Usuarios y Auditoría', () => {
@@ -81,7 +81,7 @@ describe('ShellComponent', () => {
       sesionFalsa.esAdmin.set(true);
       const fixture = TestBed.createComponent(ShellComponent);
       expect(fixture.componentInstance.menuAdministracion.map(o => o.ruta)).toEqual([
-        '/clientes', '/productos', '/unidades', '/usuarios', '/auditoria',
+        '/clientes', '/cuentas-por-cobrar', '/productos', '/unidades', '/usuarios', '/auditoria',
       ]);
     });
   });

@@ -1,18 +1,16 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
 import { CajaService } from '../../core/services/caja.service';
-import { OrdenesService } from '../../core/services/ordenes.service';
 import { SesionService } from '../../core/services/sesion.service';
 import {
   AcumuladoCaja,
+  GastoCaja,
   CierreCaja,
   DetalleCaja,
   ETIQUETA_METODO,
   ETIQUETA_UNIDAD,
-  MetodoPago,
   ResumenCaja,
   UNIDADES_NEGOCIO,
   UnidadNegocio,
@@ -23,9 +21,11 @@ import {
   etiquetaDe,
   etiquetasMetodo,
   metodosPago,
+  metodosPagoHeredados,
   motivosObservacion,
 } from '../../core/estado/catalogos';
 import { IconComponent } from '../../shared/componentes/icon/icon.component';
+import { ModalComponent } from '../../shared/componentes/modal/modal.component';
 
 /**
  * Cierre y arqueo diario de caja dual (RF-12 a RF-14).
@@ -37,14 +37,11 @@ import { IconComponent } from '../../shared/componentes/icon/icon.component';
 @Component({
   selector: 'app-caja',
   standalone: true,
-  imports: [CommonModule, FormsModule, IconComponent],
+  imports: [CommonModule, FormsModule, IconComponent, ModalComponent],
   templateUrl: './caja.html',
 })
 export class CajaComponent {
   private cajaService = inject(CajaService);
-  private ordenesService = inject(OrdenesService);
-  private route = inject(ActivatedRoute);
-  private router = inject(Router);
   sesion = inject(SesionService);
 
   readonly fecha = signal(hoyISO());
@@ -55,44 +52,49 @@ export class CajaComponent {
   readonly cargando = signal(false);
   readonly guardando = signal(false);
 
+  // ── Modal Registrar gasto (#112) ────────────────────────────────────────
+  readonly modalGasto = signal(false);
+  readonly gastoMonto = signal<number | null>(null);
+  readonly gastoMotivo = signal('');
+  readonly gastoUnidad = signal<UnidadNegocio>('imprenta');
+
   // ── Modal Observar Cobro (Auditoría previa al cierre) ───────────────────
   readonly pagoAObservar = signal<DetalleCaja | null>(null);
   readonly motivoObservacion = signal<string>('yape_falso');
   readonly notaObservacion = signal<string>('');
 
-  // ── Modal Venta Rápida / Mostrador ──────────────────────────────────────
-  readonly modalVentaRapida = signal(false);
-  readonly vrDescripcion = signal('');
-  readonly vrMonto = signal<number | null>(null);
-  readonly vrMetodo = signal<MetodoPago>('efectivo');
-  readonly vrUnidad = signal<UnidadNegocio>('imprenta');
-  readonly vrCliente = signal('Cliente Mostrador');
-  readonly vrReferencia = signal('');
-
   readonly unidades = UNIDADES_NEGOCIO;
   readonly etiquetaUnidad = ETIQUETA_UNIDAD;
-  readonly etiquetaMetodo = etiquetasMetodo;
-  // Del servidor: antes estaba aquí copiada y había que mantenerla a mano.
-  readonly metodos = metodosPago;
+  readonly etiquetaMetodo = computed(() => etiquetasMetodo());
   readonly formatearFecha = formatearFecha;
+
+  /**
+   * Columnas del arqueo: los métodos que se ofrecen al cobrar, más el heredado
+   * (el `yape` de antes de #125) solo si hay algo cobrado con él. Así el total
+   * siempre cuadra con la suma de las columnas, sin una columna en cero para
+   * siempre en una caja que ya no lo usa.
+   */
+  readonly metodosArqueo = computed(() =>
+    this.conHeredados(metodo => {
+      const resumen = this.resumen();
+      return resumen ? this.montoDe(resumen.total, metodo) : 0;
+    })
+  );
+
+  /** Columnas de la tabla de cierres, con la misma regla para el heredado. */
+  readonly metodosCierres = computed(() =>
+    this.conHeredados(metodo =>
+      this.cierres().reduce((suma, cierre) => suma + this.montoDeCierre(cierre, metodo), 0)
+    )
+  );
 
   /** Los motivos de observación, con su nombre legible, vienen del catálogo. */
   readonly motivosObservacion = computed(() =>
     motivosObservacion().map(opcion => ({ id: opcion.valor, nombre: opcion.etiqueta }))
   );
 
-    constructor() {
+  constructor() {
     this.cargar();
-    if (this.route.snapshot.queryParamMap.has('venta_rapida')) {
-      // El enlace en Órdenes ya está guardado (issue #23), pero esta ruta
-      // también se puede teclear a mano: el backend exige personal_venta
-      // (`/api/ordenes/caja-rapida`) y el formulario no debe ni abrirse
-      // para quien de todos modos lo va a rechazar al confirmar.
-      if (this.sesion.puedeVender()) {
-        this.abrirModalVentaRapida();
-      }
-      this.router.navigate([], { queryParams: {}, replaceUrl: true }); // evita reabrir al refrescar
-    }
   }
 
   cambiarFecha(valor: string): void {
@@ -134,6 +136,68 @@ export class CajaComponent {
       alert(mensajeDeError(e, 'No se pudo cargar la caja.'));
     } finally {
       this.cargando.set(false);
+    }
+  }
+
+  // ── Gastos de caja (#112) ────────────────────────────────────────────────
+
+  abrirModalGasto(): void {
+    this.gastoMonto.set(null);
+    this.gastoMotivo.set('');
+    this.gastoUnidad.set(this.unidad() ?? 'imprenta');
+    this.modalGasto.set(true);
+  }
+
+  cerrarModalGasto(): void {
+    this.modalGasto.set(false);
+  }
+
+  async guardarGasto(): Promise<void> {
+    const monto = Number(this.gastoMonto());
+    const motivo = this.gastoMotivo().trim();
+    if (!motivo) {
+      alert('Indica en qué se gastó.');
+      return;
+    }
+    if (!monto || monto <= 0) {
+      alert('Ingresa un monto válido mayor a 0.');
+      return;
+    }
+
+    this.guardando.set(true);
+    try {
+      await this.cajaService.registrarGasto({
+        monto,
+        motivo,
+        unidad_negocio: this.gastoUnidad(),
+        // El gasto se anota en el día que se está mirando.
+        fecha: this.fecha(),
+      });
+      this.cerrarModalGasto();
+      await this.cargar();
+    } catch (e) {
+      alert(mensajeDeError(e, 'No se pudo registrar el gasto.'));
+    } finally {
+      this.guardando.set(false);
+    }
+  }
+
+  /** Solo la supervisión corrige un gasto mal anotado. */
+  async eliminarGasto(gasto: GastoCaja): Promise<void> {
+    const confirmado = confirm(
+      `¿Quitar el gasto "${gasto.motivo}" de S/ ${gasto.monto.toFixed(2)}?\n\n` +
+      'Queda registrado en la auditoría.'
+    );
+    if (!confirmado) return;
+
+    this.guardando.set(true);
+    try {
+      await this.cajaService.eliminarGasto(gasto.id);
+      await this.cargar();
+    } catch (e) {
+      alert(mensajeDeError(e, 'No se pudo quitar el gasto.'));
+    } finally {
+      this.guardando.set(false);
     }
   }
 
@@ -183,7 +247,32 @@ export class CajaComponent {
    * aparece en el arqueo y suma sola, sin tocar esta función ni la plantilla.
    */
   montoDe(acumulado: AcumuladoCaja, metodo: string): number {
-    return (acumulado as unknown as Record<string, number>)[metodo] ?? 0;
+    return (acumulado as unknown as Record<string, number | undefined> | undefined)?.[metodo] ?? 0;
+  }
+
+  /**
+   * Monto de un método en un cierre guardado. Las columnas del cierre se llaman
+   * `monto_<método>` (`monto_efectivo`, `monto_yape_marcell`...).
+   */
+  montoDeCierre(cierre: CierreCaja, metodo: string): number {
+    return (cierre as unknown as Record<string, number | undefined>)[`monto_${metodo}`] ?? 0;
+  }
+
+  private conHeredados(montoDe: (metodo: string) => number): string[] {
+    const heredados = metodosPagoHeredados().filter(metodo => montoDe(metodo) > 0);
+    return [...metodosPago(), ...heredados];
+  }
+
+  /** Icono de la tarjeta de cada método. */
+  iconoDeMetodo(metodo: string): 'wallet' | 'smartphone' | 'landmark' {
+    if (metodo === 'efectivo') return 'wallet';
+    return metodo.startsWith('yape') ? 'smartphone' : 'landmark';
+  }
+
+  /** Color de la tarjeta de cada método (los dos Yape comparten el suyo). */
+  colorDeMetodo(metodo: string): 'success' | 'warning' | 'neutral' {
+    if (metodo === 'efectivo') return 'success';
+    return metodo.startsWith('yape') ? 'warning' : 'neutral';
   }
 
   /** Etiqueta legible del método; si viene uno desconocido, se muestra tal cual. */
@@ -219,53 +308,6 @@ export class CajaComponent {
       await this.cargar();
     } catch (e) {
       alert(mensajeDeError(e, 'No se pudo registrar la observación del cobro.'));
-    } finally {
-      this.guardando.set(false);
-    }
-  }
-
-  // ── Acciones de Venta Rápida / Mostrador ───────────────────────────────────
-
-  abrirModalVentaRapida(): void {
-    this.vrDescripcion.set('');
-    this.vrMonto.set(null);
-    this.vrMetodo.set('efectivo');
-    this.vrUnidad.set('imprenta');
-    this.vrCliente.set('Cliente Mostrador');
-    this.vrReferencia.set('');
-    this.modalVentaRapida.set(true);
-  }
-
-  cerrarModalVentaRapida(): void {
-    this.modalVentaRapida.set(false);
-  }
-
-  async guardarVentaRapida(): Promise<void> {
-    const descripcion = this.vrDescripcion().trim();
-    const monto = Number(this.vrMonto());
-    if (!descripcion) {
-      alert('Ingresa la descripción del servicio o producto rápido.');
-      return;
-    }
-    if (!monto || monto <= 0) {
-      alert('Ingresa un monto válido mayor a 0.');
-      return;
-    }
-
-    this.guardando.set(true);
-    try {
-      await this.ordenesService.crearVentaRapida({
-        descripcion,
-        monto_total: monto,
-        metodo_pago: this.vrMetodo(),
-        unidad_negocio: this.vrUnidad(),
-        cliente_nombre: this.vrCliente().trim() || 'Cliente Mostrador',
-        referencia: this.vrReferencia().trim(),
-      });
-      this.cerrarModalVentaRapida();
-      await this.cargar();
-    } catch (e) {
-      alert(mensajeDeError(e, 'No se pudo registrar la venta rápida.'));
     } finally {
       this.guardando.set(false);
     }

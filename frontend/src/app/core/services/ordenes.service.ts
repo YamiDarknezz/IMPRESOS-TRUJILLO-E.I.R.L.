@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { ApiService } from './api.service';
 import { InventarioService } from './inventario.service';
 import {
+  CanalIngreso,
   ESTADOS_CERRADOS,
   ESTADOS_PIPELINE,
   EstadoOrden,
@@ -12,6 +13,7 @@ import {
   RespuestaItem,
   TipoDocumento,
   UnidadNegocio,
+  RollosDeOrden,
   VentaRapidaData,
 } from '../models';
 import { ListaRemota } from './lista-remota';
@@ -30,6 +32,8 @@ export interface ItemOrdenData {
 export interface MaterialEstimadoData {
   material_id: number;
   cantidad: number;
+  /** Rollo del que sale (#127). */
+  pieza_id?: number | null;
 }
 
 /** Datos que el formulario envía al crear o editar una orden. */
@@ -41,6 +45,7 @@ export interface DatosOrden {
   asignado_a: number | null;
   descripcion: string;
   tipo_documento: TipoDocumento;
+  canal_ingreso: CanalIngreso;
   unidad_negocio: UnidadNegocio;
   fecha_entrega: string;
   incluye_igv: boolean;
@@ -52,6 +57,17 @@ export interface DatosOrden {
   precio_total: number | null;
   adelanto_pago: number;
   metodo_pago: MetodoPago;
+  /** Para qué es el adelanto (#110). */
+  adelanto_descripcion: string;
+  /** El adelanto repartido en varios métodos (#124); `adelanto_pago` es la suma. */
+  adelanto_partes?: ParteAdelantoData[];
+}
+
+/** Una parte del adelanto: cuánto se dejó y con qué método (#124). */
+export interface ParteAdelantoData {
+  metodo: MetodoPago;
+  monto: number;
+  descripcion?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -59,8 +75,32 @@ export class OrdenesService {
   private api = inject(ApiService);
   private inventario = inject(InventarioService);
 
+  /**
+   * Filtros que se resuelven en el servidor (#123): la lista llega por bloques
+   * de 100, y uno hecho en el navegador dejaría fuera lo que aún no se trajo.
+   * `local` es Imprenta o Gigantografías ('' = todos); `soloPendientesHoy` es
+   * lo que está en proceso con entrega hoy o vencida.
+   */
+  readonly local = signal<UnidadNegocio | ''>('');
+  readonly soloPendientesHoy = signal(false);
+
   /** Se pide por bloques de 100 y el backend informa cuántas hay en total. */
-  private lista = new ListaRemota<Orden>(this.api, '/api/ordenes', 100);
+  private lista = new ListaRemota<Orden>(this.api, () => this.rutaDeLista(), 100);
+
+  private rutaDeLista(): string {
+    const parametros = new URLSearchParams();
+    if (this.local()) parametros.set('unidad_negocio', this.local());
+    if (this.soloPendientesHoy()) parametros.set('pendientes_hoy', 'true');
+    const texto = parametros.toString();
+    return texto ? `/api/ordenes?${texto}` : '/api/ordenes';
+  }
+
+  /** Cambia los filtros del servidor y vuelve a traer la lista y el panel. */
+  async filtrarPor(cambios: { local?: UnidadNegocio | ''; soloPendientesHoy?: boolean }): Promise<void> {
+    if (cambios.local !== undefined) this.local.set(cambios.local);
+    if (cambios.soloPendientesHoy !== undefined) this.soloPendientesHoy.set(cambios.soloPendientesHoy);
+    await Promise.all([this.lista.recargar(), this.cargarMetricas()]);
+  }
 
   readonly ordenes = this.lista.items;
   readonly cargando = this.lista.cargando;
@@ -96,7 +136,10 @@ export class OrdenesService {
   /** Pide los indicadores del panel. Se llama al cargar y tras cada operación. */
   async cargarMetricas(): Promise<void> {
     try {
-      const res = await this.api.get<RespuestaItem<MetricasOrdenes>>('/api/ordenes/metricas');
+      // Las tarjetas siguen al local elegido: si la lista es de Imprenta, los números también.
+      const local = this.local();
+      const ruta = local ? `/api/ordenes/metricas?unidad_negocio=${local}` : '/api/ordenes/metricas';
+      const res = await this.api.get<RespuestaItem<MetricasOrdenes>>(ruta);
       this.metricas.set(res.data);
     } catch {
       // Se conserva lo último que se supo: es preferible a mostrar ceros.
@@ -131,44 +174,86 @@ export class OrdenesService {
   }
 
   /** Registra el cobro y devuelve la orden: de ahí sale el pago al que se adjunta. */
-  async confirmarPago(idOrden: number, metodo: MetodoPago, referencia = ''): Promise<Orden> {
+  async confirmarPago(
+    idOrden: number,
+    metodo: MetodoPago,
+    referencia = '',
+    descripcion = ''
+  ): Promise<Orden> {
     const res = await this.api.post<RespuestaItem<Orden>>(
       `/api/ordenes/${idOrden}/confirmar-pago`,
-      { metodo_pago: metodo, referencia }
+      { metodo_pago: metodo, referencia, descripcion }
     );
     await this.lista.recargar();
     return res.data;
   }
 
+  /** Pide una orden al servidor: la vista de impresión se puede abrir sin pasar por el listado (#68). */
+  async obtener(idOrden: number): Promise<Orden> {
+    const res = await this.api.get<RespuestaItem<Orden>>(`/api/ordenes/${idOrden}`);
+    return res.data;
+  }
+
+  /** Cortes de rollo o plancha asignados a un pedido (#71). */
+  rollosDeOrden(idOrden: number): Promise<RollosDeOrden> {
+    return this.api.get<RollosDeOrden>(`/api/ordenes/${idOrden}/rollos`);
+  }
+
   async crearVentaRapida(data: VentaRapidaData): Promise<Orden> {
     const res = await this.api.post<RespuestaItem<Orden>>('/api/ordenes/caja-rapida', data);
-    await this.lista.recargar();
+    await Promise.all([this.lista.recargar(), this.cargarMetricas()]);
     return res.data;
+  }
+
+  /**
+   * Reemplaza la orden por una copia con los cambios. Mutar el objeto dentro
+   * del arreglo no avisa al signal: la lista filtrada (un `computed`) seguía
+   * mostrando la orden bajo el filtro anterior (#29).
+   */
+  private parchear(idOrden: number, cambios: Partial<Orden>): void {
+    this.lista.items.update(lista =>
+      lista.map(o => (o.id === idOrden ? { ...o, ...cambios } : o))
+    );
   }
 
   /**
    * Cambia la etapa mostrando el resultado de inmediato y revirtiendo si el
    * servidor lo rechaza. Mueve solo un campo, así que no hace falta recargar
-   * toda la lista.
+   * toda la lista; sí las métricas, que cuentan órdenes por etapa.
    */
   async cambiarEstado(orden: Orden, estado: EstadoOrden): Promise<void> {
     const anterior = orden.estado;
-    orden.estado = estado;
+    this.parchear(orden.id, { estado });
     try {
       await this.api.post(`/api/ordenes/${orden.id}/estado`, { estado });
     } catch (error) {
-      orden.estado = anterior;
+      this.parchear(orden.id, { estado: anterior });
       throw error;
     }
+    void this.cargarMetricas();
+  }
+
+  /**
+   * Entrega una proforma antes de que pague (#72).
+   * Lo autoriza un supervisor con un motivo; no es optimista porque el
+   * servidor puede rechazarla y la orden cambia de saldo y de autorización.
+   */
+  async entregarConSaldo(orden: Orden, motivo: string): Promise<void> {
+    await this.api.post(`/api/ordenes/${orden.id}/estado`, {
+      estado: 'entregada',
+      autorizar_saldo: true,
+      motivo,
+    });
+    await Promise.all([this.lista.recargar(), this.cargarMetricas()]);
   }
 
   async asignar(orden: Orden, idUsuario: number | null): Promise<void> {
     const anterior = orden.asignado_a;
-    orden.asignado_a = idUsuario;
+    this.parchear(orden.id, { asignado_a: idUsuario });
     try {
       await this.api.post(`/api/ordenes/${orden.id}/asignar`, { asignado_a: idUsuario });
     } catch (error) {
-      orden.asignado_a = anterior;
+      this.parchear(orden.id, { asignado_a: anterior });
       throw error;
     }
   }
@@ -196,10 +281,28 @@ export function claseEstado(estado: EstadoOrden): string {
   return 'badge-estado-' + estado.replace('_', '-');
 }
 
+function sinTildes(texto: string): string {
+  return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+/**
+ * ¿El teléfono de la orden contiene lo que se escribió?
+ *
+ * Se comparan solo los dígitos: el teléfono se guarda como lo escribió quien
+ * atendió ("924 943 790") y quien busca puede escribirlo pegado o con guiones.
+ * Con menos de tres dígitos no se busca por teléfono, para que "12" no traiga
+ * medio listado por casualidad.
+ */
+export function coincideTelefono(telefono: string | null | undefined, texto: string): boolean {
+  const buscado = texto.replace(/\D/g, '');
+  if (buscado.length < 3) return false;
+  return (telefono ?? '').replace(/\D/g, '').includes(buscado);
+}
+
 /** Filtra la lista por etapa, texto libre y rango de fechas de creación. */
 export function filtrarOrdenes(
   ordenes: Orden[],
-  opciones: { estado?: string; texto?: string; desde?: string; hasta?: string },
+  opciones: { estado?: string; texto?: string; desde?: string; hasta?: string; canal?: string },
 ): Orden[] {
   const texto = (opciones.texto ?? '').toLowerCase().trim();
 
@@ -208,11 +311,18 @@ export function filtrarOrdenes(
       return false;
     }
 
+    if (opciones.canal && orden.canal_ingreso !== opciones.canal) {
+      return false;
+    }
+
     if (texto) {
       const coincide =
         orden.id_documento?.toLowerCase().includes(texto) ||
         orden.cliente?.toLowerCase().includes(texto) ||
-        orden.descripcion?.toLowerCase().includes(texto);
+        orden.descripcion?.toLowerCase().includes(texto) ||
+        coincideTelefono(orden.telefono, texto) ||
+        // "imprenta" o "gigantografías" encuentran las órdenes de ese local (#123).
+        sinTildes(orden.unidad_negocio ?? '').includes(sinTildes(texto));
       if (!coincide) return false;
     }
 

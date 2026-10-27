@@ -54,7 +54,7 @@ async def resumen_cliente(
     usuario: Annotated[Usuario, Depends(gestion_ordenes)],
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
 ):
-    """Ficha del cliente: historial de órdenes, facturado y por cobrar."""
+    """Ficha del cliente: facturado, por cobrar y su historial de pagos (adelantos y abonos)."""
     return {
         "status": "success",
         "data": await ordenes_service.resumen_cliente(sesion, cliente_id),

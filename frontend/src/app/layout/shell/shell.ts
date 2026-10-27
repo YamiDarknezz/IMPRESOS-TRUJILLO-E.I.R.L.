@@ -58,6 +58,9 @@ export class ShellComponent {
     if (this.sesion.puedeGestionarOrdenes()) {
       opciones.push({ ruta: '/clientes', icono: 'users', etiqueta: 'Clientes' });
     }
+    if (this.sesion.esSupervisor()) {
+      opciones.push({ ruta: '/cuentas-por-cobrar', icono: 'coins', etiqueta: 'Por cobrar' });
+    }
     if (this.sesion.esAdmin()) {
       // "Productos" se mostraba también al subgerente, pero la ruta es
       // solo-admin (`rolesGuard('admin')` en app.routes.ts) y lo redirigía

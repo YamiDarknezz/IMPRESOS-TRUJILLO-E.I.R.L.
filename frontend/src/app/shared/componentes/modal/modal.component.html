@@ -1,0 +1,15 @@
+<div class="modal-overlay" (click)="alClicFuera()">
+  <div #dialogo class="modal-content" [class]="claseContenido()"
+       role="dialog" aria-modal="true" [attr.aria-labelledby]="idTitulo" tabindex="-1"
+       (click)="$event.stopPropagation()"
+       (keydown.tab)="atraparTab($event, false)" (keydown.shift.tab)="atraparTab($event, true)">
+    <div class="modal-header">
+      <h3 [id]="idTitulo" [class]="claseTitulo()">{{ titulo() }}</h3>
+      <ng-content select="[modal-cabecera]" />
+      @if (conBotonCerrar()) {
+        <button type="button" class="btn-icon modal-cerrar" (click)="cerrar.emit()" aria-label="Cerrar">✕</button>
+      }
+    </div>
+    <ng-content />
+  </div>
+</div>

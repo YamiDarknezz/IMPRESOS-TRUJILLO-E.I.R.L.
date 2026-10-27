@@ -12,11 +12,11 @@ const resumen: ResumenCaja = {
 };
 
 describe('CajaService', () => {
-  let apiFalsa: { get: ReturnType<typeof vi.fn>; post: ReturnType<typeof vi.fn> };
+  let apiFalsa: { get: ReturnType<typeof vi.fn>; post: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> };
   let servicio: CajaService;
 
   beforeEach(() => {
-    apiFalsa = { get: vi.fn(), post: vi.fn() };
+    apiFalsa = { get: vi.fn(), post: vi.fn(), delete: vi.fn() };
     TestBed.configureTestingModule({ providers: [{ provide: ApiService, useValue: apiFalsa }] });
     servicio = TestBed.inject(CajaService);
   });
@@ -69,5 +69,22 @@ describe('CajaService', () => {
       motivo: 'yape_falso',
       nota: 'Voucher no coincide',
     });
+  });
+
+  // Issue #112
+  it('registrarGasto() postea el gasto y devuelve el creado', async () => {
+    const gasto = { id: 1, fecha: '2026-09-18', unidad_negocio: 'imprenta', monto: 12.5, motivo: 'Tinta', usuario_id: 1, usuario_nombre: 'Ana' };
+    apiFalsa.post.mockResolvedValue({ status: 'success', data: gasto });
+
+    const creado = await servicio.registrarGasto({ monto: 12.5, motivo: 'Tinta', unidad_negocio: 'imprenta' });
+
+    expect(apiFalsa.post).toHaveBeenCalledWith('/api/caja/gastos', { monto: 12.5, motivo: 'Tinta', unidad_negocio: 'imprenta' });
+    expect(creado).toEqual(gasto);
+  });
+
+  it('eliminarGasto() borra por id', async () => {
+    apiFalsa.delete.mockResolvedValue({ status: 'success' });
+    await servicio.eliminarGasto(7);
+    expect(apiFalsa.delete).toHaveBeenCalledWith('/api/caja/gastos/7');
   });
 });

@@ -119,11 +119,42 @@ export function tieneStockBajo(material: MaterialInventario): boolean {
   return material.stock_bajo ?? material.stock_actual <= material.alerta_minima;
 }
 
+/**
+ * Filtra por texto (nombre o ubicación) y, opcionalmente, por una ubicación
+ * exacta: "¿qué hay en el almacén?" (#109).
+ */
 export function filtrarMateriales(
   materiales: MaterialInventario[],
   texto: string,
+  ubicacion = '',
 ): MaterialInventario[] {
   const termino = texto.toLowerCase().trim();
-  if (!termino) return materiales;
-  return materiales.filter(m => m.nombre?.toLowerCase().includes(termino));
+  return materiales.filter(m => {
+    if (ubicacion && (m.ubicacion_estante ?? '') !== ubicacion) return false;
+    if (!termino) return true;
+    return (
+      m.nombre?.toLowerCase().includes(termino) ||
+      (m.ubicacion_estante ?? '').toLowerCase().includes(termino)
+    );
+  });
+}
+
+/** Ubicaciones distintas que ya se usan, ordenadas, para ofrecerlas como filtro. */
+export function ubicacionesEnUso(materiales: MaterialInventario[]): string[] {
+  const usadas = new Set(
+    materiales.map(m => (m.ubicacion_estante ?? '').trim()).filter(ubicacion => ubicacion !== '')
+  );
+  return [...usadas].sort((a, b) => a.localeCompare(b, 'es'));
+}
+
+/** Rollos y planchas que coinciden con el texto en código, material o ubicación. */
+export function filtrarPiezas(piezas: PiezaLoteMaterial[], texto: string): PiezaLoteMaterial[] {
+  const termino = texto.toLowerCase().trim();
+  if (!termino) return piezas;
+  return piezas.filter(
+    p =>
+      p.codigo_identificador?.toLowerCase().includes(termino) ||
+      p.material_nombre?.toLowerCase().includes(termino) ||
+      (p.ubicacion ?? '').toLowerCase().includes(termino)
+  );
 }

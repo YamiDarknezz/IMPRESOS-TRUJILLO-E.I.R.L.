@@ -17,7 +17,7 @@ from app.core.security import (
     supervision,
     usuario_actual,
 )
-from app.models import EstadoOrden, Usuario
+from app.models import CanalIngreso, EstadoOrden, UnidadNegocio, Usuario
 from app.schemas import (
     AsignarData,
     CambiarEstadoData,
@@ -26,8 +26,8 @@ from app.schemas import (
     OrdenCreateData,
     VentaRapidaData,
 )
-from app.services import comprobantes_service, ordenes_service
-from app.services.serializadores import serializar_comprobante, serializar_orden
+from app.services import comprobantes_service, inventario_service, ordenes_service
+from app.services.serializadores import serializar_comprobante, serializar_consumo, serializar_orden
 
 router = APIRouter(prefix="/api/ordenes", tags=["Órdenes"])
 
@@ -40,6 +40,11 @@ async def listar_ordenes(
     usuario: Annotated[Usuario, Depends(usuario_actual)],
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
     estado: Optional[EstadoOrden] = Query(default=None),
+    canal_ingreso: Optional[CanalIngreso] = Query(default=None),
+    # Imprenta o Gigantografías (#123); y "lo que hay por hacer hoy": en proceso
+    # con entrega hoy o vencida. Se filtran aquí para que valgan con más de 100.
+    unidad_negocio: Optional[UnidadNegocio] = Query(default=None),
+    pendientes_hoy: bool = Query(default=False),
     limit: int = Query(default=LIMITE_POR_DEFECTO, le=LIMITE_MAXIMO),
     offset: int = Query(default=0, ge=0),
 ):
@@ -49,8 +54,14 @@ async def listar_ordenes(
     El `total` va aparte del bloque: sin él, la pantalla no puede decir si la
     lista viene recortada (#27).
     """
-    ordenes = await ordenes_service.listar(sesion, usuario, estado, limit, offset)
-    total = await ordenes_service.contar(sesion, usuario, estado)
+    ordenes = await ordenes_service.listar(
+        sesion, usuario, estado, limit, offset, canal_ingreso=canal_ingreso,
+        unidad_negocio=unidad_negocio, pendientes_hoy=pendientes_hoy,
+    )
+    total = await ordenes_service.contar(
+        sesion, usuario, estado, canal_ingreso=canal_ingreso,
+        unidad_negocio=unidad_negocio, pendientes_hoy=pendientes_hoy,
+    )
     return {"status": "success", "data": [serializar_orden(o) for o in ordenes], "total": total}
 
 
@@ -58,9 +69,13 @@ async def listar_ordenes(
 async def metricas_ordenes(
     usuario: Annotated[Usuario, Depends(usuario_actual)],
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
+    unidad_negocio: Optional[UnidadNegocio] = Query(default=None),
 ):
     """Indicadores del panel de órdenes, sumados en la base (no en el navegador)."""
-    return {"status": "success", "data": await ordenes_service.metricas(sesion, usuario)}
+    return {
+        "status": "success",
+        "data": await ordenes_service.metricas(sesion, usuario, unidad_negocio),
+    }
 
 
 @router.get("/{id_orden}")
@@ -71,6 +86,37 @@ async def obtener_orden(
 ):
     orden = await ordenes_service.obtener(sesion, id_orden, usuario)
     return {"status": "success", "data": serializar_orden(orden)}
+
+
+@router.get("/{id_orden}/rollos")
+async def rollos_de_la_orden(
+    id_orden: int,
+    usuario: Annotated[Usuario, Depends(usuario_actual)],
+    sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
+):
+    """
+    Qué rollos o planchas se usaron en este pedido y cuánto (#71).
+
+    Responde "¿cuánto material se llevó este pedido y cuánto le queda al rollo?"
+    sin buscar en el cuaderno. Se aplica la misma visibilidad que al ver la orden.
+    """
+    orden = await ordenes_service.obtener(sesion, id_orden, usuario)
+    consumos = await inventario_service.consumos_de_orden(sesion, orden.id)
+
+    por_material: dict[str, dict] = {}
+    for consumo in consumos:
+        fila = serializar_consumo(consumo)
+        resumen = por_material.setdefault(
+            fila["material_nombre"],
+            {"material": fila["material_nombre"], "unidad": fila["unidad_medida"], "cantidad": 0.0},
+        )
+        resumen["cantidad"] = round(resumen["cantidad"] + fila["cantidad_consumida"], 2)
+
+    return {
+        "status": "success",
+        "data": [serializar_consumo(c) for c in consumos],
+        "resumen": list(por_material.values()),
+    }
 
 
 @router.post("")
@@ -161,7 +207,14 @@ async def cambiar_estado(
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
 ):
     """Avanza (o corrige) la etapa de producción de una orden."""
-    orden = await ordenes_service.cambiar_estado(sesion, id_orden, data.estado, usuario)
+    orden = await ordenes_service.cambiar_estado(
+        sesion,
+        id_orden,
+        data.estado,
+        usuario,
+        autorizar_saldo=data.autorizar_saldo,
+        motivo=data.motivo,
+    )
     return {"status": "success", "data": serializar_orden(orden)}
 
 
@@ -173,7 +226,13 @@ async def confirmar_pago(
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
 ):
     orden = await ordenes_service.confirmar_pago(
-        sesion, id_orden, data.metodo_pago, data.referencia, usuario, monto=data.monto
+        sesion,
+        id_orden,
+        data.metodo_pago,
+        data.referencia,
+        usuario,
+        monto=data.monto,
+        descripcion=data.descripcion,
     )
     return {"status": "success", "data": serializar_orden(orden)}
 

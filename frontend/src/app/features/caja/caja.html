@@ -5,7 +5,7 @@
       <input type="date" [ngModel]="fecha()" name="cajaFecha" class="date-filter-input"
              (ngModelChange)="cambiarFecha($event)">
     </div>
-    <div class="filter-group">
+    <div class="filter-group filter-group-alineado">
       <button type="button" class="filter-btn" [class.active]="esHoy()" (click)="irAHoy()">Hoy</button>
       <button type="button" class="filter-btn" [class.active]="esAyer()" (click)="irAAyer()">Ayer</button>
     </div>
@@ -22,6 +22,10 @@
   </div>
 
   <button class="btn-secondary btn-sm" (click)="cargar()">↻ Actualizar</button>
+
+  @if (sesion.puedeVender()) {
+    <button class="btn-secondary btn-sm" (click)="abrirModalGasto()">− Registrar gasto</button>
+  }
 
   @if (sesion.puedeVender()) {
     <div class="actions-cell">
@@ -45,33 +49,19 @@
 
   <!-- ═══ Totales del día ══════════════════════════════════════════════════ -->
   <div class="stats-row">
-    <div class="stat-card">
-      <div class="stat-icon stat-icon-success">
-        <app-icon name="wallet" [size]="20" />
+    <!-- Una tarjeta por método (Efectivo, cada Yape, Transferencia): el método nuevo
+         aparece solo, y el heredado solo si hubo cobros con él (#125). -->
+    @for (m of metodosArqueo(); track m) {
+      <div class="stat-card">
+        <div class="stat-icon" [ngClass]="'stat-icon-' + colorDeMetodo(m)">
+          <app-icon [name]="iconoDeMetodo(m)" [size]="20" />
+        </div>
+        <div class="stat-body">
+          <span class="stat-label">{{ etiquetaMetodo()[m] || m }}</span>
+          <span class="stat-value" [ngClass]="colorDeMetodo(m) === 'neutral' ? '' : 'stat-color-' + colorDeMetodo(m)">S/ {{ montoDe(datos.total, m) | number:'1.2-2' }}</span>
+        </div>
       </div>
-      <div class="stat-body">
-        <span class="stat-label">Efectivo</span>
-        <span class="stat-value stat-color-success">S/ {{ datos.total.efectivo | number:'1.2-2' }}</span>
-      </div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon stat-icon-warning">
-        <app-icon name="smartphone" [size]="20" />
-      </div>
-      <div class="stat-body">
-        <span class="stat-label">Yape</span>
-        <span class="stat-value stat-color-warning">S/ {{ datos.total.yape | number:'1.2-2' }}</span>
-      </div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon stat-icon-neutral">
-        <app-icon name="landmark" [size]="20" />
-      </div>
-      <div class="stat-body">
-        <span class="stat-label">Transferencia</span>
-        <span class="stat-value">S/ {{ datos.total.transferencia | number:'1.2-2' }}</span>
-      </div>
-    </div>
+    }
     <div class="stat-card">
       <div class="stat-icon stat-icon-danger">
         <app-icon name="receipt-text" [size]="20" />
@@ -81,8 +71,27 @@
         <span class="stat-value stat-color-danger">S/ {{ datos.total.total | number:'1.2-2' }}</span>
       </div>
     </div>
+    <div class="stat-card">
+      <div class="stat-icon stat-icon-warning">
+        <app-icon name="coins" [size]="20" />
+      </div>
+      <div class="stat-body">
+        <span class="stat-label">Gastos del día</span>
+        <span class="stat-value stat-color-warning">- S/ {{ datos.total_gastos ?? 0 | number:'1.2-2' }}</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon stat-icon-success">
+        <app-icon name="wallet" [size]="20" />
+      </div>
+      <div class="stat-body">
+        <span class="stat-label" title="Cobrado menos gastado">Neto del día</span>
+        <span class="stat-value stat-color-success">S/ {{ datos.neto ?? datos.total.total | number:'1.2-2' }}</span>
+        <span class="text-hint">Efectivo que debe quedar: S/ {{ datos.efectivo_neto ?? datos.total.efectivo | number:'1.2-2' }}</span>
+      </div>
+    </div>
     @if ((datos.total_observado ?? 0) > 0) {
-      <div class="stat-card borde-izq-danger">
+      <div class="stat-card stat-card-danger">
         <div class="stat-icon stat-icon-danger">
           <app-icon name="alert-triangle" [size]="20" />
         </div>
@@ -95,17 +104,21 @@
   </div>
 
   <!-- ═══ Caja dual: Imprenta vs Gigantografías ═══════════════════════════ -->
-  <div class="card card-compacta mb-seccion">
-    <h4 class="section-title mt-0">Caja dual (RN-05)</h4>
+  <div class="card card-seccion">
+    <h4 class="section-title section-title-primero">Caja dual (RN-05)</h4>
     <div class="metodo-grid">
       @for (u of unidades; track u) {
         <div class="metodo-box">
           <span class="metodo-box-label">{{ etiquetaUnidad[u] }}</span>
           <span class="metodo-box-value">S/ {{ datos.por_unidad_negocio[u]?.total ?? 0 | number:'1.2-2' }}</span>
           <span class="metodo-label">
-            Efectivo: S/ {{ datos.por_unidad_negocio[u]?.efectivo ?? 0 | number:'1.2-2' }}
-            · Yape: S/ {{ datos.por_unidad_negocio[u]?.yape ?? 0 | number:'1.2-2' }}
-            · Transf: S/ {{ datos.por_unidad_negocio[u]?.transferencia ?? 0 | number:'1.2-2' }}
+            @for (m of metodosArqueo(); track m; let ultimo = $last) {
+              {{ etiquetaMetodo()[m] || m }}: S/ {{ montoDe(datos.por_unidad_negocio[u], m) | number:'1.2-2' }}{{ ultimo ? '' : ' ·' }}
+            }
+          </span>
+          <span class="metodo-label">
+            Gastos: S/ {{ datos.por_unidad_negocio[u]?.gastos ?? 0 | number:'1.2-2' }}
+            · Neto: S/ {{ datos.por_unidad_negocio[u]?.neto ?? datos.por_unidad_negocio[u]?.total ?? 0 | number:'1.2-2' }}
           </span>
         </div>
       }
@@ -114,8 +127,8 @@
 
   <!-- ═══ Pagos Observados / Auditados (si existen) ════════════════════════ -->
   @if ((datos.observados?.length ?? 0) > 0) {
-    <div class="table-card card mb-seccion borde-izq-danger">
-      <div class="toolbar toolbar-compacta">
+    <div class="table-card card card-alerta">
+      <div class="toolbar toolbar-encabezado">
         <span class="toolbar-title text-danger">
           ⚠ Pagos Observados / Anulados en Arqueo (Total deducido: S/ {{ datos.total_observado | number:'1.2-2' }})
         </span>
@@ -152,16 +165,16 @@
   }
 
   <!-- ═══ Arqueo por usuario ══════════════════════════════════════════════ -->
-  <div class="table-card card mb-seccion">
-    <div class="toolbar toolbar-compacta">
+  <div class="table-card card card-seccion-tabla">
+    <div class="toolbar toolbar-encabezado">
       <span class="toolbar-title">Arqueo por usuario</span>
     </div>
     @if (datos.por_usuario.length === 0) {
       <div class="empty-state">
         <p>Sin cobros registrados en la fecha ({{ formatearFecha(fecha()) }}).</p>
         @if (esHoy()) {
-          <p class="empty-hint">¿Buscando los cobros del cierre o jornada anterior?</p>
-          <button type="button" class="btn-secondary btn-sm mt-xs" (click)="irAAyer()">
+          <p class="text-hint">¿Buscando los cobros del cierre o jornada anterior?</p>
+          <button type="button" class="btn-secondary btn-sm mt-sm" (click)="irAAyer()">
             Ver cobros de ayer
           </button>
         }
@@ -172,7 +185,7 @@
           <thead>
             <tr>
               <th>Usuario</th>
-              @for (m of metodos(); track m) { <th>{{ etiquetaMetodo()[m] }}</th> }
+              @for (m of metodosArqueo(); track m) { <th>{{ etiquetaMetodo()[m] || m }}</th> }
               <th>Total</th>
             </tr>
           </thead>
@@ -180,7 +193,7 @@
             @for (fila of datos.por_usuario; track fila.usuario_id ?? 0) {
               <tr>
                 <td><strong>{{ fila.nombre }}</strong></td>
-                @for (m of metodos(); track m) {
+                @for (m of metodosArqueo(); track m) {
                   <td>S/ {{ montoDe(fila, m) | number:'1.2-2' }}</td>
                 }
                 <td><strong>S/ {{ fila.total | number:'1.2-2' }}</strong></td>
@@ -192,9 +205,45 @@
     }
   </div>
 
+  <!-- ═══ Gastos del día (#112) ═══════════════════════════════════════════ -->
+  <div class="table-card card card-seccion-tabla">
+    <div class="toolbar toolbar-encabezado">
+      <span class="toolbar-title">Gastos del día</span>
+    </div>
+    @if ((datos.gastos?.length ?? 0) === 0) {
+      <div class="empty-state"><p>Sin gastos registrados en la fecha ({{ formatearFecha(fecha()) }}).</p></div>
+    } @else {
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr><th>Motivo</th><th>Unidad</th><th>Anotado por</th><th>Monto</th>@if (sesion.esSupervisor()) { <th>Acciones</th> }</tr>
+          </thead>
+          <tbody>
+            @for (gasto of datos.gastos; track gasto.id) {
+              <tr>
+                <td>{{ gasto.motivo }}</td>
+                <td><span class="badge badge-neutral">{{ etiquetaUnidad[gasto.unidad_negocio] }}</span></td>
+                <td>{{ gasto.usuario_nombre }}</td>
+                <td>- S/ {{ gasto.monto | number:'1.2-2' }}</td>
+                @if (sesion.esSupervisor()) {
+                  <td>
+                    <button class="btn-icon btn-icon-cancel" title="Quitar gasto" aria-label="Quitar gasto"
+                            (click)="eliminarGasto(gasto)" [disabled]="guardando()">
+                      <app-icon name="trash" [size]="14" />
+                    </button>
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+
   <!-- ═══ Cierres registrados ═════════════════════════════════════════════ -->
-  <div class="table-card card mb-seccion">
-    <div class="toolbar toolbar-compacta">
+  <div class="table-card card card-seccion-tabla">
+    <div class="toolbar toolbar-encabezado">
       <span class="toolbar-title">Cierres registrados</span>
     </div>
     @if (cierres().length === 0) {
@@ -206,10 +255,10 @@
             <tr>
               <th>Usuario</th>
               <th>Unidad</th>
-              <th>Efectivo</th>
-              <th>Yape</th>
-              <th>Transferencia</th>
+              @for (m of metodosCierres(); track m) { <th>{{ etiquetaMetodo()[m] || m }}</th> }
               <th>Total</th>
+              <th>Gastos</th>
+              <th>Neto</th>
               <th>Estado</th>
               <th>Validado por</th>
               <th>Acciones</th>
@@ -220,10 +269,12 @@
               <tr>
                 <td><strong>{{ cierre.usuario }}</strong></td>
                 <td><span class="badge badge-neutral">{{ etiquetaUnidad[cierre.unidad_negocio] }}</span></td>
-                <td>S/ {{ cierre.monto_efectivo | number:'1.2-2' }}</td>
-                <td>S/ {{ cierre.monto_yape | number:'1.2-2' }}</td>
-                <td>S/ {{ cierre.monto_transferencia | number:'1.2-2' }}</td>
+                @for (m of metodosCierres(); track m) {
+                  <td>S/ {{ montoDeCierre(cierre, m) | number:'1.2-2' }}</td>
+                }
                 <td><strong>S/ {{ cierre.total | number:'1.2-2' }}</strong></td>
+                <td>S/ {{ cierre.monto_gastos ?? 0 | number:'1.2-2' }}</td>
+                <td><strong>S/ {{ cierre.neto ?? cierre.total | number:'1.2-2' }}</strong></td>
                 <td>
                   <span class="badge" [ngClass]="cierre.estado === 'congelado' ? 'badge-success' : 'badge-warning'">
                     {{ cierre.estado === 'congelado' ? 'Congelado' : 'Cerrado' }}
@@ -251,7 +302,7 @@
 
   <!-- ═══ Detalle de cobros ═══════════════════════════════════════════════ -->
   <div class="table-card card">
-    <div class="toolbar toolbar-compacta">
+    <div class="toolbar toolbar-encabezado">
       <span class="toolbar-title">Detalle de cobros del día</span>
     </div>
     @if (datos.detalle.length === 0) {
@@ -274,7 +325,7 @@
           </thead>
           <tbody>
             @for (item of datos.detalle; track item.orden + item.fecha + (item.pago_id ?? '')) {
-              <tr [style.opacity]="item.estado_pago === 'observado' ? '0.65' : '1'">
+              <tr [class.fila-observada]="item.estado_pago === 'observado'">
                 <td class="fecha-cell">{{ formatearFecha(item.fecha, true) }}</td>
                 <td><code class="id-chip">{{ item.orden }}</code></td>
                 <td>{{ item.cliente || '—' }}</td>
@@ -282,7 +333,7 @@
                 <td>{{ item.tipo }}</td>
                 <td>{{ etiquetaDeMetodo(item.metodo) }}</td>
                 <td>
-                  <strong [style.textDecoration]="item.estado_pago === 'observado' ? 'line-through' : 'none'">
+                  <strong [class.monto-tachado]="item.estado_pago === 'observado'">
                     S/ {{ item.monto | number:'1.2-2' }}
                   </strong>
                 </td>
@@ -302,7 +353,7 @@
                         ⚠ Observar
                       </button>
                     } @else if (item.estado_pago === 'observado') {
-                      <small class="text-muted text-xs">Deducido de caja</small>
+                      <small class="text-muted texto-xs">Deducido de caja</small>
                     }
                   </div>
                 </td>
@@ -317,105 +368,72 @@
 
 <!-- ═══ Modal: Observar Cobro Fraudulento / Erróneo ════════════════════════ -->
 @if (pagoAObservar(); as pago) {
-  <div class="modal-overlay">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 class="modal-title text-danger">Auditar / Observar Cobro</h3>
-        <button class="btn-icon" (click)="cerrarModalObservar()">✕</button>
-      </div>
-      <div class="modal-body">
-        <p class="modal-text">
-          Se observará el pago de <strong>S/ {{ pago.monto | number:'1.2-2' }}</strong>
-          ({{ etiquetaDeMetodo(pago.metodo) }}) de la orden <code>{{ pago.orden }}</code>.
-          <br>
-          <em class="text-danger">Este monto se restará del arqueo de caja y se reabrirá la deuda al cliente (bloqueando la entrega).</em>
-        </p>
+  <app-modal titulo="Auditar / Observar Cobro" claseTitulo="modal-title text-danger" [conBotonCerrar]="true" [cerrarAlClicFuera]="false" (cerrar)="cerrarModalObservar()">
+    <div class="modal-body">
+      <p class="nota-modal">
+        Se observará el pago de <strong>S/ {{ pago.monto | number:'1.2-2' }}</strong>
+        ({{ etiquetaDeMetodo(pago.metodo) }}) de la orden <code>{{ pago.orden }}</code>.
+        <br>
+        <em class="text-danger">Este monto se restará del arqueo de caja y se reabrirá la deuda al cliente (bloqueando la entrega).</em>
+      </p>
 
+      <div class="form-group">
+        <label class="form-label">Motivo de observación</label>
+        <select [ngModel]="motivoObservacion()" (ngModelChange)="motivoObservacion.set($event)" class="form-input">
+          @for (m of motivosObservacion(); track m.id) {
+            <option [value]="m.id">{{ m.nombre }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Justificación / Evidencia</label>
+        <textarea [ngModel]="notaObservacion()" (ngModelChange)="notaObservacion.set($event)"
+                  rows="3" class="form-input"
+                  placeholder="Ej: Captura falsa enviada por WhatsApp sin abono en banca móvil..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="cerrarModalObservar()" [disabled]="guardando()">Cancelar</button>
+      <button class="btn-primary btn-danger" (click)="guardarObservacion()" [disabled]="guardando()">
+        {{ guardando() ? 'Observando...' : 'Confirmar y Deducir de Caja' }}
+      </button>
+    </div>
+  </app-modal>
+}
+
+<!-- ═══ Modal: Registrar gasto de caja (#112) ═══════════════════════════════ -->
+@if (modalGasto()) {
+  <app-modal titulo="Registrar gasto de caja" [conBotonCerrar]="true" [cerrarAlClicFuera]="false" (cerrar)="cerrarModalGasto()">
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">En qué se gastó *</label>
+        <input type="text" [ngModel]="gastoMotivo()" (ngModelChange)="gastoMotivo.set($event)"
+               name="gastoMotivo" class="form-input" maxlength="200"
+               placeholder="Ej: Tinta negra, papel bond, banner...">
+      </div>
+      <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Motivo de observación</label>
-          <select [ngModel]="motivoObservacion()" (ngModelChange)="motivoObservacion.set($event)" class="form-input">
-            @for (m of motivosObservacion(); track m.id) {
-              <option [value]="m.id">{{ m.nombre }}</option>
+          <label class="form-label">Monto (S/) *</label>
+          <input type="number" step="0.10" min="0.10" [ngModel]="gastoMonto()" (ngModelChange)="gastoMonto.set($event)"
+                 name="gastoMonto" class="form-input" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Unidad de negocio</label>
+          <select [ngModel]="gastoUnidad()" (ngModelChange)="gastoUnidad.set($event)" name="gastoUnidad" class="form-input">
+            @for (u of unidades; track u) {
+              <option [value]="u">{{ etiquetaUnidad[u] }}</option>
             }
           </select>
         </div>
-
-        <div class="form-group">
-          <label class="form-label">Justificación / Evidencia</label>
-          <textarea [ngModel]="notaObservacion()" (ngModelChange)="notaObservacion.set($event)"
-                    rows="3" class="form-input"
-                    placeholder="Ej: Captura falsa enviada por WhatsApp sin abono en banca móvil..."></textarea>
-        </div>
       </div>
-      <div class="modal-footer">
-        <button class="btn-secondary" (click)="cerrarModalObservar()" [disabled]="guardando()">Cancelar</button>
-        <button class="btn-danger" (click)="guardarObservacion()" [disabled]="guardando()">
-          {{ guardando() ? 'Observando...' : 'Confirmar y Deducir de Caja' }}
-        </button>
-      </div>
+      <p class="text-hint">Se anota en el día que estás mirando ({{ formatearFecha(fecha()) }}) y resta del arqueo.</p>
     </div>
-  </div>
-}
-
-<!-- ═══ Modal: Venta Rápida / Mostrador ═════════════════════════════════════ -->
-@if (modalVentaRapida()) {
-  <div class="modal-overlay">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3 class="modal-title text-success">⚡ Venta Rápida en Mostrador</h3>
-        <button class="btn-icon" (click)="cerrarModalVentaRapida()">✕</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label class="form-label">Descripción del servicio o artículo *</label>
-          <input type="text" [ngModel]="vrDescripcion()" (ngModelChange)="vrDescripcion.set($event)"
-                 class="form-input" placeholder="Ej: 10 Fotocopias a color, Fotocheck con mica...">
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Monto Total (S/) *</label>
-            <input type="number" step="0.50" min="0.10" [ngModel]="vrMonto()" (ngModelChange)="vrMonto.set($event)"
-                   class="form-input" placeholder="0.00">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Método de Pago</label>
-            <select [ngModel]="vrMetodo()" (ngModelChange)="vrMetodo.set($event)" class="form-input">
-              @for (m of metodos(); track m) {
-                <option [value]="m">{{ etiquetaMetodo()[m] }}</option>
-              }
-            </select>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Unidad de Negocio</label>
-            <select [ngModel]="vrUnidad()" (ngModelChange)="vrUnidad.set($event)" class="form-input">
-              @for (u of unidades; track u) {
-                <option [value]="u">{{ etiquetaUnidad[u] }}</option>
-              }
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Cliente (opcional)</label>
-            <input type="text" [ngModel]="vrCliente()" (ngModelChange)="vrCliente.set($event)"
-                   class="form-input" placeholder="Cliente Mostrador">
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Referencia / Celular (opcional)</label>
-          <input type="text" [ngModel]="vrReferencia()" (ngModelChange)="vrReferencia.set($event)"
-                 class="form-input" placeholder="Ej: Yape 987654321...">
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn-secondary" (click)="cerrarModalVentaRapida()" [disabled]="guardando()">Cancelar</button>
-        <button class="btn-primary btn-success" (click)="guardarVentaRapida()" [disabled]="guardando()">
-  {{ guardando() ? 'Cobrando...' : 'Cobrar y Finalizar Venta' }}
-</button>
-      </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="cerrarModalGasto()" [disabled]="guardando()">Cancelar</button>
+      <button class="btn-primary" (click)="guardarGasto()" [disabled]="guardando()">
+        {{ guardando() ? 'Guardando...' : 'Registrar gasto' }}
+      </button>
     </div>
-  </div>
+  </app-modal>
 }

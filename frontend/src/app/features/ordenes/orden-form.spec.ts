@@ -8,7 +8,9 @@ import { ComprobantesService } from '../../core/services/comprobantes.service';
 import { ProductosService } from '../../core/services/productos.service';
 import { SesionService } from '../../core/services/sesion.service';
 import { OrdenFormComponent } from './orden-form';
-import { Cliente, MaterialInventario, Orden, Producto } from '../../core/models';
+import { Cliente, MaterialInventario, Orden, PiezaLoteMaterial, Producto } from '../../core/models';
+import { hidratarConfiguracion, reiniciarConfiguracion } from '../../core/estado/catalogos';
+import { CATALOGOS_DE_PRUEBA, PARAMETROS_DE_PRUEBA } from '../../core/estado/catalogos.prueba';
 
 const clientePersona: Cliente = {
   id: 1, nombre: 'Juan Pérez', tipo: 'persona', documento: '1', telefono: '999',
@@ -31,6 +33,7 @@ function ordenExistente(sobrescribe: Partial<Orden> = {}): Orden {
     id_documento: 'C-0009',
     codigo: 'C-0009',
     tipo_documento: 'contrato',
+    canal_ingreso: 'otro',
     unidad_negocio: 'imprenta',
     cliente_id: 1,
     cliente: 'Juan Pérez',
@@ -53,7 +56,7 @@ function ordenExistente(sobrescribe: Partial<Orden> = {}): Orden {
 
 describe('OrdenFormComponent', () => {
   let clientesFalso: { clientes: ReturnType<typeof signal<Cliente[]>>; cargar: ReturnType<typeof vi.fn>; crear: ReturnType<typeof vi.fn> };
-  let inventarioFalso: { materiales: ReturnType<typeof signal<MaterialInventario[]>>; cargar: ReturnType<typeof vi.fn> };
+  let inventarioFalso: { materiales: ReturnType<typeof signal<MaterialInventario[]>>; cargar: ReturnType<typeof vi.fn>; listarPiezas: ReturnType<typeof vi.fn> };
   let productosFalso: { productos: ReturnType<typeof signal<Producto[]>>; cargar: ReturnType<typeof vi.fn> };
   let ordenesFalso: {
     ordenes: ReturnType<typeof signal<Orden[]>>;
@@ -66,7 +69,11 @@ describe('OrdenFormComponent', () => {
 
   function configurar(idRuta: string | null = null) {
     clientesFalso = { clientes: signal([clientePersona, clienteCorporativo]), cargar: vi.fn().mockResolvedValue(undefined), crear: vi.fn() };
-    inventarioFalso = { materiales: signal([material]), cargar: vi.fn().mockResolvedValue(undefined) };
+    inventarioFalso = {
+      materiales: signal([material]),
+      cargar: vi.fn().mockResolvedValue(undefined),
+      listarPiezas: vi.fn().mockResolvedValue([]),
+    };
     productosFalso = { productos: signal([producto]), cargar: vi.fn().mockResolvedValue(undefined) };
     ordenesFalso = {
       ordenes: signal([ordenExistente()]),
@@ -226,6 +233,16 @@ describe('OrdenFormComponent', () => {
   });
 
   describe('materiales estimados', () => {
+    // Issue #109: al elegir material se ve dónde está guardado.
+    it('ubicacionDe() devuelve dónde está el material, o vacío si no se registró', () => {
+      const componente = TestBed.createComponent(OrdenFormComponent).componentInstance;
+      inventarioFalso.materiales.set([{ ...material, ubicacion_estante: ' Estante 2 ' }, { ...material, id: 2 }]);
+
+      expect(componente.ubicacionDe(1)).toBe('Estante 2');
+      expect(componente.ubicacionDe(2)).toBe('');
+      expect(componente.ubicacionDe(99)).toBe('');
+    });
+
     it('agregarMaterial(): agrega el material elegido', () => {
       const fixture = TestBed.createComponent(OrdenFormComponent);
       const componente = fixture.componentInstance;
@@ -280,6 +297,51 @@ describe('OrdenFormComponent', () => {
       expect(ordenesFalso.crear).not.toHaveBeenCalled();
     });
 
+    // Issue #69: el canal es un dato que después no se puede reconstruir.
+    it('exige elegir el canal por el que entró el pedido', async () => {
+      const fixture = TestBed.createComponent(OrdenFormComponent);
+      await fixture.componentInstance.guardar();
+      expect(fixture.componentInstance.errores()['canalIngreso']).toBeTruthy();
+    });
+
+    it('con el canal elegido, no hay error de canal y viaja en el pedido', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const fixture = TestBed.createComponent(OrdenFormComponent);
+      const componente = fixture.componentInstance;
+      componente.actualizar('clienteId', 1);
+      componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'llamada');
+      componente.actualizar('fechaEntrega', '2026-12-31');
+      componente.actualizar('precioTotal', 100);
+      componente.actualizar('adelanto', 50);
+
+      await componente.guardar();
+
+      expect(componente.errores()['canalIngreso']).toBeUndefined();
+      expect(ordenesFalso.crear).toHaveBeenCalledWith(expect.objectContaining({ canal_ingreso: 'llamada' }));
+      confirmSpy.mockRestore();
+    });
+
+    // Issue #110
+    it('la descripción del adelanto viaja recortada en el pedido', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const componente = TestBed.createComponent(OrdenFormComponent).componentInstance;
+      componente.actualizar('clienteId', 1);
+      componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'whatsapp');
+      componente.actualizar('fechaEntrega', '2026-12-31');
+      componente.actualizar('precioTotal', 100);
+      componente.actualizar('adelanto', 50);
+      componente.actualizar('adelantoDescripcion', '  Para el diseño ');
+
+      await componente.guardar();
+
+      expect(ordenesFalso.crear).toHaveBeenCalledWith(
+        expect.objectContaining({ adelanto_descripcion: 'Para el diseño' })
+      );
+      confirmSpy.mockRestore();
+    });
+
     // #30: el backend rechaza un descuento mayor al subtotal; la interfaz ahora
     // lo dice antes, en vez de mostrar el total negativo y fallar al guardar.
     it('un descuento mayor al subtotal se marca en el formulario', async () => {
@@ -288,6 +350,7 @@ describe('OrdenFormComponent', () => {
       const componente = fixture.componentInstance;
       componente.actualizar('clienteId', 1);
       componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'whatsapp');
       componente.actualizar('fechaEntrega', '2026-12-31');
       componente.actualizar('precioTotal', 100);
       componente.actualizar('adelanto', 50);
@@ -307,6 +370,7 @@ describe('OrdenFormComponent', () => {
       const componente = fixture.componentInstance;
       componente.actualizar('clienteId', 1);
       componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'whatsapp');
       componente.actualizar('fechaEntrega', '2026-12-31');
       componente.actualizar('precioTotal', 100);
       componente.actualizar('adelanto', 50);
@@ -323,6 +387,7 @@ describe('OrdenFormComponent', () => {
       const componente = fixture.componentInstance;
       componente.actualizar('clienteId', 1);
       componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'whatsapp');
       componente.actualizar('fechaEntrega', '2026-12-31');
       componente.actualizar('precioTotal', 100);
 
@@ -339,6 +404,7 @@ describe('OrdenFormComponent', () => {
       const componente = fixture.componentInstance;
       componente.actualizar('clienteId', 1);
       componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'whatsapp');
       componente.actualizar('fechaEntrega', '2026-12-31');
       componente.actualizar('precioTotal', 100);
       componente.actualizar('adelanto', 10);
@@ -349,12 +415,44 @@ describe('OrdenFormComponent', () => {
       expect(ordenesFalso.crear).not.toHaveBeenCalled();
     });
 
+    // Issue #72: la proforma es el documento de los clientes de confianza y de los
+    // que pagan a plazo; no exige adelanto, el contrato sí.
+    it('una proforma no necesita adelanto, aunque el cliente no sea corporativo', async () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const componente = TestBed.createComponent(OrdenFormComponent).componentInstance;
+      componente.actualizar('clienteId', 1); // persona
+      componente.actualizar('tipoDocumento', 'proforma');
+      componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'llamada');
+      componente.actualizar('fechaEntrega', '2026-12-31');
+      componente.actualizar('precioTotal', 100);
+      componente.actualizar('adelanto', 0);
+
+      await componente.guardar();
+
+      expect(componente.exentoDeAdelanto()).toBe(true);
+      expect(componente.adelantoMinimo()).toBe(0);
+      expect(componente.errores()['adelanto']).toBeUndefined();
+      expect(ordenesFalso.crear).toHaveBeenCalledWith(expect.objectContaining({ tipo_documento: 'proforma', adelanto_pago: 0 }));
+    });
+
+    it('un contrato sigue exigiendo el adelanto mínimo', async () => {
+      const componente = TestBed.createComponent(OrdenFormComponent).componentInstance;
+      componente.actualizar('clienteId', 1);
+      componente.actualizar('tipoDocumento', 'contrato');
+      componente.actualizar('precioTotal', 100);
+
+      expect(componente.exentoDeAdelanto()).toBe(false);
+      expect(componente.adelantoMinimo()).toBe(50);
+    });
+
     it('un cliente corporativo no necesita adelanto', async () => {
       const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
       const fixture = TestBed.createComponent(OrdenFormComponent);
       const componente = fixture.componentInstance;
       componente.actualizar('clienteId', 2); // corporativo
       componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'whatsapp');
       componente.actualizar('fechaEntrega', '2026-12-31');
       componente.actualizar('precioTotal', 100);
 
@@ -371,6 +469,7 @@ describe('OrdenFormComponent', () => {
       const componente = fixture.componentInstance;
       componente.actualizar('clienteId', 2);
       componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'whatsapp');
       componente.actualizar('fechaEntrega', '2026-12-31');
       componente.actualizar('precioTotal', 100);
 
@@ -386,6 +485,7 @@ describe('OrdenFormComponent', () => {
       const componente = fixture.componentInstance;
       componente.actualizar('clienteId', 2);
       componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'whatsapp');
       componente.actualizar('fechaEntrega', '2026-12-31');
       componente.actualizar('precioTotal', 100);
 
@@ -405,6 +505,7 @@ describe('OrdenFormComponent', () => {
       const componente = fixture.componentInstance;
       componente.actualizar('clienteId', 2);
       componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'whatsapp');
       componente.actualizar('fechaEntrega', '2026-12-31');
       componente.actualizar('precioTotal', 100);
       componente.actualizar('asignadoA', 7);
@@ -413,6 +514,293 @@ describe('OrdenFormComponent', () => {
 
       expect(ordenesFalso.crear).toHaveBeenCalledWith(expect.objectContaining({ asignado_a: null }));
       confirmSpy.mockRestore();
+    });
+  });
+
+  // Issue #124: el adelanto repartido en varios métodos (S/ 100 en efectivo y S/ 50 por Yape).
+  describe('adelanto repartido (#124)', () => {
+    beforeEach(() => {
+      hidratarConfiguracion({ parametros: PARAMETROS_DE_PRUEBA, catalogos: CATALOGOS_DE_PRUEBA });
+    });
+    afterEach(() => reiniciarConfiguracion());
+
+    function formularioListo(precioTotal = 300) {
+      const componente = TestBed.createComponent(OrdenFormComponent).componentInstance;
+      componente.actualizar('clienteId', 1);
+      componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'whatsapp');
+      componente.actualizar('fechaEntrega', '2026-12-31');
+      componente.actualizar('precioTotal', precioTotal);
+      return componente;
+    }
+
+    it('agregar otro método suma una parte con el primer método que no se usa', () => {
+      const componente = formularioListo();
+      componente.actualizar('adelanto', 100);
+
+      componente.agregarParteAdelanto();
+
+      expect(componente.form().adelantoExtra).toEqual([
+        { metodo: 'yape_marcell', monto: 0, descripcion: '' },
+      ]);
+    });
+
+    it('el total del adelanto es la suma de las partes y descuenta del saldo', () => {
+      const componente = formularioListo(300);
+      componente.actualizar('adelanto', 100);
+      componente.agregarParteAdelanto();
+      componente.actualizarParteAdelanto(0, 'monto', 50);
+
+      expect(componente.adelantoTotal()).toBe(150);
+      expect(componente.saldoPendiente()).toBe(150);
+    });
+
+    it('no se repite un método: cada selector ofrece solo los que no usa otra parte', () => {
+      const componente = formularioListo();
+      componente.agregarParteAdelanto();
+
+      expect(componente.metodosDeLaParte(0)).not.toContain('efectivo');
+      expect(componente.metodosDeLaParte(0)).toContain('yape_marcell');
+      expect(componente.metodosPrimeraParte()).not.toContain('yape_marcell');
+      expect(componente.metodosPrimeraParte()).toContain('efectivo');
+    });
+
+    it('cuando ya se usaron todos los métodos no se puede agregar otra parte', () => {
+      const componente = formularioListo();
+      expect(componente.puedeAgregarParte()).toBe(true);
+
+      componente.agregarParteAdelanto();
+      componente.agregarParteAdelanto();
+      componente.agregarParteAdelanto();
+
+      expect(componente.form().adelantoExtra.length).toBe(3);
+      expect(componente.puedeAgregarParte()).toBe(false);
+    });
+
+    it('quitar una parte la saca del adelanto', () => {
+      const componente = formularioListo();
+      componente.agregarParteAdelanto();
+      componente.actualizarParteAdelanto(0, 'monto', 40);
+
+      componente.quitarParteAdelanto(0);
+
+      expect(componente.form().adelantoExtra).toEqual([]);
+      expect(componente.adelantoTotal()).toBe(0);
+    });
+
+    it('el adelanto mínimo se valida sobre la suma de las partes', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const componente = formularioListo(400); // mínimo 50 % = 200
+      componente.actualizar('adelanto', 100);
+      componente.agregarParteAdelanto();
+      componente.actualizarParteAdelanto(0, 'monto', 50);
+
+      await componente.guardar();
+      expect(componente.errores()['adelanto']).toContain('200.00');
+      expect(ordenesFalso.crear).not.toHaveBeenCalled();
+
+      componente.actualizarParteAdelanto(0, 'monto', 100);
+      await componente.guardar();
+      expect(componente.errores()['adelanto']).toBeUndefined();
+      expect(ordenesFalso.crear).toHaveBeenCalledTimes(1);
+      confirmSpy.mockRestore();
+    });
+
+    it('una parte en cero se rechaza', async () => {
+      const componente = formularioListo();
+      componente.actualizar('adelanto', 200);
+      componente.agregarParteAdelanto();
+
+      await componente.guardar();
+
+      expect(componente.errores()['adelantoPartes']).toBeTruthy();
+      expect(ordenesFalso.crear).not.toHaveBeenCalled();
+    });
+
+    it('al guardar manda las partes, la suma como adelanto y el método de la parte más grande', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const componente = formularioListo(300);
+      componente.actualizar('adelanto', 100);
+      componente.agregarParteAdelanto();
+      componente.actualizarParteAdelanto(0, 'metodo', 'yape_angel');
+      componente.actualizarParteAdelanto(0, 'monto', 50);
+
+      await componente.guardar();
+
+      expect(ordenesFalso.crear).toHaveBeenCalledWith(
+        expect.objectContaining({
+          adelanto_pago: 150,
+          metodo_pago: 'efectivo',
+          adelanto_partes: [
+            { metodo: 'efectivo', monto: 100, descripcion: '' },
+            { metodo: 'yape_angel', monto: 50, descripcion: '' },
+          ],
+        })
+      );
+      confirmSpy.mockRestore();
+    });
+
+    it('con un solo método el envío es el de siempre, sin partes', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const componente = formularioListo(100);
+      componente.actualizar('adelanto', 50);
+
+      await componente.guardar();
+
+      const enviado = ordenesFalso.crear.mock.calls[0][0];
+      expect(enviado.adelanto_pago).toBe(50);
+      expect('adelanto_partes' in enviado).toBe(false);
+      confirmSpy.mockRestore();
+    });
+
+    it('al editar una orden con el adelanto repartido, carga cada parte', async () => {
+      configurar('9');
+      ordenesFalso.ordenes.set([
+        ordenExistente({
+          finanzas: {
+            precio_total: 300, subtotal: 300, igv: 0, adelanto_pago: 150, saldo_pendiente: 150,
+            metodo_pago_adelanto: 'efectivo', pagado_totalmente: false,
+            pagos: [
+              { id: 1, fecha: '2026-10-01', monto: 100, metodo: 'efectivo', tipo: 'adelanto', descripcion: 'Banners' },
+              { id: 2, fecha: '2026-10-01', monto: 50, metodo: 'yape_angel', tipo: 'adelanto' },
+              { id: 3, fecha: '2026-10-01', monto: 30, metodo: 'yape_marcell', tipo: 'adelanto', estado_pago: 'observado' },
+            ],
+          },
+        }),
+      ]);
+      const fixture = TestBed.createComponent(OrdenFormComponent);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      const f = fixture.componentInstance.form();
+      expect(f.adelanto).toBe(100);
+      expect(f.metodoPago).toBe('efectivo');
+      expect(f.adelantoDescripcion).toBe('Banners');
+      // El observado no es dinero recibido: no se carga como parte.
+      expect(f.adelantoExtra).toEqual([{ metodo: 'yape_angel', monto: 50, descripcion: '' }]);
+    });
+  });
+
+  // Issue #127: el rollo se elige al crear la orden y la orden le descuenta los metros.
+  describe('rollo de cada material (#127)', () => {
+    const rollo = (sobrescribe: Partial<PiezaLoteMaterial> = {}): PiezaLoteMaterial => ({
+      id: 10, material_id: 1, codigo_identificador: 'UV-A', capacidad_inicial: 100, saldo_restante: 60,
+      unidad_medida: 'ml', costo_adquisicion: 0, estado: 'disponible', ubicacion: '', maquina_asignada: '',
+      fecha_ingreso: '2026-10-01', nota: '', total_recaudado: 0, ...sobrescribe,
+    });
+
+    async function conRollos(piezas: PiezaLoteMaterial[], idRuta: string | null = null) {
+      configurar(idRuta);
+      inventarioFalso.materiales.set([{ ...material, tipo_formato: 'continuo_rollo', unidad: 'ml' }]);
+      inventarioFalso.listarPiezas.mockResolvedValue(piezas);
+      const fixture = TestBed.createComponent(OrdenFormComponent);
+      await Promise.resolve();
+      await Promise.resolve();
+      return fixture.componentInstance;
+    }
+
+    it('un material de rollo se reconoce, y uno que no lo es no ofrece rollos', async () => {
+      const componente = await conRollos([rollo()]);
+
+      expect(componente.esDeRollo(1)).toBe(true);
+      expect(componente.esDeRollo(99)).toBe(false);
+    });
+
+    it('solo ofrece los rollos de ese material que no están agotados', async () => {
+      const componente = await conRollos([
+        rollo({ id: 10 }),
+        rollo({ id: 11, estado: 'agotado', saldo_restante: 0 }),
+        rollo({ id: 12, material_id: 2 }),
+      ]);
+
+      expect(componente.rollosDe(1).map(p => p.id)).toEqual([10]);
+    });
+
+    it('al añadir un material de rollo sugiere el rollo en uso', async () => {
+      const componente = await conRollos([rollo({ id: 10 }), rollo({ id: 11, estado: 'en_uso' })]);
+      componente.materialSelId.set('1');
+      componente.materialSelCantidad.set(2);
+
+      componente.agregarMaterial();
+
+      expect(componente.form().materiales[0].pieza_id).toBe(11);
+    });
+
+    it('elegir otro rollo, o ninguno, cambia el de la línea', async () => {
+      const componente = await conRollos([rollo({ id: 10 }), rollo({ id: 11 })]);
+      componente.materialSelId.set('1');
+      componente.agregarMaterial();
+
+      componente.elegirRollo(0, '11');
+      expect(componente.form().materiales[0].pieza_id).toBe(11);
+
+      componente.elegirRollo(0, '');
+      expect(componente.form().materiales[0].pieza_id).toBeNull();
+    });
+
+    it('si pide más metros de los que le quedan al rollo, no guarda y dice cuánto queda', async () => {
+      const componente = await conRollos([rollo({ id: 10, saldo_restante: 1.5 })]);
+      componente.materialSelId.set('1');
+      componente.materialSelCantidad.set(2);
+      componente.agregarMaterial();
+      componente.actualizar('clienteId', 1);
+      componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'whatsapp');
+      componente.actualizar('fechaEntrega', '2026-12-31');
+      componente.actualizar('precioTotal', 100);
+      componente.actualizar('adelanto', 50);
+
+      await componente.guardar();
+
+      expect(componente.errores()['materiales']).toContain('1.5');
+      expect(ordenesFalso.crear).not.toHaveBeenCalled();
+    });
+
+    it('al guardar manda el rollo de cada línea, y nada si no se eligió', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const componente = await conRollos([rollo({ id: 10 })]);
+      componente.materialSelId.set('1');
+      componente.materialSelCantidad.set(2);
+      componente.agregarMaterial();
+      componente.actualizar('clienteId', 1);
+      componente.actualizar('descripcion', 'Banners');
+      componente.actualizar('canalIngreso', 'whatsapp');
+      componente.actualizar('fechaEntrega', '2026-12-31');
+      componente.actualizar('precioTotal', 100);
+      componente.actualizar('adelanto', 50);
+
+      await componente.guardar();
+      expect(ordenesFalso.crear).toHaveBeenLastCalledWith(
+        expect.objectContaining({ materiales_estimados: [{ material_id: 1, cantidad: 2, pieza_id: 10 }] })
+      );
+
+      componente.elegirRollo(0, '');
+      await componente.guardar();
+      expect(ordenesFalso.crear).toHaveBeenLastCalledWith(
+        expect.objectContaining({ materiales_estimados: [{ material_id: 1, cantidad: 2 }] })
+      );
+      confirmSpy.mockRestore();
+    });
+
+    it('al editar, lo que la orden ya le descontó al rollo cuenta como disponible', async () => {
+      const componente = await conRollos(
+        [rollo({ id: 10, saldo_restante: 3 })], // al rollo le quedan 3 porque esta orden ya se llevó 5
+        '9'
+      );
+      ordenesFalso.ordenes.set([
+        ordenExistente({
+          materiales: {
+            estimados: [{ id_material: 1, nombre: 'Lona', cantidad: 5, unidad: 'ml', pieza_id: 10 }],
+            reales: [], mermas: [], devoluciones: [],
+          },
+        }),
+      ]);
+      const fixture = TestBed.createComponent(OrdenFormComponent);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(fixture.componentInstance.saldoDelRollo(10, 1)).toBe(8);
+      expect(componente.saldoDelRollo(10, 1)).toBe(3);
     });
   });
 

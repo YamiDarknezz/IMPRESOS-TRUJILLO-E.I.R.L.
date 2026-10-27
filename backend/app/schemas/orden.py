@@ -2,9 +2,9 @@
 from datetime import date
 from typing import Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
-from app.models import EstadoOrden, MetodoPago, TipoDocumento, UnidadNegocio
+from app.models import CanalIngreso, EstadoOrden, MetodoPago, TipoDocumento, UnidadNegocio
 from app.schemas.comunes import exigir_no_negativo, exigir_positivo, exigir_texto, limpiar
 
 
@@ -13,6 +13,9 @@ class MaterialEstimado(BaseModel):
 
     material_id: int
     cantidad: float
+    # Rollo o plancha de donde sale (#127): si viene, la orden le descuenta la
+    # cantidad al crearse. Sin él, el material solo se reserva, como siempre.
+    pieza_id: Optional[int] = None
 
     @field_validator("cantidad")
     @classmethod
@@ -53,6 +56,24 @@ class OrdenItemData(BaseModel):
         return exigir_no_negativo(v)
 
 
+class AdelantoParteData(BaseModel):
+    """Una parte del adelanto: cuánto se dejó y con qué método (#124)."""
+
+    metodo: MetodoPago
+    monto: float
+    descripcion: str = Field(default="", max_length=200)
+
+    @field_validator("monto")
+    @classmethod
+    def _monto_positivo(cls, v: float) -> float:
+        return exigir_positivo(v, "Cada parte del adelanto debe ser mayor a 0")
+
+    @field_validator("descripcion")
+    @classmethod
+    def _limpiar_descripcion(cls, v: str) -> str:
+        return limpiar(v)
+
+
 class OrdenCreateData(BaseModel):
     """Datos para crear o editar una orden (contrato/proforma)."""
 
@@ -66,6 +87,7 @@ class OrdenCreateData(BaseModel):
     descripcion: str
 
     tipo_documento: TipoDocumento = TipoDocumento.CONTRATO
+    canal_ingreso: CanalIngreso = CanalIngreso.OTRO
     unidad_negocio: UnidadNegocio = UnidadNegocio.IMPRENTA
     fecha_entrega: date
     incluye_igv: bool = False
@@ -80,13 +102,31 @@ class OrdenCreateData(BaseModel):
 
     adelanto_pago: float
     metodo_pago: MetodoPago
+    # Para qué es el adelanto (opcional): queda en el historial de pagos (#110).
+    adelanto_descripcion: str = Field(default="", max_length=200)
+    # El adelanto repartido en varios métodos (#124): p. ej. S/ 100 en efectivo y
+    # S/ 50 por Yape. Sin esto, el adelanto es `adelanto_pago` con `metodo_pago`,
+    # como siempre. Con esto, `adelanto_pago` es la suma de las partes.
+    adelanto_partes: Optional[list[AdelantoParteData]] = None
+
+    @model_validator(mode="after")
+    def _partes_coherentes(self) -> "OrdenCreateData":
+        partes = self.adelanto_partes
+        if not partes:
+            return self
+        metodos = [parte.metodo for parte in partes]
+        if len(set(metodos)) != len(metodos):
+            raise ValueError("No se puede repetir un método de pago en el adelanto.")
+        if round(sum(parte.monto for parte in partes), 2) != round(self.adelanto_pago, 2):
+            raise ValueError("La suma de las partes del adelanto debe ser igual al adelanto.")
+        return self
 
     @field_validator("descripcion")
     @classmethod
     def _texto_obligatorio(cls, v: str) -> str:
         return exigir_texto(v)
 
-    @field_validator("cliente", "direccion", "telefono", "motivo_descuento")
+    @field_validator("cliente", "direccion", "telefono", "motivo_descuento", "adelanto_descripcion")
     @classmethod
     def _limpiar(cls, v: str) -> str:
         return limpiar(v)
@@ -119,6 +159,8 @@ class ConfirmarPagoData(BaseModel):
     # Método del pago final; si no se indica, se reusa el del adelanto.
     metodo_pago: Optional[MetodoPago] = None
     referencia: str = Field(default="", max_length=120)
+    # Para qué es este cobro (#110); opcional.
+    descripcion: str = Field(default="", max_length=200)
     # Si no se indica, se cobra el saldo pendiente completo (issue #13):
     # mandar un monto menor registra un abono parcial en vez de forzar a
     # elegir entre "todo" o "nada".
@@ -134,6 +176,16 @@ class ConfirmarPagoData(BaseModel):
 
 class CambiarEstadoData(BaseModel):
     estado: EstadoOrden
+    # Entregar una proforma antes de pagar (#72): lo
+    # autoriza un supervisor y se explica el motivo. Sin esto, la regla de
+    # "sin pago completo no se entrega" sigue intacta.
+    autorizar_saldo: bool = False
+    motivo: str = Field(default="", max_length=200)
+
+    @field_validator("motivo")
+    @classmethod
+    def _limpiar_motivo(cls, v: str) -> str:
+        return limpiar(v)
 
 
 class VentaRapidaData(BaseModel):

@@ -42,7 +42,7 @@ describe('ClientesComponent', () => {
       imports: [ClientesComponent],
       providers: [
         { provide: ClientesService, useValue: clientesFalso },
-        { provide: SesionService, useValue: { usuario: signal(null), esAdmin: signal(false) } },
+        { provide: SesionService, useValue: { usuario: signal(null), esAdmin: signal(false), puedeGestionarOrdenes: signal(true) } },
       ],
     });
   });
@@ -133,5 +133,18 @@ describe('ClientesComponent', () => {
     componente.cerrarDetalle();
     expect(componente.detalle()).toBeNull();
     expect(componente.resumen()).toBeNull();
+  });
+
+  // Issue #38: la ficha del cliente es un diálogo accesible y Escape lo cierra.
+  it('ficha del cliente: es un diálogo y Escape lo cierra', () => {
+    const fixture = TestBed.createComponent(ClientesComponent);
+    fixture.componentInstance.detalle.set(clienteBase);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="dialog"]')).not.toBeNull();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.detalle()).toBeNull();
   });
 });

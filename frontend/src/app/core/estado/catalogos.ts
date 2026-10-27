@@ -15,6 +15,8 @@ import { computed, signal } from '@angular/core';
 export interface OpcionCatalogo {
   valor: string;
   etiqueta: string;
+  /** Solo para leer lo ya registrado: los desplegables no lo ofrecen (#125). */
+  heredado?: boolean;
 }
 
 export interface ParametrosNegocio {
@@ -22,7 +24,17 @@ export interface ParametrosNegocio {
   adelanto_minimo_porcentaje: number;
 }
 
+/** Datos de la empresa para el contrato impreso (#68). */
+export interface DatosEmpresa {
+  razon_social: string;
+  ruc: string;
+  direccion: string;
+  telefono: string;
+  horario: string;
+}
+
 export interface Catalogos {
+  canales_ingreso: OpcionCatalogo[];
   metodos_pago: OpcionCatalogo[];
   tipos_pago: OpcionCatalogo[];
   estados_pago: OpcionCatalogo[];
@@ -34,6 +46,7 @@ export interface Catalogos {
 export type NombreCatalogo = keyof Catalogos;
 
 const VACIO: Catalogos = {
+  canales_ingreso: [],
   metodos_pago: [],
   tipos_pago: [],
   estados_pago: [],
@@ -47,6 +60,8 @@ const parametros = signal<ParametrosNegocio>({
   adelanto_minimo_porcentaje: 50,
 });
 const catalogos = signal<Catalogos>(VACIO);
+const EMPRESA_VACIA: DatosEmpresa = { razon_social: 'Impresos Trujillo', ruc: '', direccion: '', telefono: '', horario: '' };
+const datosEmpresa = signal<DatosEmpresa>(EMPRESA_VACIA);
 /** ¿Ya respondió el servidor? Sirve para saber si se puede confiar en los catálogos. */
 const configurada = signal(false);
 
@@ -54,8 +69,10 @@ const configurada = signal(false);
 export function hidratarConfiguracion(datos: {
   parametros: ParametrosNegocio;
   catalogos: Catalogos;
+  empresa?: DatosEmpresa;
 }): void {
   parametros.set(datos.parametros);
+  datosEmpresa.set(datos.empresa ?? EMPRESA_VACIA);
   catalogos.set({ ...VACIO, ...datos.catalogos });
   configurada.set(true);
 }
@@ -69,6 +86,7 @@ export function hidratarConfiguracion(datos: {
 export function reiniciarConfiguracion(): void {
   parametros.set({ igv_porcentaje: 18, adelanto_minimo_porcentaje: 50 });
   catalogos.set(VACIO);
+  datosEmpresa.set(EMPRESA_VACIA);
   configurada.set(false);
 }
 
@@ -99,8 +117,31 @@ export function etiquetaDe(nombre: NombreCatalogo, valor: string): string {
 }
 
 // Atajos para las plantillas, que es donde más se usan.
-export const metodosPago = computed(() => valoresDe('metodos_pago'));
+/** Los métodos que se ofrecen al registrar un pago: sin el heredado. */
+export const metodosPago = computed(() =>
+  catalogos().metodos_pago.filter(opcion => !opcion.heredado).map(opcion => opcion.valor)
+);
+/** Los que solo existen para leer pagos antiguos (el `yape` de antes de #125). */
+export const metodosPagoHeredados = computed(() =>
+  catalogos().metodos_pago.filter(opcion => opcion.heredado).map(opcion => opcion.valor)
+);
+/** El nombre de cualquier método, también el heredado: las tablas muestran pagos antiguos. */
 export const etiquetasMetodo = computed(() => etiquetasDe('metodos_pago'));
+
+/**
+ * Opciones de un desplegable de método que ya trae un valor guardado.
+ *
+ * Al editar una orden vieja, su método puede ser el heredado: si no estuviera
+ * en la lista, el desplegable se vería vacío aunque el valor siga siendo ese.
+ */
+export function metodosPagoCon(actual: string | null | undefined): string[] {
+  const ofrecidos = metodosPago();
+  return actual && !ofrecidos.includes(actual) ? [...ofrecidos, actual] : ofrecidos;
+}
+/** Datos de la empresa tal como los publica el servidor (#68). */
+export const empresa = datosEmpresa.asReadonly();
+export const canalesIngreso = computed(() => catalogos().canales_ingreso);
+export const etiquetasCanal = computed(() => etiquetasDe('canales_ingreso'));
 export const opcionesAccion = computed(() => catalogos().acciones_auditoria);
 export const etiquetasAccion = computed(() => etiquetasDe('acciones_auditoria'));
 export const motivosObservacion = computed(() => catalogos().motivos_observacion);

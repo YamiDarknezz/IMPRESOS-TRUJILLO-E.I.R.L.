@@ -1,7 +1,7 @@
 """Esquemas Pydantic de entrada y envolturas de respuesta."""
 from app.schemas.comunes import RespuestaExitosa, RespuestaItem, RespuestaLista
 from app.schemas.auth import CambiarPasswordData, LoginData
-from app.schemas.caja import CerrarCajaData, CongelarCajaData, ObservarPagoData
+from app.schemas.caja import CerrarCajaData, CongelarCajaData, GastoCajaData, ObservarPagoData
 from app.schemas.cliente import ClienteCreateData, ClienteUpdateData
 from app.schemas.inventario import (
     ConsumoPiezaCreateData,
@@ -14,6 +14,7 @@ from app.schemas.orden import (
     AsignarData,
     CambiarEstadoData,
     ConfirmarPagoData,
+    AdelantoParteData,
     MaterialEstimado,
     OrdenCompletionData,
     OrdenCreateData,
@@ -32,6 +33,7 @@ __all__ = [
     "LoginData",
     "CerrarCajaData",
     "CongelarCajaData",
+    "GastoCajaData",
     "ObservarPagoData",
     "ClienteCreateData",
     "ClienteUpdateData",
@@ -43,6 +45,7 @@ __all__ = [
     "AsignarData",
     "CambiarEstadoData",
     "ConfirmarPagoData",
+    "AdelantoParteData",
     "MaterialEstimado",
     "OrdenCompletionData",
     "OrdenCreateData",

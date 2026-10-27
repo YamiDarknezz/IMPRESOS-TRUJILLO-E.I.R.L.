@@ -12,10 +12,20 @@ export const PARAMETROS_DE_PRUEBA: ParametrosNegocio = {
 };
 
 export const CATALOGOS_DE_PRUEBA: Catalogos = {
+  canales_ingreso: [
+    { valor: 'whatsapp', etiqueta: 'WhatsApp' },
+    { valor: 'llamada', etiqueta: 'Llamada' },
+    { valor: 'presencial', etiqueta: 'Presencial' },
+    { valor: 'correo', etiqueta: 'Correo' },
+    { valor: 'otro', etiqueta: 'Otro' },
+  ],
+  // Como los publica el backend (#125): los dos Yape y, marcado, el de antes.
   metodos_pago: [
     { valor: 'efectivo', etiqueta: 'Efectivo' },
-    { valor: 'yape', etiqueta: 'Yape' },
+    { valor: 'yape_marcell', etiqueta: 'Yape Marcell' },
+    { valor: 'yape_angel', etiqueta: 'Yape Ángel' },
     { valor: 'transferencia', etiqueta: 'Transferencia' },
+    { valor: 'yape', etiqueta: 'Yape (sin especificar)', heredado: true },
   ],
   tipos_pago: [
     { valor: 'adelanto', etiqueta: 'Adelanto' },

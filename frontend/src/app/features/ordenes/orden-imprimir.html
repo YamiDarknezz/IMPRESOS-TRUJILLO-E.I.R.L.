@@ -1,0 +1,119 @@
+<div class="acciones-impresion">
+  <a class="btn-secondary btn-sm" routerLink="/ordenes">← Volver a órdenes</a>
+  @if (orden()) {
+    <button class="btn-primary btn-sm" (click)="imprimir()">
+      Imprimir / Guardar como PDF
+    </button>
+    <span class="field-hint">En el diálogo de impresión elige "Guardar como PDF" si lo quieres como archivo.</span>
+  }
+</div>
+
+@if (cargando()) {
+  <p class="text-muted">Cargando contrato...</p>
+} @else if (error()) {
+  <p class="field-error">{{ error() }}</p>
+} @else if (orden(); as o) {
+  <article class="documento">
+
+    <header class="documento-cabecera">
+      <div>
+        <h1 class="documento-empresa">{{ empresa().razon_social }}</h1>
+        @if (empresa().ruc) { <p>RUC {{ empresa().ruc }}</p> }
+        @if (empresa().direccion) { <p>{{ empresa().direccion }}</p> }
+        @if (empresa().telefono) { <p>Teléfono: {{ empresa().telefono }}</p> }
+      </div>
+      <div class="documento-numero">
+        <span class="documento-tipo">{{ etiquetaTipo()[o.tipo_documento] }}</span>
+        <strong>N° {{ o.codigo }}</strong>
+        <span>Fecha: {{ formatearFecha(o.fecha_creacion) }}</span>
+        <span>Entrega: {{ formatearFecha(o.fecha_entrega) }}</span>
+      </div>
+    </header>
+
+    <section class="documento-bloque">
+      <h2>Cliente</h2>
+      <p><strong>{{ o.cliente }}</strong></p>
+      @if (o.direccion) { <p>Dirección: {{ o.direccion }}</p> }
+      @if (o.telefono) { <p>Teléfono: {{ o.telefono }}</p> }
+      <p class="documento-pequeno">
+        Unidad de negocio: {{ etiquetaUnidad()[o.unidad_negocio] }} · Canal de ingreso: {{ etiquetaCanal(o.canal_ingreso) }}
+      </p>
+    </section>
+
+    <section class="documento-bloque">
+      <h2>Detalle del trabajo</h2>
+      <p>{{ o.descripcion }}</p>
+
+      @if (tieneItems()) {
+        <table class="documento-tabla">
+          <thead>
+            <tr><th>Descripción</th><th>Medidas</th><th>Cant.</th><th>P. unit.</th><th>Importe</th></tr>
+          </thead>
+          <tbody>
+            @for (item of o.items; track item.id ?? $index) {
+              <tr>
+                <td>{{ item.descripcion }}</td>
+                <td>
+                  @if (item.ancho_m && item.alto_m) { {{ item.ancho_m }} × {{ item.alto_m }} m } @else { — }
+                </td>
+                <td>{{ item.cantidad }}</td>
+                <td>S/ {{ item.precio_unitario | number:'1.2-2' }}</td>
+                <td>S/ {{ item.importe ?? 0 | number:'1.2-2' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </section>
+
+    <section class="documento-totales">
+      <div><span>Subtotal</span><span>S/ {{ o.finanzas?.subtotal ?? o.subtotal | number:'1.2-2' }}</span></div>
+      @if ((o.finanzas?.descuento ?? 0) > 0) {
+        <div>
+          <span>Descuento{{ o.finanzas?.motivo_descuento ? ' (' + o.finanzas?.motivo_descuento + ')' : '' }}</span>
+          <span>- S/ {{ o.finanzas?.descuento | number:'1.2-2' }}</span>
+        </div>
+      }
+      @if (o.incluye_igv) {
+        <div><span>IGV</span><span>S/ {{ o.finanzas?.igv ?? o.igv | number:'1.2-2' }}</span></div>
+      }
+      <div class="total"><span>Total</span><span>S/ {{ o.finanzas?.precio_total | number:'1.2-2' }}</span></div>
+      <div><span>A cuenta</span><span>S/ {{ (o.finanzas?.precio_total ?? 0) - (o.finanzas?.saldo_pendiente ?? 0) | number:'1.2-2' }}</span></div>
+      <div class="saldo"><span>Saldo</span><span>S/ {{ o.finanzas?.saldo_pendiente | number:'1.2-2' }}</span></div>
+    </section>
+
+    @if (pagosConformes().length > 0) {
+      <section class="documento-bloque">
+        <h2>Pagos recibidos</h2>
+        <table class="documento-tabla">
+          <thead><tr><th>Fecha</th><th>Concepto</th><th>Medio</th><th>Monto</th></tr></thead>
+          <tbody>
+            @for (pago of pagosConformes(); track pago.id) {
+              <tr>
+                <td>{{ formatearFecha(pago.fecha) }}</td>
+                <td>{{ pago.tipo === 'adelanto' ? 'Adelanto' : 'Abono' }}{{ pago.descripcion ? ': ' + pago.descripcion : '' }}</td>
+                <td>{{ etiquetaMetodo()[pago.metodo] || pago.metodo }}</td>
+                <td>S/ {{ pago.monto | number:'1.2-2' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </section>
+    }
+
+    @if (o.entrega_autorizada) {
+      <p class="documento-pequeno">
+        Entrega autorizada antes del pago total por {{ o.entrega_autorizada.por }}: {{ o.entrega_autorizada.motivo }}.
+      </p>
+    }
+
+    <footer class="documento-firmas">
+      <div><span class="linea-firma"></span>Firma del cliente</div>
+      <div><span class="linea-firma"></span>{{ empresa().razon_social }}</div>
+    </footer>
+
+    @if (empresa().horario) {
+      <p class="documento-pequeno documento-pie">Horario de atención: {{ empresa().horario }}</p>
+    }
+  </article>
+}

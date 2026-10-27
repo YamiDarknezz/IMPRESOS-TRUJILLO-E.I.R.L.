@@ -6,14 +6,16 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ClientesService } from '../../core/services/clientes.service';
 import { ComprobantesService } from '../../core/services/comprobantes.service';
 import { InventarioService } from '../../core/services/inventario.service';
-import { DatosOrden, OrdenesService } from '../../core/services/ordenes.service';
+import { DatosOrden, OrdenesService, ParteAdelantoData } from '../../core/services/ordenes.service';
 import { ProductosService } from '../../core/services/productos.service';
 import { SesionService, nombreVisible } from '../../core/services/sesion.service';
 import {
+  CanalIngreso,
   ETIQUETA_METODO,
   ETIQUETA_TIPO_DOCUMENTO,
   ETIQUETA_UNIDAD,
   MaterialItem,
+  PiezaLoteMaterial,
   METODOS_PAGO,
   MetodoPago,
   Orden,
@@ -24,9 +26,11 @@ import {
 import { mensajeDeError } from '../../shared/utilidades/errores';
 import {
   adelantoMinimoPorcentaje,
+  canalesIngreso,
   etiquetasMetodo,
   igvPorcentaje,
   metodosPago as metodosDelServidor,
+  metodosPagoCon,
 } from '../../core/estado/catalogos';
 import {
   CapturaElegida,
@@ -44,6 +48,13 @@ interface LineaFormulario {
   precioUnitario: number;
 }
 
+/** Una parte más del adelanto, con su propio método (#124). La primera vive en `adelanto`. */
+interface ParteAdelanto {
+  metodo: MetodoPago;
+  monto: number;
+  descripcion: string;
+}
+
 /** Estado del formulario, en los términos en que lo llena el usuario. */
 interface FormularioOrden {
   clienteId: number | null;
@@ -52,12 +63,17 @@ interface FormularioOrden {
   productoId: number | null;
   descripcion: string;
   tipoDocumento: TipoDocumento;
+  /** Vacío hasta que se elige: es un dato que después no se puede reconstruir (#69). */
+  canalIngreso: CanalIngreso | '';
   unidadNegocio: UnidadNegocio;
   fechaEntrega: string;
   incluyeIgv: boolean;
   metodoPago: MetodoPago;
   precioTotal: number;
   adelanto: number;
+  adelantoDescripcion: string;
+  /** Otras partes del adelanto cuando se dejó en más de un método (#124). */
+  adelantoExtra: ParteAdelanto[];
   descuento: number;
   motivoDescuento: string;
   materiales: MaterialItem[];
@@ -75,9 +91,9 @@ function lineaVacia(): LineaFormulario {
 function formularioVacio(): FormularioOrden {
   return {
     clienteId: null, cliente: '', asignadoA: null, productoId: null,
-    descripcion: '', tipoDocumento: 'contrato', unidadNegocio: 'imprenta',
+    descripcion: '', tipoDocumento: 'contrato', canalIngreso: '', unidadNegocio: 'imprenta',
     fechaEntrega: '', incluyeIgv: false, metodoPago: 'efectivo',
-    precioTotal: 0, adelanto: 0, descuento: 0, motivoDescuento: '',
+    precioTotal: 0, adelanto: 0, adelantoDescripcion: '', adelantoExtra: [], descuento: 0, motivoDescuento: '',
     materiales: [], lineas: [],
   };
 }
@@ -103,6 +119,8 @@ export class OrdenFormComponent {
 
   readonly clientes = this.clientesService.clientes;
   readonly materiales = this.inventarioService.materiales;
+  /** Rollos y planchas con su saldo, para elegir de cuál sale cada material (#127). */
+  readonly rollos = signal<PiezaLoteMaterial[]>([]);
   readonly productos = this.productosService.productos;
 
   readonly form = signal<FormularioOrden>(formularioVacio());
@@ -120,6 +138,9 @@ export class OrdenFormComponent {
 
   // Catálogos para la plantilla
   readonly metodosPago = metodosDelServidor;
+  /** Lo que ofrece el desplegable: los métodos actuales y, al editar una orden vieja, el suyo. */
+  readonly metodosParaElegir = computed(() => metodosPagoCon(this.form().metodoPago));
+  readonly canales = computed(() => canalesIngreso());
   readonly igvPorcentaje = igvPorcentaje;
   readonly adelantoPorcentaje = adelantoMinimoPorcentaje;
   readonly unidadesNegocio = UNIDADES_NEGOCIO;
@@ -163,17 +184,57 @@ export class OrdenFormComponent {
     redondear(this.subtotal() + this.igv() - this.form().descuento)
   );
 
-  readonly saldoPendiente = computed(() =>
-    Math.max(redondear(this.total() - this.form().adelanto), 0)
+  /** Todo lo que se deja de adelanto: la primera parte más las otras (#124). */
+  readonly adelantoTotal = computed(() =>
+    redondear(this.form().adelanto + this.form().adelantoExtra.reduce((suma, p) => suma + p.monto, 0))
   );
 
-  /** Adelanto mínimo exigido para clientes no corporativos. */
+  readonly saldoPendiente = computed(() =>
+    Math.max(redondear(this.total() - this.adelantoTotal()), 0)
+  );
+
+  /** Métodos que se pueden elegir en la primera parte: los que no usa ya otra. */
+  readonly metodosPrimeraParte = computed(() =>
+    this.metodosParaElegir().filter(
+      m => m === this.form().metodoPago || !this.form().adelantoExtra.some(p => p.metodo === m)
+    )
+  );
+
+  /** Métodos libres para la parte `indice`: los que no usa ninguna otra (no se repite uno). */
+  metodosDeLaParte(indice: number): string[] {
+    const f = this.form();
+    const actual = f.adelantoExtra[indice]?.metodo;
+    return metodosDelServidor().filter(
+      m =>
+        m === actual ||
+        (m !== f.metodoPago && !f.adelantoExtra.some((p, i) => i !== indice && p.metodo === m))
+    );
+  }
+
+  /** ¿Queda algún método sin usar para agregar otra parte? */
+  readonly puedeAgregarParte = computed(() => {
+    const usados = new Set<string>([this.form().metodoPago, ...this.form().adelantoExtra.map(p => p.metodo)]);
+    return metodosDelServidor().some(m => !usados.has(m));
+  });
+
+  /**
+   * La proforma es el documento de los clientes de confianza y de las empresas
+   * que pagan a plazo: no exige adelanto. Los clientes corporativos tampoco (#72).
+   */
+  readonly exentoDeAdelanto = computed(
+    () => this.form().tipoDocumento === 'proforma' || !!this.clienteSeleccionado()?.es_corporativo
+  );
+
+  /** Adelanto mínimo exigido; 0 si el documento o el cliente están exentos. */
   readonly adelantoMinimo = computed(() => {
-    if (this.clienteSeleccionado()?.es_corporativo) return 0;
+    if (this.exentoDeAdelanto()) return 0;
     return redondear(this.total() * adelantoMinimoPorcentaje() / 100);
   });
 
   constructor() {
+    // Los rollos no se guardan en caché: su saldo cambia con cada orden.
+    void this.inventarioService.listarPiezas().then(piezas => this.rollos.set(piezas)).catch(() => undefined);
+
     // Los catálogos se cargan en paralelo; si ya están en caché no se repiten.
     this.clientesService.cargar();
     this.inventarioService.cargar();
@@ -200,6 +261,10 @@ export class OrdenFormComponent {
     }
 
     this.editando.set(orden);
+    // Solo los adelantos conformes: uno observado ya no es dinero recibido (#124).
+    const adelantos = (orden.finanzas?.pagos ?? []).filter(
+      p => p.tipo === 'adelanto' && (p.estado_pago ?? 'conforme') === 'conforme'
+    );
     this.form.set({
       clienteId: orden.cliente_id ?? null,
       cliente: orden.cliente,
@@ -207,12 +272,20 @@ export class OrdenFormComponent {
       productoId: null,
       descripcion: orden.descripcion,
       tipoDocumento: orden.tipo_documento,
+      canalIngreso: orden.canal_ingreso,
       unidadNegocio: orden.unidad_negocio,
       fechaEntrega: orden.fecha_entrega,
       incluyeIgv: orden.incluye_igv,
-      metodoPago: orden.finanzas?.metodo_pago_adelanto ?? 'efectivo',
+      metodoPago:
+        adelantos.length > 1 ? adelantos[0].metodo : (orden.finanzas?.metodo_pago_adelanto ?? 'efectivo'),
       precioTotal: orden.items?.length ? 0 : orden.subtotal,
-      adelanto: orden.finanzas?.adelanto_pago ?? 0,
+      adelanto: adelantos.length > 1 ? adelantos[0].monto : (orden.finanzas?.adelanto_pago ?? 0),
+      adelantoDescripcion: adelantos[0]?.descripcion ?? '',
+      adelantoExtra: adelantos.slice(1).map(p => ({
+        metodo: p.metodo,
+        monto: p.monto,
+        descripcion: p.descripcion ?? '',
+      })),
       descuento: orden.finanzas?.descuento ?? 0,
       motivoDescuento: orden.finanzas?.motivo_descuento ?? '',
       materiales: (orden.materiales?.estimados ?? []).map(m => ({ ...m })),
@@ -285,6 +358,50 @@ export class OrdenFormComponent {
 
   // ── Materiales estimados ─────────────────────────────────────────────────
 
+  /** Dónde está guardado un material, para ir a buscarlo (#109). */
+  ubicacionDe(idMaterial: number): string {
+    return this.materiales().find(m => m.id === idMaterial)?.ubicacion_estante?.trim() ?? '';
+  }
+
+  // ── Rollo de cada material (#127) ───────────────────────────────────────
+
+  /** ¿El material se lleva por rollo (metros lineales)? */
+  esDeRollo(idMaterial: number): boolean {
+    return this.materiales().find(m => m.id === idMaterial)?.tipo_formato === 'continuo_rollo';
+  }
+
+  /** Rollos de ese material con algo de saldo: los que se pueden elegir. */
+  rollosDe(idMaterial: number): PiezaLoteMaterial[] {
+    return this.rollos().filter(p => p.material_id === idMaterial && p.estado !== 'agotado');
+  }
+
+  /**
+   * Cuánto se le puede pedir a ese rollo. Al editar, lo que esta misma orden ya
+   * le había descontado también cuenta como disponible: es lo que se le devuelve
+   * antes de volver a descontar.
+   */
+  saldoDelRollo(idPieza: number | null | undefined, idMaterial: number): number {
+    const pieza = this.rollos().find(p => p.id === idPieza);
+    if (!pieza) return 0;
+    const propio = (this.editando()?.materiales?.estimados ?? [])
+      .filter(m => m.id_material === idMaterial && m.pieza_id === idPieza)
+      .reduce((suma, m) => suma + m.cantidad, 0);
+    return redondear(pieza.saldo_restante + propio);
+  }
+
+  /** El rollo en uso, o el primero disponible: lo que se usaría sin preguntar. */
+  private rolloPorDefecto(idMaterial: number): number | null {
+    const candidatos = this.rollosDe(idMaterial);
+    return (candidatos.find(p => p.estado === 'en_uso') ?? candidatos[0])?.id ?? null;
+  }
+
+  elegirRollo(indice: number, valor: string): void {
+    this.form.update(f => ({
+      ...f,
+      materiales: f.materiales.map((m, i) => (i === indice ? { ...m, pieza_id: valor ? Number(valor) : null } : m)),
+    }));
+  }
+
   agregarMaterial(): void {
     const material = this.materiales().find(m => String(m.id) === this.materialSelId());
     const cantidad = this.materialSelCantidad();
@@ -298,7 +415,17 @@ export class OrdenFormComponent {
         ? f.materiales.map(m =>
             m.id_material === material.id ? { ...m, cantidad: m.cantidad + cantidad } : m
           )
-        : [...f.materiales, { id_material: material.id, nombre: material.nombre, cantidad, unidad: material.unidad }];
+        : [
+            ...f.materiales,
+            {
+              id_material: material.id,
+              nombre: material.nombre,
+              cantidad,
+              unidad: material.unidad,
+              // Un material de rollo ya sugiere de cuál se descuenta (#127).
+              ...(this.esDeRollo(material.id) ? { pieza_id: this.rolloPorDefecto(material.id) } : {}),
+            },
+          ];
       return { ...f, materiales };
     });
 
@@ -347,6 +474,9 @@ export class OrdenFormComponent {
     if (!form.descripcion.trim()) {
       errores['descripcion'] = 'La descripción es requerida.';
     }
+    if (!form.canalIngreso) {
+      errores['canalIngreso'] = 'Indica por qué vía llegó el pedido.';
+    }
     if (!form.fechaEntrega) {
       errores['fechaEntrega'] = 'La fecha de entrega es requerida.';
     }
@@ -362,14 +492,70 @@ export class OrdenFormComponent {
       errores['descuento'] = 'El descuento no puede superar el subtotal.';
     }
     // RN-01: sin adelanto no se arranca el trabajo.
-    if (!(form.adelanto > 0) && !this.clienteSeleccionado()?.es_corporativo) {
+    if (!(form.adelanto > 0) && !this.exentoDeAdelanto()) {
       errores['adelanto'] = 'Se requiere un adelanto para iniciar el trabajo.';
     }
-    if (form.adelanto < this.adelantoMinimo()) {
+    if (this.adelantoTotal() < this.adelantoMinimo()) {
       errores['adelanto'] =
         `El adelanto mínimo para clientes generales es S/ ${this.adelantoMinimo().toFixed(2)}.`;
     }
+    // #127: la misma regla que aplica el servidor, para no llegar a guardar una orden
+    // que pide más metros de los que le quedan al rollo.
+    const pedidoPorRollo = new Map<number, number>();
+    for (const m of form.materiales) {
+      if (!m.pieza_id) continue;
+      const pedido = (pedidoPorRollo.get(m.pieza_id) ?? 0) + m.cantidad;
+      pedidoPorRollo.set(m.pieza_id, pedido);
+      const disponible = this.saldoDelRollo(m.pieza_id, m.id_material);
+      if (pedido > disponible) {
+        const rollo = this.rollos().find(p => p.id === m.pieza_id);
+        errores['materiales'] =
+          `El rollo ${rollo?.codigo_identificador ?? ''} solo tiene ${disponible} ${rollo?.unidad_medida ?? ''} ` +
+          `disponibles y la orden pide ${pedido}.`;
+      }
+    }
+    if (form.adelantoExtra.some(p => !(p.monto > 0)) || (form.adelantoExtra.length > 0 && !(form.adelanto > 0))) {
+      errores['adelantoPartes'] = 'Cada parte del adelanto debe ser mayor a 0.';
+    }
     return errores;
+  }
+
+  // ── Adelanto repartido en varios métodos (#124) ─────────────────────────
+
+  /** Todas las partes del adelanto, la primera incluida, tal como las recibe la API. */
+  private partesDelAdelanto(): ParteAdelantoData[] {
+    const f = this.form();
+    return [
+      { metodo: f.metodoPago, monto: f.adelanto, descripcion: f.adelantoDescripcion.trim() },
+      ...f.adelantoExtra.map(p => ({ metodo: p.metodo, monto: p.monto, descripcion: p.descripcion.trim() })),
+    ];
+  }
+
+  /** El método de la parte más grande: es el que muestra la lista y el que se usa por defecto al cobrar el saldo. */
+  private metodoPrincipal(): MetodoPago {
+    return this.partesDelAdelanto().reduce((mayor, parte) => (parte.monto > mayor.monto ? parte : mayor)).metodo;
+  }
+
+  agregarParteAdelanto(): void {
+    const f = this.form();
+    const usados = new Set<string>([f.metodoPago, ...f.adelantoExtra.map(p => p.metodo)]);
+    const libre = metodosDelServidor().find(m => !usados.has(m)) as MetodoPago | undefined;
+    if (!libre) return;
+    this.form.update(actual => ({
+      ...actual,
+      adelantoExtra: [...actual.adelantoExtra, { metodo: libre, monto: 0, descripcion: '' }],
+    }));
+  }
+
+  actualizarParteAdelanto<K extends keyof ParteAdelanto>(indice: number, campo: K, valor: ParteAdelanto[K]): void {
+    this.form.update(f => ({
+      ...f,
+      adelantoExtra: f.adelantoExtra.map((parte, i) => (i === indice ? { ...parte, [campo]: valor } : parte)),
+    }));
+  }
+
+  quitarParteAdelanto(indice: number): void {
+    this.form.update(f => ({ ...f, adelantoExtra: f.adelantoExtra.filter((_, i) => i !== indice) }));
   }
 
   // ── Capturas del adelanto (RF-11) ───────────────────────────────────────
@@ -424,6 +610,7 @@ export class OrdenFormComponent {
       asignado_a: this.sesion.esSupervisor() ? form.asignadoA : null,
       descripcion: form.descripcion,
       tipo_documento: form.tipoDocumento,
+      canal_ingreso: form.canalIngreso as CanalIngreso,
       unidad_negocio: form.unidadNegocio,
       fecha_entrega: form.fechaEntrega,
       incluye_igv: form.incluyeIgv,
@@ -437,12 +624,17 @@ export class OrdenFormComponent {
       materiales_estimados: form.materiales.map(m => ({
         material_id: m.id_material,
         cantidad: m.cantidad,
+        // Solo con rollo elegido; sin él el envío es el de siempre.
+        ...(m.pieza_id ? { pieza_id: m.pieza_id } : {}),
       })),
       descuento: form.descuento,
       motivo_descuento: form.motivoDescuento,
       precio_total: form.lineas.length > 0 ? null : form.precioTotal,
-      adelanto_pago: form.adelanto,
-      metodo_pago: form.metodoPago,
+      adelanto_pago: this.adelantoTotal(),
+      metodo_pago: this.metodoPrincipal(),
+      adelanto_descripcion: form.adelantoDescripcion.trim(),
+      // Solo con más de un método; con uno solo el envío es el de siempre.
+      ...(form.adelantoExtra.length > 0 ? { adelanto_partes: this.partesDelAdelanto() } : {}),
     };
 
     this.guardando.set(true);

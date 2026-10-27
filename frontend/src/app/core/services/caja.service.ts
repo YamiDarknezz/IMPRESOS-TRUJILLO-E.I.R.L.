@@ -2,6 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import { ApiService } from './api.service';
 import {
   CierreCaja,
+  GastoCaja,
+  GastoCajaData,
   RespuestaItem,
   RespuestaLista,
   ResumenCaja,
@@ -54,6 +56,17 @@ export class CajaService {
       observacion,
     });
     return res.data;
+  }
+
+  /** Anota un gasto que salió de la caja (#112). */
+  async registrarGasto(data: GastoCajaData): Promise<GastoCaja> {
+    const res = await this.api.post<RespuestaItem<GastoCaja>>('/api/caja/gastos', data);
+    return res.data;
+  }
+
+  /** Quita un gasto mal anotado (solo supervisión). */
+  async eliminarGasto(id: number): Promise<void> {
+    await this.api.delete(`/api/caja/gastos/${id}`);
   }
 
   async congelar(id: number, observacion = ''): Promise<CierreCaja> {

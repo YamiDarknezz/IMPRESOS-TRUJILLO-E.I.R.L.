@@ -3,6 +3,7 @@ import { ApiService } from './api.service';
 import { RespuestaItem } from '../models';
 import {
   Catalogos,
+  DatosEmpresa,
   ParametrosNegocio,
   configuracionLista,
   hidratarConfiguracion,
@@ -11,6 +12,7 @@ import {
 interface RespuestaConfiguracion {
   parametros: ParametrosNegocio;
   catalogos: Catalogos;
+  empresa?: DatosEmpresa;
 }
 
 /**

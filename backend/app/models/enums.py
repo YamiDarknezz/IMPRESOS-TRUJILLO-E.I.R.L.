@@ -47,6 +47,16 @@ class TipoDocumento(StrEnum):
     PROFORMA = "proforma"
 
 
+class CanalIngreso(StrEnum):
+    """Por qué vía llegó el pedido (issue #69): hoy solo vive en el chat o en la cabeza de quien atendió."""
+
+    WHATSAPP = "whatsapp"
+    LLAMADA = "llamada"
+    PRESENCIAL = "presencial"
+    CORREO = "correo"
+    OTRO = "otro"
+
+
 class UnidadNegocio(StrEnum):
     """Las dos líneas de negocio que exigen caja separada (RN-05)."""
 
@@ -56,8 +66,19 @@ class UnidadNegocio(StrEnum):
 
 class MetodoPago(StrEnum):
     EFECTIVO = "efectivo"
-    YAPE = "yape"
+    # El negocio tiene dos números de Yape y necesita saber a cuál entró cada
+    # pago (#125): cada uno es un método con su propia columna en el arqueo.
+    YAPE_MARCELL = "yape_marcell"
+    YAPE_ANGEL = "yape_angel"
     TRANSFERENCIA = "transferencia"
+    # Heredado: así se registraban los pagos antes de #125, cuando no se sabía
+    # a qué número entró. Sigue siendo válido para los pagos ya guardados, pero
+    # la pantalla ya no lo ofrece para los nuevos (ver `METODOS_HEREDADOS`).
+    YAPE = "yape"
+
+
+# Métodos que existen solo para leer lo ya registrado: no se ofrecen al cobrar.
+METODOS_HEREDADOS = frozenset({MetodoPago.YAPE})
 
 
 class TipoPago(StrEnum):
