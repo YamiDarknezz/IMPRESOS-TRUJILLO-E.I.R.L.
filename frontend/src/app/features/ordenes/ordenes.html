@@ -96,12 +96,12 @@
     <div class="date-filter-group">
       <div class="date-filter-item">
         <label class="date-filter-label">Desde</label>
-        <input type="date" [ngModel]="desde()" (ngModelChange)="desde.set($event)"
+        <input type="date" [ngModel]="desde()" (ngModelChange)="cambiarFecha('desde', $event)"
                name="desde" class="date-filter-input">
       </div>
       <div class="date-filter-item">
         <label class="date-filter-label">Hasta</label>
-        <input type="date" [ngModel]="hasta()" (ngModelChange)="hasta.set($event)"
+        <input type="date" [ngModel]="hasta()" (ngModelChange)="cambiarFecha('hasta', $event)"
                name="hasta" class="date-filter-input">
       </div>
       @if (hayFiltroFecha()) {

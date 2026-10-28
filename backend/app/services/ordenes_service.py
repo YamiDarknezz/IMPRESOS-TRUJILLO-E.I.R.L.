@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auditoria import registrar
 from app.core.config import settings
 from app.core.errores import Conflicto, ErrorDeNegocio, NoEncontrado, PermisoDenegado
-from app.core.fechas import a_fecha_peru, ahora_utc
+from app.core.fechas import a_fecha_peru, ahora_utc, rango_dia_peru_a_utc
 from app.models import (
     CanalIngreso,
     CierreCaja,
@@ -267,6 +267,8 @@ def _aplicar_filtros(
     canal_ingreso: Optional[CanalIngreso] = None,
     unidad_negocio: Optional[UnidadNegocio] = None,
     pendientes_hoy: bool = False,
+    desde: Optional[date] = None,
+    hasta: Optional[date] = None,
 ):
     """
     Filtros del listado, iguales para la lista y para su total.
@@ -284,6 +286,12 @@ def _aplicar_filtros(
         consulta = consulta.where(Orden.canal_ingreso == canal_ingreso)
     if unidad_negocio is not None:
         consulta = consulta.where(Orden.unidad_negocio == unidad_negocio)
+    if desde is not None:
+        inicio, _ = rango_dia_peru_a_utc(desde)
+        consulta = consulta.where(Orden.creado_en >= inicio)
+    if hasta is not None:
+        _, fin = rango_dia_peru_a_utc(hasta)
+        consulta = consulta.where(Orden.creado_en < fin)
     if pendientes_hoy:
         hoy_peru = a_fecha_peru(ahora_utc())
         consulta = consulta.where(
@@ -301,10 +309,12 @@ async def listar(
     canal_ingreso: Optional[CanalIngreso] = None,
     unidad_negocio: Optional[UnidadNegocio] = None,
     pendientes_hoy: bool = False,
+    desde: Optional[date] = None,
+    hasta: Optional[date] = None,
 ) -> list[Orden]:
     consulta = _aplicar_filtros(
         select(Orden).order_by(Orden.creado_en.desc()),
-        usuario, estado, canal_ingreso, unidad_negocio, pendientes_hoy,
+        usuario, estado, canal_ingreso, unidad_negocio, pendientes_hoy, desde, hasta,
     ).limit(limite).offset(desplazamiento)
 
     return list((await sesion.execute(consulta)).scalars())
@@ -317,11 +327,13 @@ async def contar(
     canal_ingreso: Optional[CanalIngreso] = None,
     unidad_negocio: Optional[UnidadNegocio] = None,
     pendientes_hoy: bool = False,
+    desde: Optional[date] = None,
+    hasta: Optional[date] = None,
 ) -> int:
     """Cuántas órdenes cumplen el filtro (para 'mostrando N de M' y el panel)."""
     consulta = _aplicar_filtros(
         select(func.count()).select_from(Orden),
-        usuario, estado, canal_ingreso, unidad_negocio, pendientes_hoy,
+        usuario, estado, canal_ingreso, unidad_negocio, pendientes_hoy, desde, hasta,
     )
     return int((await sesion.execute(consulta)).scalar_one())
 
