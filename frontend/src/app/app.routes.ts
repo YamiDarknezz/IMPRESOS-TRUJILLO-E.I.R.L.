@@ -54,6 +54,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/finanzas/finanzas').then(m => m.FinanzasComponent),
       },
       {
+        path: 'bi',
+        canActivate: [rolesGuard('admin', 'subgerente')],
+        loadComponent: () => import('./features/bi/bi').then(m => m.BiComponent),
+      },
+      {
         path: 'cuentas-por-cobrar',
         canActivate: [rolesGuard('admin', 'subgerente')],
         loadComponent: () =>

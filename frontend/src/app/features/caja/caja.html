@@ -1,41 +1,44 @@
-<div class="toolbar toolbar-wrap">
-  <div class="date-filter-group">
-    <div class="date-filter-item">
-      <label class="date-filter-label">Fecha</label>
-      <input type="date" [ngModel]="fecha()" name="cajaFecha" class="date-filter-input"
-             (ngModelChange)="cambiarFecha($event)">
-    </div>
-    <div class="filter-group filter-group-alineado">
-      <button type="button" class="filter-btn" [class.active]="esHoy()" (click)="irAHoy()">Hoy</button>
-      <button type="button" class="filter-btn" [class.active]="esAyer()" (click)="irAAyer()">Ayer</button>
-    </div>
-    <div class="date-filter-item">
-      <label class="date-filter-label">Unidad</label>
-      <select [ngModel]="unidad()" name="cajaUnidad" class="date-filter-input"
-              (ngModelChange)="cambiarUnidad($event)">
-        <option [ngValue]="null">Ambas unidades</option>
-        @for (u of unidades; track u) {
-          <option [ngValue]="u">{{ etiquetaUnidad[u] }}</option>
-        }
-      </select>
+<div class="toolbar toolbar-organizada caja-toolbar">
+  <div class="toolbar-filtros caja-filtros">
+    <div class="date-filter-group">
+      <div class="date-filter-item">
+        <label class="date-filter-label">Fecha</label>
+        <input type="date" [ngModel]="fecha()" name="cajaFecha" class="date-filter-input"
+               (ngModelChange)="cambiarFecha($event)">
+      </div>
+      <div class="filter-group filter-group-alineado" role="group" aria-label="Accesos rápidos de fecha">
+        <button type="button" class="filter-btn" [class.active]="esHoy()" [attr.aria-pressed]="esHoy()" (click)="irAHoy()">Hoy</button>
+        <button type="button" class="filter-btn" [class.active]="esAyer()" [attr.aria-pressed]="esAyer()" (click)="irAAyer()">Ayer</button>
+      </div>
+      <div class="date-filter-item">
+        <label class="date-filter-label">Unidad</label>
+        <select [ngModel]="unidad()" name="cajaUnidad" class="date-filter-input"
+                (ngModelChange)="cambiarUnidad($event)">
+          <option [ngValue]="null">Ambas unidades</option>
+          @for (u of unidades; track u) {
+            <option [ngValue]="u">{{ etiquetaUnidad[u] }}</option>
+          }
+        </select>
+      </div>
     </div>
   </div>
 
-  <button class="btn-secondary btn-sm" (click)="cargar()">↻ Actualizar</button>
+  <div class="toolbar-acciones caja-acciones">
+    <button type="button" class="btn-secondary" (click)="cargar()" [disabled]="cargando()">
+      <app-icon name="refresh-cw" [size]="16" /> Actualizar
+    </button>
 
-  @if (sesion.puedeVender()) {
-    <button class="btn-secondary btn-sm" (click)="abrirModalGasto()">− Registrar gasto</button>
-  }
-
-  @if (sesion.puedeVender()) {
-    <div class="actions-cell">
+    @if (sesion.puedeVender()) {
+      <button type="button" class="btn-secondary" (click)="abrirModalGasto()">
+        <app-icon name="coins" [size]="16" /> Registrar gasto
+      </button>
       @for (u of unidades; track u) {
-        <button class="btn-secondary btn-sm" (click)="cerrarCaja(u)" [disabled]="guardando()">
-          Cerrar mi caja · {{ etiquetaUnidad[u] }}
+        <button type="button" class="btn-primary" (click)="cerrarCaja(u)" [disabled]="guardando()">
+          <app-icon name="lock" [size]="16" /> Cerrar mi caja · {{ etiquetaUnidad[u] }}
         </button>
       }
-    </div>
-  }
+    }
+  </div>
 </div>
 
 @if (cargando()) {
@@ -129,8 +132,9 @@
   @if ((datos.observados?.length ?? 0) > 0) {
     <div class="table-card card card-alerta">
       <div class="toolbar toolbar-encabezado">
-        <span class="toolbar-title text-danger">
-          ⚠ Pagos Observados / Anulados en Arqueo (Total deducido: S/ {{ datos.total_observado | number:'1.2-2' }})
+        <span class="toolbar-title text-danger inline-icon-label">
+          <app-icon name="alert-triangle" [size]="16" />
+          <span>Pagos observados / anulados en arqueo (total deducido: S/ {{ datos.total_observado | number:'1.2-2' }})</span>
         </span>
       </div>
       <div class="table-wrapper">
@@ -339,18 +343,18 @@
                 </td>
                 <td>
                   @if (item.estado_pago === 'observado') {
-                    <span class="badge badge-danger" title="{{ item.nota_observacion || item.motivo_observacion }}">
-                      ⚠ Observado ({{ item.motivo_observacion }})
+                    <span class="badge badge-danger inline-icon-label" title="{{ item.nota_observacion || item.motivo_observacion }}">
+                      <app-icon name="alert-triangle" [size]="14" /> Observado ({{ item.motivo_observacion }})
                     </span>
                   } @else {
-                    <span class="badge badge-success">✓ Conforme</span>
+                    <span class="badge badge-success inline-icon-label"><app-icon name="check-circle" [size]="14" /> Conforme</span>
                   }
                 </td>
                 <td class="actions-cell">
                   <div class="actions-wrapper">
                     @if (item.estado_pago !== 'observado' && item.pago_id) {
-                      <button class="btn-secondary btn-sm" (click)="abrirModalObservar(item)" title="Auditar / Reportar Yape o billete falso">
-                        ⚠ Observar
+                      <button type="button" class="btn-secondary btn-sm" (click)="abrirModalObservar(item)" title="Auditar / reportar Yape o billete falso">
+                        <app-icon name="alert-triangle" [size]="15" /> Observar
                       </button>
                     } @else if (item.estado_pago === 'observado') {
                       <small class="text-muted texto-xs">Deducido de caja</small>

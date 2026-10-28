@@ -41,7 +41,7 @@
         </select>
       }
 
-      @if (sesion.esSupervisor()) {
+      @if (sesion.puedeRegistrarInventario()) {
         <button class="btn-primary" (click)="alternarFormulario()">+ Nuevo Material</button>
       }
     </div>
@@ -336,7 +336,7 @@
     </div>
     <div class="acciones-fila">
       <button class="btn-secondary btn-sm" (click)="cargarPiezas()">↻ Actualizar</button>
-      @if (sesion.esSupervisor()) {
+      @if (sesion.puedeRegistrarInventario()) {
         <button class="btn-primary btn-sm" (click)="abrirNuevaPieza()">+ Nuevo Rollo / Plancha</button>
       }
     </div>
@@ -346,7 +346,7 @@
     @if (piezas().length === 0) {
       <div class="empty-state">
         <p>No hay rollos o planchas individuales registrados.</p>
-        @if (sesion.esSupervisor()) {
+        @if (sesion.puedeRegistrarInventario()) {
           <button class="btn-primary btn-sm" (click)="abrirNuevaPieza()">+ Registrar primer rollo o plancha</button>
         }
       </div>

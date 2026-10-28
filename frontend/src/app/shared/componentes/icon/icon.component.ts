@@ -17,6 +17,8 @@ export type IconName =
   | 'sun'
   | 'moon'
   | 'menu'
+  | 'refresh-cw'
+  | 'arrow-left'
   | 'pencil'
   | 'trash'
   | 'eye'
@@ -142,6 +144,16 @@ export type IconName =
           <line x1="4" x2="20" y1="12" y2="12"/>
           <line x1="4" x2="20" y1="6" y2="6"/>
           <line x1="4" x2="20" y1="18" y2="18"/>
+        }
+        @case ('refresh-cw') {
+          <path d="M20 7v5h-5"/>
+          <path d="M4 17v-5h5"/>
+          <path d="M5.64 9A7 7 0 0 1 17.5 6.5L20 12"/>
+          <path d="M18.36 15A7 7 0 0 1 6.5 17.5L4 12"/>
+        }
+        @case ('arrow-left') {
+          <path d="M19 12H5"/>
+          <path d="m12 19-7-7 7-7"/>
         }
         @case ('pencil') {
           <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>

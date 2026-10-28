@@ -163,6 +163,10 @@ personal_venta = requiere_roles(Rol.ADMIN, Rol.SUBGERENTE, Rol.SECRETARIA, Rol.O
 # operaciones son de mostrador/caja (venta rápida, cerrar caja) y la
 # diseñadora no las hace. `ordenes_service.puede_gestionar()` /
 # `puede_avanzar_etapa()` ya limitan a operario/diseñadora a solo lo suyo.
+# Recepción de mercadería e insumos en mostrador: secretaría puede dar de
+# alta nuevos materiales y piezas/rollos, pero no editar fichas ni alterar stock manual.
+registro_inventario = requiere_roles(Rol.ADMIN, Rol.SUBGERENTE, Rol.SECRETARIA)
 personal_produccion = requiere_roles(
     Rol.ADMIN, Rol.SUBGERENTE, Rol.SECRETARIA, Rol.OPERARIO, Rol.DISENADORA
 )
+

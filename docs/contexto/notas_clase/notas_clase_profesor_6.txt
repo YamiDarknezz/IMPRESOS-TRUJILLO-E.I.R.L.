@@ -1,0 +1,15 @@
+revise los objetivos entre todos los documentos porque varían (los objetivos no pueden cambiar, revise su matriz de consistencia).
+
+costeo por paquete mal aplicado
+
+mejorar el control de cambios colocando los cargos de stakeholders
+
+6.2 de business case mal aplicado.
+
+colocar todas las actividades de principio a fin en anexos de informe de estado
+
+en el grafo EDT no ha colocado actividades y sus códigos.
+
+ítem 6 del plan de desarrollo de sw es una fila por entregable.
+
+los antecedentes se redactan en prosa

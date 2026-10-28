@@ -1,5 +1,7 @@
 <div class="acciones-impresion">
-  <a class="btn-secondary btn-sm" routerLink="/ordenes">← Volver a órdenes</a>
+  <a class="btn-secondary btn-sm" routerLink="/ordenes">
+    <app-icon name="arrow-left" [size]="16" /> Volver a órdenes
+  </a>
   @if (orden()) {
     <button class="btn-primary btn-sm" (click)="imprimir()">
       Imprimir / Guardar como PDF

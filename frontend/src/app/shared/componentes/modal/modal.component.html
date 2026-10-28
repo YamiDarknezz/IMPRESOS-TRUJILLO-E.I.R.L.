@@ -7,7 +7,9 @@
       <h3 [id]="idTitulo" [class]="claseTitulo()">{{ titulo() }}</h3>
       <ng-content select="[modal-cabecera]" />
       @if (conBotonCerrar()) {
-        <button type="button" class="btn-icon modal-cerrar" (click)="cerrar.emit()" aria-label="Cerrar">✕</button>
+        <button type="button" class="btn-icon modal-cerrar" (click)="cerrar.emit()" aria-label="Cerrar">
+          <app-icon name="x" [size]="18" />
+        </button>
       }
     </div>
     <ng-content />

@@ -26,6 +26,7 @@ from app.core.errores import MENSAJE_ERROR_INTERNO, ErrorDeNegocio, logger
 from app.routers import (
     auditoria,
     auth,
+    bi,
     caja,
     clientes,
     comprobantes,
@@ -126,7 +127,7 @@ async def manejar_error_inesperado(request: Request, exc: Exception):
 
 for modulo in (
     auth, usuarios, clientes, unidades, inventario, productos, ordenes, comprobantes,
-    configuracion, finanzas, caja, auditoria,
+    configuracion, finanzas, caja, auditoria, bi,
 ):
     app.include_router(modulo.router)
 

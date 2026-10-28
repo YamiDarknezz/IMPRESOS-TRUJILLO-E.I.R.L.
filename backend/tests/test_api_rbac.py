@@ -372,3 +372,89 @@ async def test_admin_restablece_password_de_otro_usuario(cliente_api, sesion, ad
     assert login.status_code == 200
     token_temporal = {"Authorization": f"Bearer {login.json()['data']['access_token']}"}
     assert (await cliente_api.get("/api/ordenes", headers=token_temporal)).status_code == 403
+
+
+# ══ Permisos de inventario: Secretaría puede dar de alta pero no editar ni alterar stock ═══
+
+async def test_secretaria_puede_crear_material_y_piezas_pero_no_editar_ni_ajustar_stock(
+    cliente_api, sesion, unidad, operario
+):
+    """
+    Regla del negocio (recepción de mercadería): la secretaria recibe rollos/insumos
+    en recepción y puede darlos de alta en catálogo y piezas, pero no puede alterar
+    configuraciones maestras ni forzar ajustes de stock tras conteo (supervisión).
+    """
+    secretaria = await _usuario(sesion, Rol.SECRETARIA, "secretaria-inv@impresos.test")
+
+    # 1. Secretaria sí puede registrar un nuevo material (recepción de mercadería)
+    payload_creacion = {
+        "nombre": "Vinil Adhesivo Mate 1.50m",
+        "unidad_id": unidad.id,
+        "stock_inicial": 50.0,
+        "alerta_minima": 10.0,
+        "dias_reabastecimiento": 3,
+        "precio_compra": 180.0,
+        "ubicacion_estante": "Rack B-1",
+        "tipo_formato": "continuo_rollo",
+        "ancho_predeterminado_m": 1.5,
+        "largo_predeterminado_m": 50.0,
+        "espesor_mm": None,
+    }
+    resp_crear = await cliente_api.post(
+        "/api/inventario",
+        json=payload_creacion,
+        headers=cabecera_token(secretaria),
+    )
+    assert resp_crear.status_code == 200
+    material_id = resp_crear.json()["data"]["id"]
+    assert resp_crear.json()["data"]["stock_actual"] == 50.0
+
+    # 2. Secretaria sí puede registrar una pieza o rollo continuo
+    payload_pieza = {
+        "material_id": material_id,
+        "codigo_identificador": "ROLL-SEC-01",
+        "capacidad_inicial": 50.0,
+        "unidad_medida": "m",
+        "costo_adquisicion": 180.0,
+        "ubicacion": "Rack B-1",
+    }
+    resp_pieza = await cliente_api.post(
+        "/api/inventario/piezas",
+        json=payload_pieza,
+        headers=cabecera_token(secretaria),
+    )
+    assert resp_pieza.status_code == 200
+    assert resp_pieza.json()["data"]["codigo_identificador"] == "ROLL-SEC-01"
+
+    # 3. Secretaria NO puede editar la ficha técnica del material (403)
+    resp_editar = await cliente_api.patch(
+        f"/api/inventario/{material_id}",
+        json={
+            "nombre": "Vinil Adhesivo Modificado",
+            "unidad_id": unidad.id,
+            "alerta_minima": 5.0,
+            "dias_reabastecimiento": 2,
+            "precio_compra": 150.0,
+            "ubicacion_estante": "Rack C-2",
+            "tipo_formato": "continuo_rollo",
+        },
+        headers=cabecera_token(secretaria),
+    )
+    assert resp_editar.status_code == 403
+
+    # 4. Secretaria NO puede ajustar stock manual libremente (403)
+    resp_ajustar = await cliente_api.patch(
+        f"/api/inventario/{material_id}/stock",
+        json={"stock_actual": 999.0, "nota": "Intento de ajuste no autorizado"},
+        headers=cabecera_token(secretaria),
+    )
+    assert resp_ajustar.status_code == 403
+
+    # 5. Operario no puede registrar materiales (403)
+    resp_operario = await cliente_api.post(
+        "/api/inventario",
+        json={"nombre": "Material Prohibido", "unidad_id": unidad.id},
+        headers=cabecera_token(operario),
+    )
+    assert resp_operario.status_code == 403
+

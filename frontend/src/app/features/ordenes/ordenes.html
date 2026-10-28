@@ -47,79 +47,86 @@
 }
 
 <!-- ═══ Filtros ═══════════════════════════════════════════════════════════ -->
-<div class="toolbar toolbar-wrap">
-  <div class="filter-group">
-    @for (opcion of opcionesFiltro; track opcion.valor) {
-      <button class="filter-btn" [class.active]="filtroEstado() === opcion.valor"
-              (click)="filtroEstado.set(opcion.valor)">{{ opcion.etiqueta }}</button>
-    }
-  </div>
-
-  <div class="search-box">
-    <span class="search-icon"><app-icon name="search" [size]="15" /></span>
-    <input type="text" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)"
-           name="busquedaOrdenes" class="search-input"
-           placeholder="Buscar por código, cliente, teléfono o descripción...">
-    @if (busqueda()) {
-      <button class="search-clear" (click)="busqueda.set('')" title="Limpiar búsqueda" aria-label="Limpiar búsqueda">
-        <app-icon name="x" [size]="13" />
-      </button>
-    }
-  </div>
-
-  <select class="search-input filtro-canal" [ngModel]="filtroCanal()" (ngModelChange)="filtroCanal.set($event)"
-          name="filtroCanal" aria-label="Filtrar por canal de ingreso">
-    <option value="">Todos los canales</option>
-    @for (c of canales(); track c.valor) {
-      <option [value]="c.valor">{{ c.etiqueta }}</option>
-    }
-  </select>
-
-  <!-- Imprenta o Gigantografías (#123): se filtra en el servidor, así vale con más de 100 órdenes. -->
-  <select class="search-input filtro-canal" [ngModel]="local()" (ngModelChange)="cambiarLocal($event)"
-          name="filtroLocal" aria-label="Filtrar por local">
-    <option value="">Todos los locales</option>
-    @for (u of unidades; track u) {
-      <option [value]="u">{{ etiquetaUnidad[u] }}</option>
-    }
-  </select>
-
-  <button type="button" class="filter-btn" [class.active]="soloPendientesHoy()"
-          (click)="alternarPendientesHoy()"
-          title="En proceso con entrega hoy o ya vencida">
-    Pendientes de hoy
-  </button>
-
-  <div class="date-filter-group">
-    <div class="date-filter-item">
-      <label class="date-filter-label">Desde</label>
-      <input type="date" [ngModel]="desde()" (ngModelChange)="desde.set($event)"
-             name="desde" class="date-filter-input">
+<div class="toolbar toolbar-organizada ordenes-toolbar">
+  <div class="toolbar-filtros ordenes-filtros">
+    <div class="filter-group" role="group" aria-label="Filtrar por estado">
+      @for (opcion of opcionesFiltro; track opcion.valor) {
+        <button class="filter-btn" [class.active]="filtroEstado() === opcion.valor"
+                [attr.aria-pressed]="filtroEstado() === opcion.valor"
+                (click)="filtroEstado.set(opcion.valor)">{{ opcion.etiqueta }}</button>
+      }
     </div>
-    <div class="date-filter-item">
-      <label class="date-filter-label">Hasta</label>
-      <input type="date" [ngModel]="hasta()" (ngModelChange)="hasta.set($event)"
-             name="hasta" class="date-filter-input">
+
+    <div class="search-box">
+      <span class="search-icon"><app-icon name="search" [size]="15" /></span>
+      <input type="text" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)"
+             name="busquedaOrdenes" class="search-input"
+             placeholder="Buscar por código, cliente, teléfono o descripción...">
+      @if (busqueda()) {
+        <button class="search-clear" (click)="busqueda.set('')" title="Limpiar búsqueda" aria-label="Limpiar búsqueda">
+          <app-icon name="x" [size]="13" />
+        </button>
+      }
     </div>
-    @if (hayFiltroFecha()) {
-      <button class="search-clear date-filter-clear" (click)="limpiarFiltroFecha()" title="Limpiar fechas" aria-label="Limpiar fechas">
-        <app-icon name="x" [size]="13" />
-      </button>
-    }
-  </div>
 
-  <button class="btn-secondary btn-sm" (click)="actualizar()" [disabled]="cargando()">↻ Actualizar</button>
+    <select class="search-input filtro-canal" [ngModel]="filtroCanal()" (ngModelChange)="filtroCanal.set($event)"
+            name="filtroCanal" aria-label="Filtrar por canal de ingreso">
+      <option value="">Todos los canales</option>
+      @for (c of canales(); track c.valor) {
+        <option [value]="c.valor">{{ c.etiqueta }}</option>
+      }
+    </select>
 
-  @if (sesion.puedeGestionarOrdenes()) {
-    <a class="btn-primary" routerLink="/ordenes/nueva">+ Nueva Orden</a>
-  }
+    <!-- Imprenta o Gigantografías (#123): se filtra en el servidor, así vale con más de 100 órdenes. -->
+    <select class="search-input filtro-canal" [ngModel]="local()" (ngModelChange)="cambiarLocal($event)"
+            name="filtroLocal" aria-label="Filtrar por local">
+      <option value="">Todos los locales</option>
+      @for (u of unidades; track u) {
+        <option [value]="u">{{ etiquetaUnidad[u] }}</option>
+      }
+    </select>
 
-  @if (sesion.puedeVender()) {
-    <button class="btn-primary btn-success" (click)="ventaRapidaAbierta.set(true)">
-      <app-icon name="plus" [size]="16" /> Venta Rápida / Mostrador
+    <button type="button" class="filter-btn" [class.active]="soloPendientesHoy()"
+            [attr.aria-pressed]="soloPendientesHoy()"
+            (click)="alternarPendientesHoy()"
+            title="En proceso con entrega hoy o ya vencida">
+      Pendientes de hoy
     </button>
-  }
-</div>                            
+
+    <div class="date-filter-group">
+      <div class="date-filter-item">
+        <label class="date-filter-label">Desde</label>
+        <input type="date" [ngModel]="desde()" (ngModelChange)="cambiarFecha('desde', $event)"
+               name="desde" class="date-filter-input">
+      </div>
+      <div class="date-filter-item">
+        <label class="date-filter-label">Hasta</label>
+        <input type="date" [ngModel]="hasta()" (ngModelChange)="cambiarFecha('hasta', $event)"
+               name="hasta" class="date-filter-input">
+      </div>
+      @if (hayFiltroFecha()) {
+        <button class="search-clear date-filter-clear" (click)="limpiarFiltroFecha()" title="Limpiar fechas" aria-label="Limpiar fechas">
+          <app-icon name="x" [size]="13" />
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="toolbar-acciones ordenes-acciones">
+    <button type="button" class="btn-secondary" (click)="actualizar()" [disabled]="cargando()">
+      <app-icon name="refresh-cw" [size]="16" /> Actualizar
+    </button>
+    @if (sesion.puedeGestionarOrdenes()) {
+      <a class="btn-primary" routerLink="/ordenes/nueva"><app-icon name="plus" [size]="17" /> Nueva Orden</a>
+    }
+
+    @if (sesion.puedeVender()) {
+      <button type="button" class="btn-secondary btn-success-soft" (click)="ventaRapidaAbierta.set(true)">
+        <app-icon name="dollar-sign" [size]="16" /> Venta Rápida / Mostrador
+      </button>
+    }
+  </div>
+</div>
 
 <!-- Aviso de recorte: la tabla trae un bloque y el backend informa el total.
      Sin esto, con más de 100 órdenes la pantalla parecía completa (#27). -->
@@ -157,7 +164,7 @@
 } @else {
         <p>{{ filtroEstado() === 'todos' ? 'Aún no hay órdenes registradas.' : 'No hay órdenes con este estado.' }}</p>
         @if (filtroEstado() === 'todos' && sesion.puedeGestionarOrdenes()) {
-          <a class="btn-primary" routerLink="/ordenes/nueva">+ Crear primera orden</a>
+          <a class="btn-primary" routerLink="/ordenes/nueva"><app-icon name="plus" [size]="17" /> Crear primera orden</a>
         }
       }
     </div>

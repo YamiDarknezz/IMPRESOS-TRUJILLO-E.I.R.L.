@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
@@ -15,6 +15,12 @@ interface OpcionMenu {
   ruta: string;
   icono: IconName;
   etiqueta: string;
+}
+
+interface GrupoMenu {
+  clave: string;
+  etiqueta: string;
+  opciones: OpcionMenu[];
 }
 
 /**
@@ -43,35 +49,60 @@ export class ShellComponent {
   /** En móvil el menú es un cajón que se superpone. */
   readonly cajonAbierto = signal(false);
 
-  /** Pantallas de operación: las ve todo el personal. */
+  /** Flujo diario de trabajo, disponible para todo el personal. */
   readonly menuOperacion: OpcionMenu[] = [
     { ruta: '/ordenes',    icono: 'clipboard-list', etiqueta: 'Órdenes' },
-    { ruta: '/inventario', icono: 'package',        etiqueta: 'Inventario' },
     { ruta: '/caja',       icono: 'wallet',         etiqueta: 'Caja' },
-    { ruta: '/finanzas',   icono: 'bar-chart',      etiqueta: 'Finanzas' },
+    { ruta: '/inventario', icono: 'package',        etiqueta: 'Inventario' },
   ];
 
-  /** Administración: cada opción aparece según el rol (el backend manda). */
-  get menuAdministracion(): OpcionMenu[] {
+  /** Ficha y catálogo comercial: cada opción conserva su permiso actual. */
+  readonly menuComercial = computed(() => {
     const opciones: OpcionMenu[] = [];
-
     if (this.sesion.puedeGestionarOrdenes()) {
       opciones.push({ ruta: '/clientes', icono: 'users', etiqueta: 'Clientes' });
     }
-    if (this.sesion.esSupervisor()) {
-      opciones.push({ ruta: '/cuentas-por-cobrar', icono: 'coins', etiqueta: 'Por cobrar' });
-    }
     if (this.sesion.esAdmin()) {
-      // "Productos" se mostraba también al subgerente, pero la ruta es
-      // solo-admin (`rolesGuard('admin')` en app.routes.ts) y lo redirigía
-      // en silencio.
       opciones.push({ ruta: '/productos', icono: 'tag', etiqueta: 'Productos' });
-      opciones.push({ ruta: '/unidades', icono: 'ruler', etiqueta: 'Unidades' });
-      opciones.push({ ruta: '/usuarios', icono: 'key', etiqueta: 'Usuarios' });
-      opciones.push({ ruta: '/auditoria', icono: 'receipt-text', etiqueta: 'Auditoría' });
     }
     return opciones;
-  }
+  });
+
+  /** Caja financiera y seguimiento de saldos por cobrar. */
+  readonly menuFinanzas = computed(() => {
+    const opciones: OpcionMenu[] = [
+      { ruta: '/finanzas', icono: 'landmark', etiqueta: 'Finanzas' },
+    ];
+    if (this.sesion.esSupervisor()) {
+      opciones.push({ ruta: '/cuentas-por-cobrar', icono: 'coins', etiqueta: 'Cuentas por cobrar' });
+    }
+    return opciones;
+  });
+
+  /** Inteligencia de negocio se presenta como una sección propia. */
+  readonly menuAnalitica = computed(() => this.sesion.esSupervisor()
+    ? [{ ruta: '/bi', icono: 'bar-chart' as const, etiqueta: 'Inteligencia de negocio' }]
+    : []
+  );
+
+  /** Configuración y control administrativo, solo para administración. */
+  readonly menuAdministracion = computed(() => this.sesion.esAdmin()
+    ? [
+        { ruta: '/unidades', icono: 'ruler' as const, etiqueta: 'Unidades' },
+        { ruta: '/usuarios', icono: 'key' as const, etiqueta: 'Usuarios' },
+        { ruta: '/auditoria', icono: 'receipt-text' as const, etiqueta: 'Auditoría' },
+      ]
+    : []
+  );
+
+  /** Grupos vacíos se omiten para que el menú siga siendo claro por rol. */
+  readonly gruposMenu = computed<GrupoMenu[]>(() => [
+    { clave: 'operacion', etiqueta: 'Operación', opciones: this.menuOperacion },
+    { clave: 'comercial', etiqueta: 'Comercial', opciones: this.menuComercial() },
+    { clave: 'finanzas', etiqueta: 'Finanzas', opciones: this.menuFinanzas() },
+    { clave: 'analitica', etiqueta: 'Analítica', opciones: this.menuAnalitica() },
+    { clave: 'administracion', etiqueta: 'Administración', opciones: this.menuAdministracion() },
+  ].filter(grupo => grupo.opciones.length > 0));
 
   constructor() {
     this.sesion.cargar();

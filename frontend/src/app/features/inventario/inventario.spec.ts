@@ -87,7 +87,9 @@ describe('InventarioComponent', () => {
         { provide: InventarioService, useValue: inventarioFalso },
         { provide: UnidadesService, useValue: unidadesFalso },
         { provide: OrdenesService, useValue: ordenesFalso },
-        { provide: SesionService, useValue: { esSupervisor: signal(true) } },
+        { provide: SesionService, useValue: {
+          esSupervisor: signal(true), puedeRegistrarInventario: signal(true),
+        } },
       ],
     });
   });

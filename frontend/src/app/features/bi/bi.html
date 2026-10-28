@@ -1,0 +1,171 @@
+<header class="bi-heading">
+  <div><h1>Inteligencia de negocio</h1><p>Ventas, cobranza y trabajo por atender. Datos del aplicativo, en hora de Perú.</p></div>
+  <button class="btn-secondary" [disabled]="!datos() || cargando()" (click)="exportar()">Exportar CSV</button>
+</header>
+
+<form class="bi-filtros" (ngSubmit)="cargar()" aria-label="Filtros de inteligencia de negocio">
+  <div class="filter-group">
+    <button type="button" class="filter-btn" (click)="periodo('semana')">Últimos 7 días</button>
+    <button type="button" class="filter-btn" (click)="periodo('mes')">Este mes</button>
+    <button type="button" class="filter-btn" (click)="periodo('anterior')">7 días completos</button>
+  </div>
+  <label>Desde<input type="date" name="desde" [max]="hoy" [ngModel]="desde()" (ngModelChange)="desde.set($event); cargar()" required></label>
+  <label>Hasta<input type="date" name="hasta" [max]="hoy" [ngModel]="hasta()" (ngModelChange)="hasta.set($event); cargar()" required></label>
+  <label>Línea<select name="linea" [ngModel]="unidad()" (ngModelChange)="unidad.set($event); cargar()">
+    <option value="">Todas las líneas</option><option value="imprenta">Imprenta</option><option value="gigantografias">Gigantografías</option>
+  </select></label>
+  <label>Canal<select name="canal" [ngModel]="canal()" (ngModelChange)="canal.set($event); cargar()">
+    <option value="">Todos los canales</option>
+    @for (c of canales(); track c.valor) { <option [value]="c.valor">{{ c.etiqueta }}</option> }
+  </select></label>
+  <button class="btn-primary" type="submit" [disabled]="cargando()">Actualizar</button>
+</form>
+
+@if (error()) {
+  <div class="bi-error" role="alert"><p>{{ error() }}</p><button class="btn-secondary" (click)="cargar()">Reintentar</button></div>
+}
+@if (cargando()) {
+  <div class="empty-state" role="status"><span class="loader-spinner"></span><p>Calculando indicadores del negocio…</p></div>
+}
+@if (datos(); as d) {
+  <p class="bi-corte">Actualizado {{ d.generado_en | date:'dd/MM/yyyy HH:mm':'-0500' }} ·
+    @if (d.periodo.dia_parcial) { Hoy está en curso; sus totales son parciales. }
+    @else { Período de días completos. }
+    @if (d.primera_orden) { Primera orden registrada: {{ d.primera_orden | date:'dd/MM/yyyy':'UTC' }}. }
+  </p>
+
+  <section aria-labelledby="resumen-title">
+    <h2 id="resumen-title">Resultado del período</h2>
+    <div class="bi-indicadores">
+      <article><h3>Valor de órdenes</h3><strong>S/ {{ d.indicadores.valor_ordenes | number:'1.2-2' }}</strong><p>{{ variacion('valor_ordenes') }}</p></article>
+      <article><h3>Cobros conformes</h3><strong>S/ {{ d.indicadores.cobros | number:'1.2-2' }}</strong><p>{{ variacion('cobros') }}</p></article>
+      <article><h3>Órdenes creadas</h3><strong>{{ d.indicadores.ordenes }}</strong><p>{{ variacion('ordenes') }}</p></article>
+      <article><h3>Ticket promedio</h3><strong>S/ {{ d.indicadores.ticket_promedio | number:'1.2-2' }}</strong><p>Valor de órdenes / cantidad de órdenes</p></article>
+      <article><h3>Liquidadas al corte</h3><strong>{{ d.indicadores.porcentaje_liquidadas === null ? '—' : (d.indicadores.porcentaje_liquidadas | number:'1.1-1') + '%' }}</strong><p>{{ d.indicadores.liquidadas }} de {{ d.indicadores.ordenes }} órdenes del período, pagadas hoy</p></article>
+      <article class="bi-saldo"><h3>Saldo actual por cobrar</h3><strong>S/ {{ d.cobranza.saldo_actual | number:'1.2-2' }}</strong><p>Todos los períodos; respeta línea y canal</p></article>
+    </div>
+    <p class="bi-nota">Las órdenes excluyen canceladas. Los cobros se cuentan en la fecha del pago, aunque la orden sea anterior. Estos importes no representan utilidad.</p>
+    @if (d.comparacion.disponible) {
+      <p class="bi-nota">Comparación: {{ d.comparacion.desde | date:'dd/MM/yyyy':'UTC' }} al {{ d.comparacion.hasta | date:'dd/MM/yyyy':'UTC' }}. El inicio del historial no garantiza captura completa.</p>
+    } @else {
+      <p class="bi-nota">La comparación se habilita con días completos e historial que alcance el período anterior. Usa “7 días completos” para evitar comparar hoy a medio terminar.</p>
+    }
+  </section>
+
+  <section class="bi-panel" aria-labelledby="tendencia-title">
+    <div class="bi-section-heading"><h2 id="tendencia-title">Órdenes y cobros por día</h2><span class="bi-legend"><i class="bi-key bi-venta"></i> Valor de órdenes <i class="bi-key bi-cobro"></i> Cobros</span></div>
+    @if (d.indicadores.ordenes === 0 && d.indicadores.cobros === 0) {
+      <p class="empty-state">No hay órdenes ni cobros para este período y filtros. Amplía las fechas o revisa otra línea.</p>
+    } @else {
+      <div class="bi-chart-scroll" tabindex="0" role="region" aria-label="Gráfico diario desplazable; valores exactos en el detalle inferior">
+        <div class="bi-chart" [style.min-width.px]="d.serie_diaria.length * 36">
+          @for (dia of d.serie_diaria; track dia.fecha) {
+            <div class="bi-dia" [title]="dia.fecha + ': órdenes S/ ' + dia.ventas + ', cobros S/ ' + dia.cobros">
+              <div class="bi-barras" aria-hidden="true"><span class="bi-venta" [style.height.%]="dia.ventas / maximoSerie() * 100"></span><span class="bi-cobro" [style.height.%]="dia.cobros / maximoSerie() * 100"></span></div>
+              <span>{{ dia.fecha | date:'dd/MM':'UTC' }}</span>
+            </div>
+          }
+        </div>
+      </div>
+      <details class="bi-details"><summary>Ver importes diarios y escala del gráfico (máximo S/ {{ maximoSerie() | number:'1.2-2' }})</summary>
+        <div class="bi-table-scroll"><table><thead><tr><th>Día Perú</th><th>Valor de órdenes</th><th>Cobros conformes</th></tr></thead><tbody>
+          @for (dia of d.serie_diaria; track dia.fecha) { <tr><td>{{ dia.fecha | date:'dd/MM/yyyy':'UTC' }}</td><td>S/ {{ dia.ventas | number:'1.2-2' }}</td><td>S/ {{ dia.cobros | number:'1.2-2' }}</td></tr> }
+        </tbody></table></div>
+      </details>
+    }
+  </section>
+
+  <section class="bi-panel" aria-labelledby="atencion-title">
+    <div class="bi-section-heading"><h2 id="atencion-title">Qué requiere atención ahora</h2><a routerLink="/ordenes">Ir a órdenes</a></div>
+    <p class="bi-nota">Estado actual de todas las fechas, para la línea y canal elegidos. “Sin entrega registrada” no confirma que el trabajo siga físicamente en el local.</p>
+    <div class="bi-acciones" role="group" aria-label="Elegir pedidos a revisar">
+      <button [class.active]="vistaPendientes() === 'para_entregar'" [attr.aria-pressed]="vistaPendientes() === 'para_entregar'" (click)="vistaPendientes.set('para_entregar')"><strong>{{ d.operacion.listas_pagadas }}</strong> Finalizadas y pagadas<span>Revisar entrega o actualizar registro</span></button>
+      <button [class.active]="vistaPendientes() === 'para_cobrar'" [attr.aria-pressed]="vistaPendientes() === 'para_cobrar'" (click)="vistaPendientes.set('para_cobrar')"><strong>{{ d.operacion.listas_con_deuda }}</strong> Finalizadas con deuda<span>S/ {{ d.operacion.saldo_finalizadas | number:'1.2-2' }} por recuperar</span></button>
+      <button [class.active]="vistaPendientes() === 'vencidas'" [attr.aria-pressed]="vistaPendientes() === 'vencidas'" (click)="vistaPendientes.set('vencidas')"><strong>{{ d.operacion.fecha_vencida }}</strong> Con fecha comprometida pasada<span>Sin entrega registrada</span></button>
+    </div>
+    <p class="bi-nota">Hasta 10 órdenes, de la fecha comprometida más antigua a la más reciente.</p>
+    <div class="bi-table-scroll"><table><thead><tr><th>Orden / cliente</th><th>Fecha comprometida</th><th>Estado</th><th>Saldo</th><th>Revisar</th></tr></thead><tbody>
+      @for (o of pendientes(); track o.id) {
+        <tr><td><a [routerLink]="['/ordenes', o.id, 'imprimir']">{{ o.codigo }}</a><span class="bi-cell-detail">{{ o.cliente }}</span></td><td>{{ o.fecha_entrega | date:'dd/MM/yyyy':'UTC' }}</td><td>{{ etiquetaEstado[o.estado] || o.estado }}</td><td>S/ {{ o.saldo | number:'1.2-2' }}</td><td><button class="btn-secondary btn-sm" (click)="verPagos(o.id)" [attr.aria-label]="'Ver pagos de ' + o.codigo">Ver pagos</button></td></tr>
+      } @empty { <tr><td colspan="5">No hay órdenes en esta categoría.</td></tr> }
+    </tbody></table></div>
+  </section>
+
+  <div class="bi-columns">
+    <section class="bi-panel" aria-labelledby="deuda-title">
+      <h2 id="deuda-title">Dónde está el saldo pendiente</h2>
+      <p class="bi-nota">Saldo actual de todas las fechas. Los 10 clientes con mayor deuda.</p>
+      <div class="bi-lineas-deuda">
+        @for (l of d.cobranza.por_linea; track l.clave) { <p><span>{{ nombreLinea(l.clave) }}</span><strong>S/ {{ l.saldo | number:'1.2-2' }}</strong></p> }
+      </div>
+      <div class="bi-table-scroll"><table><thead><tr><th>Cliente</th><th>Órdenes</th><th>Saldo</th></tr></thead><tbody>
+        @for (c of d.cobranza.clientes; track c.id) { <tr><td>{{ c.nombre }}</td><td>{{ c.ordenes }}</td><td>S/ {{ c.saldo | number:'1.2-2' }}</td></tr> }
+        @empty { <tr><td colspan="3">No hay saldos pendientes.</td></tr> }
+      </tbody></table></div>
+      <h3>Saldo con fecha comprometida pasada</h3>
+      <p class="bi-nota">Edad desde la fecha de entrega prometida; no es vencimiento contractual del crédito.</p>
+      <dl class="bi-lista"><div><dt>1 a 7 días</dt><dd>S/ {{ (d.cobranza.vencida_por_entrega['hasta_7'] || 0) | number:'1.2-2' }}</dd></div><div><dt>8 a 30 días</dt><dd>S/ {{ (d.cobranza.vencida_por_entrega['d8_30'] || 0) | number:'1.2-2' }}</dd></div><div><dt>Más de 30 días</dt><dd>S/ {{ (d.cobranza.vencida_por_entrega['mas_30'] || 0) | number:'1.2-2' }}</dd></div></dl>
+      <p>Entregadas con autorización y deuda actual: <strong>S/ {{ d.cobranza.entregado_autorizado_con_deuda | number:'1.2-2' }}</strong>.</p>
+      <a routerLink="/cuentas-por-cobrar">Abrir seguimiento de cuentas por cobrar</a>
+    </section>
+    <section class="bi-panel" aria-labelledby="ventas-title">
+      <h2 id="ventas-title">Qué genera trabajo</h2>
+      <h3>Por línea de negocio · período seleccionado</h3>
+      <div class="bi-table-scroll"><table><thead><tr><th>Línea</th><th>Órdenes</th><th>Valor</th><th>Ticket</th></tr></thead><tbody>
+        @for (l of d.por_linea; track l.clave) { <tr><td>{{ nombreLinea(l.clave) }}</td><td>{{ l.ordenes }}</td><td>S/ {{ l.ventas | number:'1.2-2' }}</td><td>S/ {{ l.ticket | number:'1.2-2' }}</td></tr> }
+        @empty { <tr><td colspan="4">Sin órdenes en el período.</td></tr> }
+      </tbody></table></div>
+      <h3>Por canal de ingreso</h3>
+      <div class="bi-table-scroll"><table><thead><tr><th>Canal</th><th>Órdenes</th><th>Valor</th><th>Ticket</th></tr></thead><tbody>
+        @for (c of d.por_canal; track c.clave) { <tr><td>{{ etiquetaCanal()[c.clave] || c.clave }}</td><td>{{ c.ordenes }}</td><td>S/ {{ c.ventas | number:'1.2-2' }}</td><td>S/ {{ c.ticket | number:'1.2-2' }}</td></tr> }
+        @empty { <tr><td colspan="4">Sin órdenes en el período.</td></tr> }
+      </tbody></table></div>
+      <h3>Cómo se recibió el dinero</h3>
+      <p>Yape total: <strong>S/ {{ yapeTotal() | number:'1.2-2' }}</strong></p>
+      <dl class="bi-lista">@for (m of d.cobros_por_metodo; track m.metodo) { <div><dt>{{ etiquetaMetodo()[m.metodo] || m.metodo }}</dt><dd>S/ {{ m.monto | number:'1.2-2' }}</dd></div> }</dl>
+      <p class="bi-nota">Yape total agrupa los dos destinatarios y el método histórico sin destinatario; el desglose no se suma otra vez.</p>
+    </section>
+  </div>
+
+  <div class="bi-columns">
+    <section class="bi-panel" aria-labelledby="clientes-title">
+      <h2 id="clientes-title">Clientes que vuelven</h2>
+      <p><strong>{{ d.clientes.recurrentes }}</strong> de {{ d.clientes.total }} clientes hicieron más de una orden en el período. Generaron <strong>S/ {{ d.clientes.ventas_recurrentes | number:'1.2-2' }}</strong>.</p>
+      <p class="bi-nota">Recurrencia dentro del rango elegido, no de toda la vida del cliente. Hasta 5 clientes por valor de órdenes.</p>
+      <div class="bi-table-scroll"><table><thead><tr><th>Cliente</th><th>Órdenes</th><th>Valor</th><th>Participación</th></tr></thead><tbody>
+        @for (c of d.clientes.principales; track c.id) { <tr><td>{{ c.nombre }}</td><td>{{ c.ordenes }}</td><td>S/ {{ c.ventas | number:'1.2-2' }}</td><td>{{ (d.indicadores.valor_ordenes ? c.ventas / d.indicadores.valor_ordenes * 100 : 0) | number:'1.1-1' }}%</td></tr> }
+        @empty { <tr><td colspan="4">Sin clientes con órdenes en este período.</td></tr> }
+      </tbody></table></div>
+    </section>
+    <section class="bi-panel" aria-labelledby="calidad-title">
+      <h2 id="calidad-title">Cómo interpretar estos datos</h2>
+      <dl class="bi-lista">
+        <div><dt>Órdenes sin responsable · al corte</dt><dd>{{ d.operacion.sin_asignar }} / {{ d.operacion.ordenes }}</dd></div>
+        <div><dt>Tiempo medio hasta finalizar · período</dt><dd>{{ d.operacion.horas_hasta_finalizar === null ? 'Sin datos' : (d.operacion.horas_hasta_finalizar | number:'1.1-1') + ' h' }}</dd></div>
+      </dl>
+      <p class="bi-nota">Duración transcurrida, no horas trabajadas: {{ d.operacion.finalizadas_con_fecha }} órdenes con fecha de finalización coherente dentro del período. No es un ranking de productividad.</p>
+      <details class="bi-details"><summary>Distribución de estados al corte</summary><dl class="bi-lista">@for (e of d.operacion.por_estado; track e.estado) { <div><dt>{{ etiquetaEstado[e.estado] || e.estado }}</dt><dd>{{ e.ordenes }}</dd></div> }</dl></details>
+      @if (d.calidad.pagos_en_canceladas > 0) { <p class="bi-aviso">Hay S/ {{ d.calidad.pagos_en_canceladas | number:'1.2-2' }} de pagos conformes del período en órdenes canceladas. Se excluyen de cobros; revisar retención o devolución.</p> }
+      @if (d.calidad.ordenes_descuadradas > 0) {
+        <p class="bi-aviso">{{ d.calidad.ordenes_descuadradas }} órdenes no concilian total, saldo y pagos conformes al corte. Se muestran los registros existentes, sin corregirlos automáticamente.</p>
+        <div class="bi-enlaces">@for (id of d.calidad.ids_descuadradas; track id) { <button class="btn-secondary btn-sm" (click)="verPagos(id)">Revisar orden #{{ id }}</button> }</div>
+      }
+      <p class="bi-nota">Esta versión no estima utilidad neta, rentabilidad por producto, mermas ni predicciones. Requieren costos y consumos completos e historial suficiente.</p>
+    </section>
+  </div>
+}
+
+@if (historial() || cargandoHistorial() || errorHistorial()) {
+  <app-modal [titulo]="'Historial de pagos' + (historial() ? ' · ' + historial()!.codigo : '')" [conBotonCerrar]="true" (cerrar)="cerrarHistorial()">
+    @if (cargandoHistorial()) { <p role="status">Consultando pagos…</p> }
+    @if (errorHistorial()) { <p role="alert">{{ errorHistorial() }}</p> }
+    @if (historial(); as o) {
+      <p>Total S/ {{ o.finanzas?.precio_total | number:'1.2-2' }} · Saldo S/ {{ o.finanzas?.saldo_pendiente | number:'1.2-2' }}</p>
+      <div class="bi-table-scroll"><table><thead><tr><th>Fecha Perú</th><th>Método</th><th>Importe</th><th>Estado</th></tr></thead><tbody>
+        @for (p of o.finanzas?.pagos; track p.id) { <tr><td>{{ p.fecha | date:'dd/MM/yyyy HH:mm':'-0500' }}</td><td>{{ etiquetaMetodo()[p.metodo] || p.metodo }}</td><td>S/ {{ p.monto | number:'1.2-2' }}</td><td>{{ p.estado_pago || 'conforme' }}</td></tr> }
+        @empty { <tr><td colspan="4">No hay pagos registrados.</td></tr> }
+      </tbody></table></div>
+      <a [routerLink]="['/ordenes', o.id, 'imprimir']">Ver orden completa</a>
+    }
+  </app-modal>
+}
