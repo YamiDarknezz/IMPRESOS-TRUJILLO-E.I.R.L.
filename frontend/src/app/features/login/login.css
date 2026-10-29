@@ -179,3 +179,58 @@
   font-size: 0.75rem;
   margin: 1.5rem 0 0;
 }
+
+/* ─── Animación de entrada de la tarjeta ────────────────────────────────── */
+
+@keyframes login-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.login-card {
+  animation: login-card-in 0.4s ease-out;
+}
+
+/* Reduce la animación si el usuario prefiere menos movimiento (accesibilidad) */
+@media (prefers-reduced-motion: reduce) {
+  .login-card {
+    animation: none;
+  }
+}
+
+/* ─── Shake al fallar el login ──────────────────────────────────────────── */
+
+@keyframes login-shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-8px); }
+  30% { transform: translateX(8px); }
+  45% { transform: translateX(-6px); }
+  60% { transform: translateX(6px); }
+  75% { transform: translateX(-3px); }
+  90% { transform: translateX(3px); }
+}
+
+/* Cuando existe un mensaje de error, el input-group tiembla */
+.input-group:has(+ .error-msg),
+.input-group:has(~ .error-msg) {
+  animation: login-shake 0.4s ease-in-out;
+}
+
+/* Alternativa: si el navegador no soporta :has(), la tarjeta entera tiembla */
+.login-card:has(.error-msg) {
+  animation: login-shake 0.4s ease-in-out;
+}
+
+/* Reduce el movimiento si el usuario prefiere menos (accesibilidad) */
+@media (prefers-reduced-motion: reduce) {
+  .input-group:has(~ .error-msg),
+  .login-card:has(.error-msg) {
+    animation: none;
+  }
+}
