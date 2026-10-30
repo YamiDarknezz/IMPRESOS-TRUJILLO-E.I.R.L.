@@ -1938,3 +1938,154 @@ select.date-filter-input:focus {
 .monto-tachado {
   text-decoration: line-through;
 }
+
+/* ============================================================================
+   MEJORAS DE UI: Toolbar y Botones (Manteniendo el Azul Noche Original)
+   ============================================================================ */
+
+/* 1. Contenedor principal de la barra (Le da un aspecto de tarjeta limpia) */
+.toolbar-organizada {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  padding: 0.75rem 1rem;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+/* 2. Grupo de Filtros (Izquierda) - Integrados y limpios */
+.toolbar-filtros {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  background: var(--surface-2);
+  padding: 0.25rem;
+  border-radius: var(--r-md);
+}
+
+.toolbar-filtros input[type="date"],
+.toolbar-filtros select,
+.toolbar-filtros .filter-btn {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 0.45rem 0.7rem;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.toolbar-filtros input[type="date"]:hover,
+.toolbar-filtros select:hover,
+.toolbar-filtros .filter-btn:hover {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+}
+
+/* El botón seleccionado (Hoy/Ayer) resalta con tu color azul noche */
+.toolbar-filtros .filter-btn.active {
+  background: var(--surface) !important;
+  color: var(--accent) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* 3. Grupo de Acciones (Derecha) */
+.toolbar-acciones {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+/* 4. Estilo base de botones (Se mantiene el color original de la app) */
+.toolbar-acciones button,
+.toolbar-acciones .btn-primary,
+.toolbar-acciones .btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: var(--r-md);
+  /* Aquí NO cambiamos el color, dejamos que tu clase .btn-primary 
+     o .btn-secondary haga su trabajo con el azul noche */
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+/* 5. Efecto "elevación" (Hover) - Muy profesional */
+.toolbar-acciones button:hover,
+.toolbar-acciones .btn-primary:hover,
+.toolbar-acciones .btn-secondary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  filter: brightness(1.1); /* Ilumina un poquito el botón sin cambiar el tono */
+}
+
+.toolbar-acciones button:active,
+.toolbar-acciones .btn-primary:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* 6. LA SOLUCIÓN A LOS CANDADOS GORDOS: Forzar a que sean íconos de línea */
+.toolbar-acciones app-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+  opacity: 0.9;
+  transition: transform 0.2s ease;
+}
+
+/* Hacemos que el SVG interno use líneas (stroke) en vez de relleno (fill) */
+.toolbar-acciones app-icon svg {
+  width: 100%;
+  height: 100%;
+  fill: none !important;          /* Quita el relleno gordo */
+  stroke: currentColor !important; /* Usa el color de texto del botón */
+  stroke-width: 2px !important;    /* Grosor de línea */
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Si el SVG tiene paths con fill explícito, lo anulamos */
+.toolbar-acciones app-icon svg path {
+  fill: none !important;
+  stroke: currentColor !important;
+}
+
+/* Efecto: el candadito se mueve un poquito al pasar el mouse */
+.toolbar-acciones button:hover app-icon {
+  transform: scale(1.15);
+}
+
+/* 7. Ajuste en pantallas pequeñas */
+@media (max-width: 1100px) {
+  .toolbar-organizada {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .toolbar-acciones {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+  
+  .toolbar-filtros {
+    overflow-x: auto;
+    justify-content: flex-start;
+  }
+}
