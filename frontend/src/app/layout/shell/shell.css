@@ -502,8 +502,7 @@
 }
 
 /* 3. Efecto Hover en MODO OSCURO */
-.dark .sidebar-item:hover:not(.active):not(.btn-sidebar-logout),
-body.dark .sidebar-item:hover:not(.active):not(.btn-sidebar-logout) {
+:host-context([data-theme="dark"]) .sidebar-item:hover:not(.active):not(.btn-sidebar-logout) {
   background: rgba(255, 255, 255, 0.1) !important; /* Brillo blanco sutil */
   color: #ffffff !important; /* Texto blanco para que resalte */
 }
@@ -542,11 +541,14 @@ body.dark .sidebar-item:hover:not(.active):not(.btn-sidebar-logout) {
    ARREGLO DEFINITIVO: Botón "Cerrar sesión" (Rojo)
    ============================================================================ */
 
-.sidebar .btn-sidebar-logout,
 .sidebar .btn-sidebar-logout:focus,
-.sidebar .btn-sidebar-logout:focus-visible,
 .sidebar .btn-sidebar-logout:active {
-  outline: none !important;
+  box-shadow: none !important;
+}
+
+.sidebar .btn-sidebar-logout:focus-visible {
+  outline: 2px solid var(--danger) !important;
+  outline-offset: 2px;
   box-shadow: none !important;
 }
 
