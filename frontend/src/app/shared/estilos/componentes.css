@@ -2321,3 +2321,110 @@ select.date-filter-input:focus {
 .table-card .data-table td {
   padding: 0.85rem 0.75rem !important;
 }
+
+/* ============================================================================
+   MEJORAS DE UI: Formulario de Nuevo Material (Botones y Orden)
+   ============================================================================ */
+
+/* 1. El botón "← Volver" de arriba a la derecha */
+.form-header .btn-secondary {
+  height: 34px;
+  padding: 0 1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: var(--r-md);
+  background-color: var(--surface-2) !important; /* Fondo gris suave */
+  color: var(--text-muted) !important;
+  border: 1px solid var(--border) !important;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.form-header .btn-secondary:hover {
+  background-color: var(--surface) !important;
+  color: var(--accent) !important; /* Se pinta con tu azul noche al pasar el mouse */
+  border-color: var(--accent) !important;
+  transform: translateX(-3px); /* Se mueve un poquito a la izquierda, como "volviendo" */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+/* 2. El botón "Cancelar" de abajo */
+.form-actions .btn-secondary {
+  height: 38px;
+  padding: 0 1.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: var(--r-md);
+  transition: all 0.2s ease;
+}
+
+.form-actions .btn-secondary:hover {
+  background-color: var(--surface-2) !important;
+  transform: translateY(-2px);
+}
+
+/* 3. El botón "Guardar Material" (Tu azul noche, solo con efecto de elevación) */
+.form-actions .btn-primary {
+  height: 38px;
+  padding: 0 1.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: var(--r-md);
+  transition: all 0.2s ease;
+}
+
+.form-actions .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15); /* Sombra para que resalte */
+}
+
+.form-actions .btn-primary:active {
+  transform: translateY(0);
+}
+
+/* 4. Un poco de aire para el título "Nuevo Material" */
+.form-header h3 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ============================================================================
+   MEJORAS DE UI: Botón de acción en pantallas vacías (Empty State)
+   ============================================================================ */
+
+/* Le damos movimiento y sombra al botón de "Registrar primer rollo/plancha" */
+.empty-state .btn-primary {
+  height: 40px;
+  padding: 0 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: var(--r-md);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Sombra base para que resalte */
+}
+
+/* El efecto "salto" al pasar el mouse */
+.empty-state .btn-primary:hover {
+  transform: translateY(-3px); /* Salta un poquito más alto */
+  box-shadow: 0 8px 16px rgba(30, 58, 138, 0.25); /* Sombra azul noche difuminada */
+  filter: brightness(1.1); /* Se ilumina sutilmente */
+}
+
+/* Efecto al hacer clic (se hunde) */
+.empty-state .btn-primary:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* También aplicamos el mismo efecto al botón de "Ver más" del pie de página si existe */
+.listado-pie .btn-secondary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
