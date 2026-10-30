@@ -208,29 +208,19 @@
 
 @keyframes login-shake {
   0%, 100% { transform: translateX(0); }
-  15% { transform: translateX(-8px); }
-  30% { transform: translateX(8px); }
-  45% { transform: translateX(-6px); }
-  60% { transform: translateX(6px); }
-  75% { transform: translateX(-3px); }
-  90% { transform: translateX(3px); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-6px); }
+  80% { transform: translateX(6px); }
 }
 
-/* Cuando existe un mensaje de error, el input-group tiembla */
-.input-group:has(+ .error-msg),
-.input-group:has(~ .error-msg) {
+/* Esta clase se activa desde Angular y se quita sola en 400ms */
+.login-card.shake {
   animation: login-shake 0.4s ease-in-out;
 }
 
-/* Alternativa: si el navegador no soporta :has(), la tarjeta entera tiembla */
-.login-card:has(.error-msg) {
-  animation: login-shake 0.4s ease-in-out;
-}
-
-/* Reduce el movimiento si el usuario prefiere menos (accesibilidad) */
 @media (prefers-reduced-motion: reduce) {
-  .input-group:has(~ .error-msg),
-  .login-card:has(.error-msg) {
+  .login-card.shake {
     animation: none;
   }
 }
