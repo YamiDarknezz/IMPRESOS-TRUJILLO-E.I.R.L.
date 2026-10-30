@@ -2089,3 +2089,143 @@ select.date-filter-input:focus {
     justify-content: flex-start;
   }
 }
+
+/* ============================================================================
+   MEJORAS DE UI: Pantalla de Órdenes (Diseño Limpio y Alineado)
+   ============================================================================ */
+
+/* 1. La barra principal (Usamos Flexbox para ordenar naturalmente) */
+.ordenes-toolbar {
+  display: flex;
+  flex-direction: column; /* Apilamos los filtros arriba y los botones abajo */
+  gap: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+/* 2. Contenedor de filtros (Arriba) */
+.ordenes-filtros {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap; /* Si no caben, bajan a la siguiente línea, pero sin romperse */
+  gap: 0.75rem;
+  width: 100%;
+}
+
+/* 3. Los selectores (Canales y Locales) */
+.ordenes-filtros select,
+.ordenes-filtros .filtro-canal {
+  height: 36px !important;
+  padding: 0 2rem 0 0.75rem !important;
+  border-radius: var(--r-sm) !important;
+  border: 1px solid var(--border) !important;
+  background-color: var(--surface-2) !important;
+  color: var(--text) !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  width: 160px !important; /* Ancho fijo, ni muy corto ni muy largo */
+  appearance: none !important;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.5rem center !important;
+  background-size: 12px !important;
+  transition: all 0.2s ease !important;
+}
+
+.ordenes-filtros select:hover,
+.ordenes-filtros .filtro-canal:hover {
+  border-color: var(--accent) !important;
+  background-color: var(--surface) !important;
+}
+
+/* 4. El buscador de la lupa */
+.ordenes-filtros .search-box {
+  height: 36px;
+  flex: 1 1 250px; /* Ocupa el espacio disponible */
+  max-width: 380px;
+}
+
+.ordenes-filtros .search-input {
+  height: 100%;
+  padding-left: 2.2rem !important;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  font-size: 0.8rem !important;
+  width: 100%;
+}
+
+/* 5. Botón "Pendientes de hoy" */
+.ordenes-filtros > .filter-btn {
+  height: 36px !important;
+  padding: 0 1rem !important;
+  border-radius: var(--r-sm) !important;
+  border: 1px solid var(--border) !important;
+  background-color: var(--surface-2) !important;
+  color: var(--text-muted) !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  transition: all 0.15s ease !important;
+}
+
+.ordenes-filtros > .filter-btn:hover {
+  border-color: var(--text-muted) !important;
+  color: var(--text) !important;
+}
+
+.ordenes-filtros > .filter-btn.active {
+  background-color: var(--surface) !important;
+  color: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+
+/* 6. Fechas (Desde / Hasta) */
+.ordenes-filtros .date-filter-group {
+  display: flex;
+  align-items: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 0 0.5rem;
+  height: 36px;
+  gap: 0.5rem;
+}
+
+/* 7. ¡AQUÍ ESTÁ LO QUE PEDISTE! Botones de la derecha ABAJO */
+.ordenes-acciones {
+  display: flex;
+  justify-content: flex-start; /* O pon "center" o "flex-end" si los quieres a la derecha */
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--border-soft); /* Una líneíta sutil para separar los botones de los filtros */
+}
+
+/* 8. Estilo de los botones de acción (Actualizar, Nueva Orden, Venta) */
+.ordenes-acciones .btn-primary,
+.ordenes-acciones .btn-secondary,
+.ordenes-acciones .btn-success-soft {
+  height: 38px;
+  padding: 0 1.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: var(--r-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ordenes-acciones .btn-primary:hover,
+.ordenes-acciones .btn-secondary:hover,
+.ordenes-acciones .btn-success-soft:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
