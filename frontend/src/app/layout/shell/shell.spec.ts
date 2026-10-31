@@ -70,7 +70,7 @@ describe('ShellComponent', () => {
       sesionFalsa.esSupervisor.set(true);
       const fixture = TestBed.createComponent(ShellComponent);
       const componente = fixture.componentInstance;
-      expect(componente.menuAnalitica().map(o => o.ruta)).toEqual(['/bi']);
+      expect(componente.menuAnalitica().map(o => o.ruta)).toEqual(['/bi', '/ia']);
       expect(componente.menuFinanzas().map(o => o.ruta)).toEqual(['/finanzas', '/cuentas-por-cobrar']);
       expect(componente.menuComercial().map(o => o.ruta)).toEqual([]);
     });
@@ -92,7 +92,7 @@ describe('ShellComponent', () => {
         ['operacion', ['/ordenes', '/caja', '/inventario']],
         ['comercial', ['/clientes', '/productos']],
         ['finanzas', ['/finanzas', '/cuentas-por-cobrar']],
-        ['analitica', ['/bi']],
+        ['analitica', ['/bi', '/ia']],
         ['administracion', ['/unidades', '/usuarios', '/auditoria']],
       ]);
     });

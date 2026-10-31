@@ -1,0 +1,66 @@
+<header class="ia-heading">
+  <div>
+    <h1>Pronóstico de pedidos</h1>
+    <p>Estimación para planificar la semana. No representa ventas confirmadas ni dinero cobrado.</p>
+  </div>
+  <button type="button" class="btn-secondary" (click)="cargar()" [disabled]="cargando()">
+    <app-icon name="refresh-cw" [size]="16" /> Actualizar
+  </button>
+</header>
+
+@if (error()) {
+  <div class="ia-error" role="alert">{{ error() }} <button type="button" class="btn-secondary" (click)="cargar()">Reintentar</button></div>
+}
+@if (cargando()) {
+  <p class="ia-info" role="status">Consultando el pronóstico...</p>
+}
+@if (datos(); as d) {
+  @if (d.pronostico; as p) {
+    <section class="ia-resumen" aria-labelledby="ia-resumen-titulo">
+      <div>
+        <h2 id="ia-resumen-titulo">Próximos 7 días</h2>
+        <p>Datos hasta el {{ p.corte | date:'dd/MM/yyyy':'UTC' }} · {{ p.metodo === 'modelo' ? 'Modelo evaluado' : 'Media móvil de 7 días' }}</p>
+      </div>
+      <div class="ia-totales">
+        <div><span>Pedidos estimados</span><strong>{{ totalPedidos(p) }}</strong></div>
+        <div><span>Valor bruto estimado</span><strong>S/ {{ totalValor(p) | number:'1.2-2' }}</strong></div>
+      </div>
+    </section>
+    <div class="ia-tabla-scroll">
+      <table>
+        <caption>Estimación diaria de pedidos y valor bruto para la próxima semana</caption>
+        <thead><tr><th scope="col">Fecha</th><th scope="col">Pedidos</th><th scope="col">Valor de pedidos</th></tr></thead>
+        <tbody>
+          @for (dia of p.dias; track dia.fecha) {
+            <tr><th scope="row">{{ dia.fecha | date:'EEE dd/MM':'UTC' }}</th><td>{{ dia.pedidos }}</td><td>S/ {{ dia.valor_pedidos_pen | number:'1.2-2' }}</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <p class="ia-info">Los domingos se estiman en cero suponiendo que el local no recibe pedidos ese día. Confirma el horario antes de usar el pronóstico para tomar decisiones.</p>
+  } @else {
+    <section class="ia-vacio" aria-labelledby="ia-vacio-titulo">
+      <h2 id="ia-vacio-titulo">Aún no hay un pronóstico publicable</h2>
+      <p>{{ d.aviso || 'Se necesita un mínimo de siete días de pedidos completos para mostrar una estimación.' }}</p>
+    </section>
+  }
+  @if (d.aviso && d.pronostico) { <p class="ia-aviso" role="status">{{ d.aviso }}</p> }
+
+  <section class="ia-metodo" aria-labelledby="ia-metodo-titulo">
+    <h2 id="ia-metodo-titulo">Cómo se decide el método</h2>
+    <p>Una vez por semana se entrena con pedidos registrados y se evalúa en tres semanas posteriores a cada corte. El modelo se usa solo si reduce al menos 5 % el error medio de pedidos y de su valor frente a la media móvil. Si no lo logra, se mantiene la estimación sencilla.</p>
+    @if (d.evaluacion; as e) {
+      <p class="ia-estado">Última revisión: {{ e.estado === 'candidato_aprobado' ? 'modelo aprobado' : 'sin promoción del modelo' }}.
+        {{ e.motivo }}
+      </p>
+      @if (e.metricas_mae; as m) {
+        <dl class="ia-metricas">
+          <div><dt>Error medio · pedidos por día</dt><dd>Modelo {{ m['pedidos'].modelo | number:'1.1-1' }} · Base {{ m['pedidos'].base | number:'1.1-1' }}</dd></div>
+          <div><dt>Error medio · valor diario</dt><dd>Modelo S/ {{ m['valor_pedidos_pen'].modelo | number:'1.2-2' }} · Base S/ {{ m['valor_pedidos_pen'].base | number:'1.2-2' }}</dd></div>
+        </dl>
+      }
+    } @else {
+      <p class="ia-info">El reentrenamiento semanal todavía no se ha ejecutado. La estimación disponible, si la hay, es provisional.</p>
+    }
+  </section>
+}

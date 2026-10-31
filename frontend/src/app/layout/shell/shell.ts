@@ -81,7 +81,8 @@ export class ShellComponent {
 
   /** Inteligencia de negocio se presenta como una sección propia. */
   readonly menuAnalitica = computed(() => this.sesion.esSupervisor()
-    ? [{ ruta: '/bi', icono: 'bar-chart' as const, etiqueta: 'Inteligencia de negocio' }]
+    ? [{ ruta: '/bi', icono: 'bar-chart' as const, etiqueta: 'Inteligencia de negocio' },
+       { ruta: '/ia', icono: 'clock' as const, etiqueta: 'Pronóstico de pedidos' }]
     : []
   );
 
