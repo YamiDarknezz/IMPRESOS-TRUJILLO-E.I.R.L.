@@ -161,6 +161,7 @@ class OrdenItem(Base, TemporalMixin):
     cantidad: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=1, nullable=False)
     precio_unitario: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, nullable=False)
     importe: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, nullable=False)
+    estado_produccion: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, default="pendiente")
 
     orden = relationship("Orden", back_populates="items")
     producto = relationship("Producto", lazy="joined")

@@ -21,6 +21,7 @@ import { aFechaISO, hoyISO } from '../../shared/utilidades/fechas';
 
 /** Línea del contrato, con medidas para gran formato. */
 export interface ItemOrdenData {
+  id?: number;
   descripcion: string;
   producto_id?: number | null;
   ancho_m?: number | null;
@@ -184,6 +185,11 @@ export class OrdenesService {
   async actualizar(idOrden: number, datos: DatosOrden): Promise<void> {
     await this.api.patch(`/api/ordenes/${idOrden}`, datos);
     await this.recargarConInventario();
+  }
+
+  async cambiarEstadoLinea(idOrden: number, idLinea: number, estado: string): Promise<void> {
+    await this.api.patch(`/api/ordenes/${idOrden}/items/${idLinea}/estado`, { estado });
+    await this.lista.recargar();
   }
 
   async cancelar(idOrden: number): Promise<void> {

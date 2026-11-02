@@ -460,20 +460,47 @@ def _calcular_subtotal(data: OrdenCreateData) -> Decimal:
 
 
 def _reemplazar_items(orden: Orden, data: OrdenCreateData) -> None:
-    orden.items.clear()
+    existentes = {linea.id: linea for linea in orden.items if linea.id is not None}
+    if data.items and all(item.id is None for item in data.items) and any(
+        linea.estado_produccion not in (None, "pendiente") for linea in existentes.values()
+    ):
+        raise Conflicto("Actualiza la página antes de editar: hay estados de servicios que deben conservarse.")
+    usados = set()
+    nuevos = []
     for item in data.items:
+        if item.id is not None:
+            if item.id not in existentes or item.id in usados:
+                raise ErrorDeNegocio("La línea indicada no pertenece a esta orden o está repetida.")
+            linea = existentes[item.id]
+            usados.add(item.id)
+        else:
+            linea = OrdenItem(estado_produccion="pendiente")
         importe = _redondear(_decimal(item.cantidad) * _decimal(item.precio_unitario))
-        orden.items.append(
-            OrdenItem(
-                producto_id=item.producto_id,
-                descripcion=item.descripcion,
-                ancho_m=_decimal(item.ancho_m) if item.ancho_m is not None else None,
-                alto_m=_decimal(item.alto_m) if item.alto_m is not None else None,
-                cantidad=_redondear(_decimal(item.cantidad)),
-                precio_unitario=_redondear(_decimal(item.precio_unitario)),
-                importe=importe,
-            )
-        )
+        linea.producto_id = item.producto_id
+        linea.descripcion = item.descripcion
+        linea.ancho_m = _decimal(item.ancho_m) if item.ancho_m is not None else None
+        linea.alto_m = _decimal(item.alto_m) if item.alto_m is not None else None
+        linea.cantidad = _redondear(_decimal(item.cantidad))
+        linea.precio_unitario = _redondear(_decimal(item.precio_unitario))
+        linea.importe = importe
+        nuevos.append(linea)
+    orden.items[:] = nuevos
+
+
+async def cambiar_estado_linea(sesion: AsyncSession, id_orden: int, id_linea: int, estado: str, usuario: Usuario) -> Orden:
+    orden = await _obtener_para_escritura(sesion, id_orden)
+    exigir_gestion(orden, usuario)
+    if orden.estado in (EstadoOrden.CANCELADA, EstadoOrden.ENTREGADA):
+        raise ErrorDeNegocio("No se pueden modificar líneas de una orden cancelada o entregada.")
+    linea = next((item for item in orden.items if item.id == id_linea), None)
+    if linea is None:
+        raise NoEncontrado("La línea no pertenece a esta orden.")
+    anterior = linea.estado_produccion
+    linea.estado_produccion = estado
+    _auditar_orden(sesion, usuario, "editar", orden, f"Estado de línea {id_linea}: {estado}",
+                   anteriores={"estado_linea": anterior}, nuevos={"estado_linea": estado})
+    await sesion.flush()
+    return orden
 
 
 def _reemplazar_materiales(
@@ -856,6 +883,7 @@ async def crear_venta_rapida(
     item = OrdenItem(
         orden_id=orden.id,
         descripcion=data.descripcion,
+        estado_produccion="finalizado",
         cantidad=Decimal("1.00"),
         precio_unitario=monto,
         importe=monto,

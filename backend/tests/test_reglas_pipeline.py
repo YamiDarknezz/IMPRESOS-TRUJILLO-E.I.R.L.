@@ -132,10 +132,10 @@ def test_adelanto_obligatorio():
     assert exc.value.estado_http == 400
 
 
-def test_adelanto_minimo_del_50_por_ciento():
-    validar_adelanto(100, 50, es_corporativo=False)
+def test_adelanto_minimo_del_20_por_ciento():
+    validar_adelanto(100, 20, es_corporativo=False)
     with pytest.raises(ErrorDeNegocio) as exc:
-        validar_adelanto(100, 49, es_corporativo=False)
+        validar_adelanto(100, 19, es_corporativo=False)
     assert "adelanto mínimo" in str(exc.value).lower()
 
 

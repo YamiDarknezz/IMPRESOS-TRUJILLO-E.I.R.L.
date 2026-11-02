@@ -63,6 +63,7 @@ describe('OrdenesComponent', () => {
     entregarConSaldo: ReturnType<typeof vi.fn>;
     rollosDeOrden: ReturnType<typeof vi.fn>;
     cambiarEstado: ReturnType<typeof vi.fn>;
+    cambiarEstadoLinea: ReturnType<typeof vi.fn>;
     asignar: ReturnType<typeof vi.fn>;
     cancelar: ReturnType<typeof vi.fn>;
     completar: ReturnType<typeof vi.fn>;
@@ -101,6 +102,7 @@ describe('OrdenesComponent', () => {
       entregarConSaldo: vi.fn().mockResolvedValue(undefined),
       rollosDeOrden: vi.fn().mockResolvedValue({ data: [], resumen: [] }),
       cambiarEstado: vi.fn().mockResolvedValue(undefined),
+      cambiarEstadoLinea: vi.fn().mockResolvedValue(undefined),
       asignar: vi.fn().mockResolvedValue(undefined),
       cancelar: vi.fn().mockResolvedValue(undefined),
       completar: vi.fn().mockResolvedValue(undefined),
@@ -161,6 +163,23 @@ describe('OrdenesComponent', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Banner');
     expect(fixture.nativeElement.textContent).toContain('Precio unitario');
+  });
+
+  it('al pulsar la fila expande sus servicios y actualiza solo la línea elegida', async () => {
+    ordenesFalso.ordenes.set([ordenBase({ items: [
+      { id: 12, descripcion: 'Lapiceros', cantidad: 2, precio_unitario: 10, estado_produccion: 'pendiente' },
+    ] })]);
+    const fixture = TestBed.createComponent(OrdenesComponent);
+    Object.assign(fixture.componentInstance, { etiquetaUnidad: { imprenta: 'Imprenta' }, etiquetaEstado: { pendiente: 'Pendiente' } });
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('tbody tr td:nth-child(2)') as HTMLElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.lineas-expandidas').textContent).toContain('Lapiceros');
+    const selector = fixture.nativeElement.querySelector('[aria-label="Estado de Lapiceros"]') as HTMLSelectElement;
+    selector.value = 'finalizado';
+    selector.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+    expect(ordenesFalso.cambiarEstadoLinea).toHaveBeenCalledWith(1, 12, 'finalizado');
   });
 
   it('envía el estado al servidor sin ocultar filas localmente', () => {

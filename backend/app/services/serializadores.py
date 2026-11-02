@@ -307,6 +307,7 @@ def serializar_orden(orden) -> dict[str, Any]:
         "items": [
             {
                 "id": item.id,
+                "estado_produccion": item.estado_produccion,
                 "producto_id": item.producto_id,
                 "descripcion": item.descripcion,
                 "ancho_m": num(item.ancho_m) if item.ancho_m is not None else None,

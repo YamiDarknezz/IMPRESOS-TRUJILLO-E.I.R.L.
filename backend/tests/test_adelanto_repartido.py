@@ -72,20 +72,20 @@ async def test_caja_muestra_cada_parte_en_su_metodo(sesion, admin, material, cli
 
 
 async def test_el_minimo_del_adelanto_se_valida_sobre_la_suma(sesion, admin, material, cliente):
-    # Mínimo 50 % de 400 = 200: 100 + 50 no alcanza aunque cada parte sea válida.
+    # Mínimo 20 % de 400 = 80: las partes deben sumar al menos ese monto.
     with pytest.raises(ErrorDeNegocio, match="adelanto mínimo"):
         await ordenes_service.crear_orden(
             sesion,
-            _datos(material, cliente, [(MetodoPago.EFECTIVO, 100), (MetodoPago.YAPE_ANGEL, 50)], precio_total=400),
+            _datos(material, cliente, [(MetodoPago.EFECTIVO, 30), (MetodoPago.YAPE_ANGEL, 49)], precio_total=400),
             admin,
         )
 
     orden = await ordenes_service.crear_orden(
         sesion,
-        _datos(material, cliente, [(MetodoPago.EFECTIVO, 100), (MetodoPago.YAPE_ANGEL, 100)], precio_total=400),
+        _datos(material, cliente, [(MetodoPago.EFECTIVO, 30), (MetodoPago.YAPE_ANGEL, 50)], precio_total=400),
         admin,
     )
-    assert float(orden.adelanto) == 200
+    assert float(orden.adelanto) == 80
 
 
 def test_no_se_repite_un_metodo_ni_se_admiten_partes_en_cero_ni_sumas_que_no_cuadran(material):

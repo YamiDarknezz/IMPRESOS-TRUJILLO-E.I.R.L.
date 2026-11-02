@@ -169,12 +169,12 @@ describe('OrdenFormComponent', () => {
       expect(componente.saldoPendiente()).toBe(0);
     });
 
-    it('adelantoMinimo(): 50% del total para clientes generales, 0 para corporativos', () => {
+    it('adelantoMinimo(): 20% del total para clientes generales, 0 para corporativos', () => {
       const fixture = TestBed.createComponent(OrdenFormComponent);
       const componente = fixture.componentInstance;
       componente.actualizar('precioTotal', 100);
       componente.actualizar('clienteId', 1);
-      expect(componente.adelantoMinimo()).toBe(50);
+      expect(componente.adelantoMinimo()).toBe(20);
       componente.actualizar('clienteId', 2);
       expect(componente.adelantoMinimo()).toBe(0);
     });
@@ -395,7 +395,7 @@ describe('OrdenFormComponent', () => {
 
       // Ambas reglas de "adelanto" se evalúan y la del mínimo (0 < 50) es la
       // que queda como mensaje final, por ir después en `validar()`.
-      expect(componente.errores()['adelanto']).toContain('S/ 50.00');
+      expect(componente.errores()['adelanto']).toContain('S/ 20.00');
       expect(ordenesFalso.crear).not.toHaveBeenCalled();
     });
 
@@ -411,7 +411,7 @@ describe('OrdenFormComponent', () => {
 
       await componente.guardar();
 
-      expect(componente.errores()['adelanto']).toContain('S/ 50.00');
+      expect(componente.errores()['adelanto']).toContain('S/ 20.00');
       expect(ordenesFalso.crear).not.toHaveBeenCalled();
     });
 
@@ -443,7 +443,7 @@ describe('OrdenFormComponent', () => {
       componente.actualizar('precioTotal', 100);
 
       expect(componente.exentoDeAdelanto()).toBe(false);
-      expect(componente.adelantoMinimo()).toBe(50);
+      expect(componente.adelantoMinimo()).toBe(20);
     });
 
     it('un cliente corporativo no necesita adelanto', async () => {

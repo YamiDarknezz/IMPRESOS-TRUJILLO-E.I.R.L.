@@ -5,10 +5,11 @@ en `services.ordenes_service`. Las reglas del negocio y el manejo de errores
 viven fuera de aquí.
 """
 from datetime import date
-from typing import Annotated, Optional
+from typing import Annotated, Optional, Literal
 
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
+from pydantic import BaseModel
 
 from app.core.database import obtener_sesion
 from app.core.security import (
@@ -34,6 +35,20 @@ router = APIRouter(prefix="/api/ordenes", tags=["Órdenes"])
 
 LIMITE_POR_DEFECTO = 100
 LIMITE_MAXIMO = 500
+
+
+class EstadoLineaData(BaseModel):
+    estado: Literal["pendiente", "en_produccion", "finalizado"]
+
+
+@router.patch("/{id_orden}/items/{id_linea}/estado")
+async def cambiar_estado_linea(
+    id_orden: int, id_linea: int, data: EstadoLineaData,
+    usuario: Annotated[Usuario, Depends(personal_produccion)],
+    sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
+):
+    orden = await ordenes_service.cambiar_estado_linea(sesion, id_orden, id_linea, data.estado, usuario)
+    return {"status": "success", "data": serializar_orden(orden)}
 
 
 @router.get("")

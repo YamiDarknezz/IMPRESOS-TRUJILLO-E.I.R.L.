@@ -197,6 +197,22 @@ export class OrdenesComponent implements OnDestroy {
   /** Orden cuyo historial de pagos se está mirando (#110). */
   readonly ordenHistorial = signal<Orden | null>(null);
   readonly ordenDetalle = signal<Orden | null>(null);
+  readonly ordenExpandida = signal<number | null>(null);
+
+  alternarLineas(id: number): void {
+    this.ordenExpandida.update(actual => actual === id ? null : id);
+  }
+
+  alternarDetalleFila(orden: Orden, evento: MouseEvent): void {
+    if ((evento.target as HTMLElement).closest('button, a, select, input')) return;
+    this.alternarLineas(orden.id);
+  }
+
+  async cambiarEstadoLinea(orden: Orden, lineaId: number | undefined, estado: string): Promise<void> {
+    if (!lineaId) return;
+    try { await this.ordenesService.cambiarEstadoLinea(orden.id, lineaId, estado); }
+    catch (e) { alert(mensajeDeError(e, 'No se pudo actualizar el servicio.')); }
+  }
 
   // Helpers reexpuestos para la plantilla
   readonly canales = computed(() => canalesIngreso());

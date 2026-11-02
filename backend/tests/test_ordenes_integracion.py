@@ -37,6 +37,32 @@ async def test_filtrar_fechas_peruanas_antes_de_paginar(sesion, admin, material)
     assert await ordenes_service.contar(sesion, admin, hasta=date(2026, 10, 19)) == 0
 
 
+async def test_estado_independiente_de_lineas_se_conserva_al_editar(sesion, admin, material):
+    datos = datos_orden(material.id, precio_total=None, adelanto_pago=20, items=[
+        {"descripcion": "Gigantografía", "cantidad": 1, "precio_unitario": 50},
+        {"descripcion": "Lapiceros", "cantidad": 1, "precio_unitario": 50},
+    ])
+    orden = await ordenes_service.crear_orden(sesion, datos, admin)
+    primero, segundo = orden.items
+    await ordenes_service.cambiar_estado_linea(sesion, orden.id, segundo.id, 'finalizado', admin)
+    assert primero.estado_produccion == 'pendiente'
+    assert orden.estado == EstadoOrden.PENDIENTE
+    datos.items[0].id = primero.id
+    datos.items[1].id = segundo.id
+    datos.items[1].descripcion = 'Lapiceros personalizados'
+    actualizado = await ordenes_service.actualizar(sesion, orden.id, datos, admin)
+    assert actualizado.items[1].id == segundo.id
+    assert actualizado.items[1].estado_produccion == 'finalizado'
+
+
+async def test_estado_linea_rechaza_identificador_de_otra_orden(sesion, admin, material):
+    datos = datos_orden(material.id, items=[{"descripcion": "Servicio", "cantidad": 1, "precio_unitario": 100}])
+    primera = await ordenes_service.crear_orden(sesion, datos, admin)
+    segunda = await ordenes_service.crear_orden(sesion, datos, admin)
+    with pytest.raises(NoEncontrado):
+        await ordenes_service.cambiar_estado_linea(sesion, primera.id, segunda.items[0].id, 'finalizado', admin)
+
+
 async def test_historial_acepta_fechas_utc_con_y_sin_zona(sesion, admin, material):
     orden = await ordenes_service.crear_orden(sesion, datos_orden(material.id), admin)
     await ordenes_service.confirmar_pago(sesion, orden.id, None, "", admin, monto=25)

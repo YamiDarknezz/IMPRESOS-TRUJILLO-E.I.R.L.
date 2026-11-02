@@ -41,6 +41,7 @@ import {
 
 /** Línea del contrato en el formulario. */
 interface LineaFormulario {
+  id?: number;
   descripcion: string;
   anchoM: number | null;
   altoM: number | null;
@@ -290,6 +291,7 @@ export class OrdenFormComponent {
       motivoDescuento: orden.finanzas?.motivo_descuento ?? '',
       materiales: (orden.materiales?.estimados ?? []).map(m => ({ ...m })),
       lineas: (orden.items ?? []).map(item => ({
+        id: item.id,
         descripcion: item.descripcion,
         anchoM: item.ancho_m ?? null,
         altoM: item.alto_m ?? null,
@@ -620,6 +622,7 @@ export class OrdenFormComponent {
         alto_m: l.altoM,
         cantidad: l.cantidad,
         precio_unitario: l.precioUnitario,
+        ...(l.id ? { id: l.id } : {}),
       })),
       materiales_estimados: form.materiales.map(m => ({
         material_id: m.id_material,

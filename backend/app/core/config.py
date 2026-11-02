@@ -45,7 +45,7 @@ class Settings(BaseSettings):
     peru_utc_offset_horas: int = -5
     # RN-01: adelanto mínimo para clientes generales (los corporativos con
     # orden de compra formal quedan exceptuados).
-    adelanto_minimo_porcentaje: float = 50.0
+    adelanto_minimo_porcentaje: float = 20.0
     # Tasa de IGV usada cuando el contrato marca "incluye IGV".
     igv_porcentaje: float = 18.0
 

@@ -112,6 +112,7 @@ export interface FinanzasOrden {
 /** Línea del contrato: medidas para gran formato (alto × ancho). */
 export interface OrdenItem {
   id?: number;
+  estado_produccion?: 'pendiente' | 'en_produccion' | 'finalizado' | null;
   producto_id?: number | null;
   descripcion: string;
   ancho_m?: number | null;

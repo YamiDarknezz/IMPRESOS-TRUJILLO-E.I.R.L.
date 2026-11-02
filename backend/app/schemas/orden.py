@@ -26,6 +26,7 @@ class MaterialEstimado(BaseModel):
 class OrdenItemData(BaseModel):
     """Línea del contrato; las gigantografías llevan medidas alto x ancho."""
 
+    id: Optional[int] = None
     descripcion: str = Field(max_length=300)
     producto_id: Optional[int] = None
     ancho_m: Optional[float] = None
