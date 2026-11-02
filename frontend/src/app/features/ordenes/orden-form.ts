@@ -107,6 +107,7 @@ import { IconComponent } from '../../shared/componentes/icon/icon.component';
   standalone: true,
   imports: [CommonModule, FormsModule, IconComponent],
   templateUrl: './orden-form.html',
+  styleUrl: './orden-form.css',
 })
 export class OrdenFormComponent {
   private ordenesService = inject(OrdenesService);
@@ -158,6 +159,43 @@ export class OrdenFormComponent {
   );
   readonly busquedaCliente = signal('');
   readonly clientesFiltrados = computed(() => filtrarClientes(this.clientes(), this.busquedaCliente()));
+  readonly selectorClienteAbierto = signal(false);
+  readonly indiceCliente = signal(0);
+
+  abrirClientes(): void {
+    if (!this.selectorClienteAbierto()) {
+      this.busquedaCliente.set('');
+      this.indiceCliente.set(0);
+      this.selectorClienteAbierto.set(true);
+    }
+  }
+
+  buscarCliente(texto: string): void {
+    this.busquedaCliente.set(texto);
+    this.indiceCliente.set(0);
+  }
+
+  seleccionarCliente(id: number): void {
+    this.actualizar('clienteId', id);
+    this.errores.update(errores => ({ ...errores, cliente: '' }));
+    this.selectorClienteAbierto.set(false);
+    this.busquedaCliente.set('');
+  }
+
+  teclaCliente(evento: KeyboardEvent): void {
+    if (evento.key === 'Escape') {
+      this.selectorClienteAbierto.set(false);
+    } else if (evento.key === 'ArrowDown' || evento.key === 'ArrowUp') {
+      evento.preventDefault();
+      if (!this.selectorClienteAbierto()) { this.abrirClientes(); return; }
+      const maximo = this.clientesFiltrados().length - 1;
+      this.indiceCliente.update(i => Math.max(0, Math.min(maximo, i + (evento.key === 'ArrowDown' ? 1 : -1))));
+    } else if (evento.key === 'Enter' && this.selectorClienteAbierto()) {
+      evento.preventDefault();
+      const cliente = this.clientesFiltrados()[this.indiceCliente()];
+      if (cliente) this.seleccionarCliente(cliente.id);
+    }
+  }
 
   /**
    * Subtotal: sale de las líneas si las hay; si no, del total directo.

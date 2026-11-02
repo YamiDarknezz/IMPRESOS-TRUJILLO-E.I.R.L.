@@ -136,6 +136,21 @@ describe('OrdenFormComponent', () => {
     expect(fixture.componentInstance.form().clienteId).toBe(1);
   });
 
+  it('abre, filtra y selecciona un cliente con el teclado', () => {
+    const componente = TestBed.createComponent(OrdenFormComponent).componentInstance;
+    componente.abrirClientes();
+    expect(componente.selectorClienteAbierto()).toBe(true);
+    componente.buscarCliente('Empresa');
+    expect(componente.clientesFiltrados().map(c => c.id)).toEqual([2]);
+    componente.teclaCliente(new KeyboardEvent('keydown', { key: 'Enter' }));
+    expect(componente.form().clienteId).toBe(2);
+    expect(componente.selectorClienteAbierto()).toBe(false);
+    componente.abrirClientes();
+    expect(componente.busquedaCliente()).toBe('');
+    componente.teclaCliente(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(componente.selectorClienteAbierto()).toBe(false);
+  });
+
   describe('modo edición', () => {
     it('con un id que existe, precarga el formulario con los datos de la orden', async () => {
       configurar('9');
