@@ -11,7 +11,7 @@ Concentra las decisiones que definen el sistema (SRS, Reglas de Negocio):
 5. RN-07: lo entregado/cancelado es inmutable; a "finalizada" solo se llega
    reportando el consumo real.
 """
-from datetime import date
+from datetime import date, timezone
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Optional
 
@@ -1338,7 +1338,10 @@ def historial_de_pagos(ordenes: list[Orden]) -> list[dict]:
     filas: list[dict] = []
     for orden in ordenes:
         acumulado = Decimal("0")
-        for pago in sorted(orden.pagos, key=lambda p: (p.fecha, p.id or 0)):
+        for pago in sorted(
+            orden.pagos,
+            key=lambda p: (p.fecha.replace(tzinfo=timezone.utc) if p.fecha.tzinfo is None else p.fecha.astimezone(timezone.utc), p.id or 0),
+        ):
             saldo_despues: Optional[float] = None
             if pago.es_conforme:
                 acumulado += _decimal(pago.monto)

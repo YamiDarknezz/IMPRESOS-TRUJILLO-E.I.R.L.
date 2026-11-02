@@ -37,6 +37,16 @@ async def test_filtrar_fechas_peruanas_antes_de_paginar(sesion, admin, material)
     assert await ordenes_service.contar(sesion, admin, hasta=date(2026, 10, 19)) == 0
 
 
+async def test_historial_acepta_fechas_utc_con_y_sin_zona(sesion, admin, material):
+    orden = await ordenes_service.crear_orden(sesion, datos_orden(material.id), admin)
+    await ordenes_service.confirmar_pago(sesion, orden.id, None, "", admin, monto=25)
+    orden.pagos[0].fecha = datetime(2026, 10, 20, 12)
+    orden.pagos[1].fecha = datetime(2026, 10, 21, 12, tzinfo=timezone.utc)
+    historial = ordenes_service.historial_de_pagos([orden])
+    assert [p["monto"] for p in historial] == [25.0, 50.0]
+    assert [p["saldo_despues"] for p in historial] == [25.0, 50.0]
+
+
 async def test_busqueda_historica_y_fechas_antes_de_paginar(sesion, admin, cliente):
     cliente.nombre = 'Mayoga Impresiones'
     antigua = Orden(cliente_id=cliente.id, creado_por=admin.id, descripcion='Pedido especial',
