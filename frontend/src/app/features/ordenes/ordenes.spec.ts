@@ -148,6 +148,8 @@ describe('OrdenesComponent', () => {
     expect(fila.querySelector('[aria-label="Ver detalle"]')).not.toBeNull();
     expect((fila.querySelector('[aria-label="Editar orden no disponible"]') as HTMLButtonElement).disabled).toBe(true);
     expect(fila.querySelector('[aria-label="Registrar cobro"]')).not.toBeNull();
+    expect(fila.querySelector('[aria-label="Rollos y planchas usados en el pedido"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[aria-label^="Tabla de pedidos;"]')).not.toBeNull();
   });
 
   it('abre las líneas del pedido sin salir del listado', () => {

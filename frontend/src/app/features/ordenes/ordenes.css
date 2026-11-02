@@ -38,12 +38,17 @@
 .ordenes-filtros > .filtro-desplegable, .ordenes-filtros > button { order: 2; }
 .filtro-icono { width: 36px; height: 36px; }
 .crear-pedido { background: var(--primary, #224db9); color: white; }
-.table-card .data-table { min-width: 0; table-layout: fixed; width: 100%; }
+.pedidos-tabla-scroll { overflow-x: auto; overscroll-behavior-x: contain; }
+.table-card .pedidos-tabla-scroll > .data-table { min-width: 1380px; table-layout: auto; width: 100%; }
 .table-card .data-table th, .table-card .data-table td { padding: .32rem .4rem; font-size: .78rem; overflow-wrap: anywhere; }
-.table-card .data-table th:first-child { width: 93px; }
-.table-card .data-table th:last-child { width: 236px; }
+.table-card .pedidos-tabla-scroll > .data-table th:first-child { min-width: 100px; }
+.table-card .pedidos-tabla-scroll > .data-table th:last-child { min-width: 200px; }
+.table-card .fecha-cell-doble { min-width: 165px; }
+.table-card .finanzas-cell-doble { min-width: 125px; }
+.table-card .desc-cell { min-width: 145px; max-width: 200px; }
 .table-card .actions-wrapper { display: flex; flex-wrap: nowrap; gap: 0; }
-.table-card .actions-wrapper .btn-icon { width: 25px; height: 28px; padding: 0; }
+.table-card .actions-wrapper .btn-icon { width: 24px; min-width: 24px; height: 28px; padding: 0; border-color: transparent; background: transparent; box-shadow: none; }
+.table-card .actions-wrapper .btn-icon:hover:not(:disabled) { background: var(--surface-2); }
 .table-card .actions-wrapper .btn-icon:disabled { opacity: .3; cursor: not-allowed; }
 .pedido-detalle-link { border: 0; cursor: pointer; }
 .pedido-detalle-link:hover { text-decoration: underline; }
@@ -58,5 +63,4 @@
   .ordenes-filtros .search-box { flex-basis: 100%; }
   .ordenes-filtros .filtro-estado, .ordenes-filtros .filtro-canal { flex: 1 1 140px; }
   .ordenes-filtros { flex-wrap: wrap; }
-  .table-card .data-table { min-width: 1100px; }
 }
