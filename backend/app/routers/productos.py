@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auditoria import registrar
 from app.core.database import obtener_sesion
 from app.core.errores import Conflicto, NoEncontrado
-from app.core.security import solo_admin, usuario_actual
+from app.core.security import gestion_ordenes, usuario_actual
 from app.models import (
     Material,
     Producto,
@@ -67,7 +67,7 @@ async def obtener_producto(
 @router.post("")
 async def crear_producto(
     data: ProductoCreateData,
-    admin: Annotated[Usuario, Depends(solo_admin)],
+    admin: Annotated[Usuario, Depends(gestion_ordenes)],
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
 ):
     existente = (
@@ -104,7 +104,7 @@ async def crear_producto(
 async def actualizar_producto(
     producto_id: int,
     data: ProductoUpdateData,
-    admin: Annotated[Usuario, Depends(solo_admin)],
+    admin: Annotated[Usuario, Depends(gestion_ordenes)],
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
 ):
     producto = await sesion.get(Producto, producto_id)
@@ -131,7 +131,7 @@ async def actualizar_producto(
 @router.delete("/{producto_id}")
 async def eliminar_producto(
     producto_id: int,
-    admin: Annotated[Usuario, Depends(solo_admin)],
+    admin: Annotated[Usuario, Depends(gestion_ordenes)],
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
 ):
     """Borrado lógico: las órdenes históricas siguen referenciando el producto."""

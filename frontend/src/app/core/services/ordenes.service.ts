@@ -85,9 +85,12 @@ export class OrdenesService {
   readonly soloPendientesHoy = signal(false);
   readonly desde = signal('');
   readonly hasta = signal('');
+  readonly texto = signal('');
+  readonly estado = signal('todos');
+  readonly canal = signal('');
 
   /** Se pide por bloques de 100 y el backend informa cuántas hay en total. */
-  private lista = new ListaRemota<Orden>(this.api, () => this.rutaDeLista(), 100);
+  private lista = new ListaRemota<Orden>(this.api, () => this.rutaDeLista(), 20);
   private recargaFiltros: Promise<void> = Promise.resolve();
 
   private rutaDeLista(): string {
@@ -96,20 +99,27 @@ export class OrdenesService {
     if (this.soloPendientesHoy()) parametros.set('pendientes_hoy', 'true');
     if (this.desde()) parametros.set('desde', this.desde());
     if (this.hasta()) parametros.set('hasta', this.hasta());
+    if (this.texto().trim()) parametros.set('busqueda', this.texto().trim());
+    if (this.estado() !== 'todos') parametros.set('estado', this.estado());
+    if (this.canal()) parametros.set('canal_ingreso', this.canal());
     const texto = parametros.toString();
     return texto ? `/api/ordenes?${texto}` : '/api/ordenes';
   }
 
   /** Cambia los filtros del servidor y vuelve a traer la lista y el panel. */
-  async filtrarPor(cambios: { local?: UnidadNegocio | ''; soloPendientesHoy?: boolean; desde?: string; hasta?: string }): Promise<void> {
+  async filtrarPor(cambios: { local?: UnidadNegocio | ''; soloPendientesHoy?: boolean; desde?: string; hasta?: string; texto?: string; estado?: string; canal?: string }): Promise<void> {
     if (cambios.local !== undefined) this.local.set(cambios.local);
     if (cambios.soloPendientesHoy !== undefined) this.soloPendientesHoy.set(cambios.soloPendientesHoy);
     if (cambios.desde !== undefined) this.desde.set(cambios.desde);
     if (cambios.hasta !== undefined) this.hasta.set(cambios.hasta);
+    if (cambios.texto !== undefined) this.texto.set(cambios.texto);
+    if (cambios.estado !== undefined) this.estado.set(cambios.estado);
+    if (cambios.canal !== undefined) this.canal.set(cambios.canal);
+    this.lista.reiniciarPagina();
     // ListaRemota comparte peticiones en vuelo: encadenar evita que un cambio
     // rápido de fechas conserve el resultado de un filtro anterior.
     this.recargaFiltros = this.recargaFiltros.catch(() => {}).then(async () => {
-      await Promise.all([this.lista.recargar(), this.cargarMetricas()]);
+      await this.lista.recargar();
     });
     await this.recargaFiltros;
   }
@@ -119,6 +129,10 @@ export class OrdenesService {
   readonly totalOrdenes = this.lista.total;
   readonly hayMasOrdenes = this.lista.hayMas;
   readonly cargandoMasOrdenes = this.lista.cargandoMas;
+  readonly paginaActual = this.lista.pagina;
+  readonly totalPaginas = this.lista.paginas;
+  readonly tamanoPagina = 20;
+  irPagina = (pagina: number) => this.lista.irPagina(pagina);
 
   cargar = (forzar = false) => this.lista.cargar(forzar);
   recargar = () => this.lista.recargar();
@@ -190,11 +204,12 @@ export class OrdenesService {
     idOrden: number,
     metodo: MetodoPago,
     referencia = '',
-    descripcion = ''
+    descripcion = '',
+    monto?: number
   ): Promise<Orden> {
     const res = await this.api.post<RespuestaItem<Orden>>(
       `/api/ordenes/${idOrden}/confirmar-pago`,
-      { metodo_pago: metodo, referencia, descripcion }
+      { metodo_pago: metodo, referencia, descripcion, ...(monto !== undefined ? { monto } : {}) }
     );
     await this.lista.recargar();
     return res.data;

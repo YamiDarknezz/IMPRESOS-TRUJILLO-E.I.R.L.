@@ -11,6 +11,20 @@ function crearApiFalsa(respuesta: () => Promise<{ status: string; data: Item[] }
 }
 
 describe('ListaRemota', () => {
+  it('cambia de página reemplazando el bloque y reinicia para nuevos filtros', async () => {
+    const api = { get: vi.fn().mockResolvedValueOnce({ status: 'success', data: [{ id: 1, nombre: 'Uno' }], total: 45 })
+      .mockResolvedValueOnce({ status: 'success', data: [{ id: 2, nombre: 'Dos' }], total: 45 })
+      .mockResolvedValueOnce({ status: 'success', data: [], total: 0 }) } as unknown as ApiService;
+    const lista = new ListaRemota<Item>(api, '/api/items', 20);
+    await lista.cargar();
+    await lista.irPagina(2);
+    expect(api.get).toHaveBeenLastCalledWith('/api/items?limit=20&offset=20');
+    expect(lista.items()).toEqual([{ id: 2, nombre: 'Dos' }]);
+    expect(lista.paginas()).toBe(3);
+    lista.reiniciarPagina();
+    await lista.recargar();
+    expect(api.get).toHaveBeenLastCalledWith('/api/items?limit=20&offset=0');
+  });
   it('empieza vacía y sin cargar', () => {
     const api = crearApiFalsa(async () => ({ status: 'success', data: [] }));
     const lista = new ListaRemota<Item>(api, '/api/items');
@@ -47,6 +61,22 @@ describe('ListaRemota', () => {
     await lista.cargar();
     await lista.recargar();
 
+    expect(api.get).toHaveBeenCalledTimes(2);
+  });
+
+  it('descarta una respuesta antigua y recarga si el filtro cambia durante la primera carga', async () => {
+    let resolver!: (v: { status: string; data: Item[] }) => void;
+    let ruta = '/api/items?filtro=anterior';
+    const api = { get: vi.fn()
+      .mockImplementationOnce(() => new Promise(r => { resolver = r; }))
+      .mockResolvedValue({ status: 'success', data: [{ id: 2, nombre: 'Nuevo' }] }) } as unknown as ApiService;
+    const lista = new ListaRemota<Item>(api, () => ruta);
+    const anterior = lista.cargar();
+    ruta = '/api/items?filtro=nuevo';
+    const nueva = lista.recargar();
+    resolver({ status: 'success', data: [{ id: 1, nombre: 'Anterior' }] });
+    await Promise.all([anterior, nueva]);
+    expect(lista.items()).toEqual([{ id: 2, nombre: 'Nuevo' }]);
     expect(api.get).toHaveBeenCalledTimes(2);
   });
 

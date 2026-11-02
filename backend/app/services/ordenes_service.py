@@ -15,7 +15,7 @@ from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Optional
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auditoria import registrar
@@ -43,7 +43,7 @@ from app.models import (
     UnidadNegocio,
     Usuario,
 )
-from app.schemas.orden import MaterialEstimado, OrdenCreateData, VentaRapidaData
+from app.schemas.orden import AdelantoParteData, MaterialEstimado, OrdenCreateData, VentaRapidaData
 from app.services import inventario_service
 from app.services.inventario_service import AjusteStock
 
@@ -269,6 +269,7 @@ def _aplicar_filtros(
     pendientes_hoy: bool = False,
     desde: Optional[date] = None,
     hasta: Optional[date] = None,
+    busqueda: Optional[str] = None,
 ):
     """
     Filtros del listado, iguales para la lista y para su total.
@@ -286,6 +287,24 @@ def _aplicar_filtros(
         consulta = consulta.where(Orden.canal_ingreso == canal_ingreso)
     if unidad_negocio is not None:
         consulta = consulta.where(Orden.unidad_negocio == unidad_negocio)
+    if busqueda and busqueda.strip():
+        texto = busqueda.strip()
+        condiciones = [
+            Orden.cliente.has(Cliente.nombre.icontains(texto, autoescape=True)),
+            Orden.descripcion.icontains(texto, autoescape=True),
+            Orden.telefono.icontains(texto, autoescape=True),
+            cast(Orden.unidad_negocio, String).icontains(texto, autoescape=True),
+        ]
+        digitos = ''.join(c for c in texto if c.isdigit())
+        if len(digitos) >= 3 and all(c.isdigit() or c in ' +-()' for c in texto):
+            telefono = Orden.telefono
+            for caracter in (' ', '-', '+', '(', ')'):
+                telefono = func.replace(telefono, caracter, '')
+            condiciones.append(telefono.contains(digitos, autoescape=True))
+        codigo = texto.upper().removeprefix('ORD-')
+        if codigo.isdigit() and len(codigo) <= 9:
+            condiciones.append(Orden.id == int(codigo))
+        consulta = consulta.where(or_(*condiciones))
     if desde is not None:
         inicio, _ = rango_dia_peru_a_utc(desde)
         consulta = consulta.where(Orden.creado_en >= inicio)
@@ -311,10 +330,11 @@ async def listar(
     pendientes_hoy: bool = False,
     desde: Optional[date] = None,
     hasta: Optional[date] = None,
+    busqueda: Optional[str] = None,
 ) -> list[Orden]:
     consulta = _aplicar_filtros(
-        select(Orden).order_by(Orden.creado_en.desc()),
-        usuario, estado, canal_ingreso, unidad_negocio, pendientes_hoy, desde, hasta,
+        select(Orden).order_by(Orden.creado_en.desc(), Orden.id.desc()),
+        usuario, estado, canal_ingreso, unidad_negocio, pendientes_hoy, desde, hasta, busqueda,
     ).limit(limite).offset(desplazamiento)
 
     return list((await sesion.execute(consulta)).scalars())
@@ -329,11 +349,12 @@ async def contar(
     pendientes_hoy: bool = False,
     desde: Optional[date] = None,
     hasta: Optional[date] = None,
+    busqueda: Optional[str] = None,
 ) -> int:
     """Cuántas órdenes cumplen el filtro (para 'mostrando N de M' y el panel)."""
     consulta = _aplicar_filtros(
         select(func.count()).select_from(Orden),
-        usuario, estado, canal_ingreso, unidad_negocio, pendientes_hoy, desde, hasta,
+        usuario, estado, canal_ingreso, unidad_negocio, pendientes_hoy, desde, hasta, busqueda,
     )
     return int((await sesion.execute(consulta)).scalar_one())
 
@@ -841,20 +862,21 @@ async def crear_venta_rapida(
     )
     orden.items.append(item)
 
-    pago = PagoOrden(
-        orden_id=orden.id,
-        # Nace con la colección vacía: leerla después sería un SELECT implícito.
-        comprobantes=[],
-        monto=monto,
-        metodo=data.metodo_pago,
-        tipo=TipoPago.ADELANTO,
-        registrado_por=usuario.id,
-        usuario=usuario,
-        referencia=data.referencia,
-        estado_pago=EstadoPago.CONFORME,
-    )
-    orden.pagos.append(pago)
+    partes = data.pagos or [AdelantoParteData(metodo=data.metodo_pago, monto=float(monto))]
+    for parte in partes:
+        orden.pagos.append(PagoOrden(
+            orden_id=orden.id,
+            comprobantes=[],
+            monto=_redondear(_decimal(parte.monto)),
+            metodo=parte.metodo,
+            tipo=TipoPago.ADELANTO,
+            registrado_por=usuario.id,
+            usuario=usuario,
+            referencia=data.referencia,
+            estado_pago=EstadoPago.CONFORME,
+        ))
     await sesion.flush()
+    _recalcular_finanzas(orden)
 
     _auditar_orden(
         sesion,

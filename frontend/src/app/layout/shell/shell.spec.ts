@@ -63,23 +63,25 @@ describe('ShellComponent', () => {
     it('quien gestiona órdenes ve "Clientes"', () => {
       sesionFalsa.puedeGestionarOrdenes.set(true);
       const fixture = TestBed.createComponent(ShellComponent);
-      expect(fixture.componentInstance.menuComercial().map(o => o.ruta)).toEqual(['/clientes']);
+      expect(fixture.componentInstance.menuComercial().map(o => o.ruta)).toEqual(['/clientes', '/productos']);
     });
 
-    it('la supervisión ve BI y Cuentas por cobrar, no el catálogo admin-only', () => {
+    it('secretaría ve BI y Cuentas por cobrar', () => {
       sesionFalsa.esSupervisor.set(true);
+      sesionFalsa.puedeGestionarOrdenes.set(true);
       const fixture = TestBed.createComponent(ShellComponent);
       const componente = fixture.componentInstance;
       expect(componente.menuAnalitica().map(o => o.ruta)).toEqual(['/bi', '/ia']);
       expect(componente.menuFinanzas().map(o => o.ruta)).toEqual(['/finanzas', '/cuentas-por-cobrar']);
-      expect(componente.menuComercial().map(o => o.ruta)).toEqual([]);
+      expect(componente.menuComercial().map(o => o.ruta)).toEqual(['/clientes', '/productos']);
     });
 
     it('el admin ve Productos, Unidades, Usuarios y Auditoría', () => {
       sesionFalsa.esAdmin.set(true);
+      sesionFalsa.puedeGestionarOrdenes.set(true);
       const fixture = TestBed.createComponent(ShellComponent);
       const componente = fixture.componentInstance;
-      expect(componente.menuComercial().map(o => o.ruta)).toEqual(['/productos']);
+      expect(componente.menuComercial().map(o => o.ruta)).toEqual(['/clientes', '/productos']);
       expect(componente.menuAdministracion().map(o => o.ruta)).toEqual(['/unidades', '/usuarios', '/auditoria']);
     });
 

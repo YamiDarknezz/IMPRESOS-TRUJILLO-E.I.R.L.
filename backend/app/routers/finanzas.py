@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import obtener_sesion
 from app.core.fechas import parsear_fecha
-from app.core.security import supervision, usuario_actual
+from app.core.security import gestion_ordenes, usuario_actual
 from app.models import CanalIngreso, UnidadNegocio, Usuario
 from app.services import finanzas_service
 
@@ -45,14 +45,14 @@ async def resumen_finanzas(
 
 @router.get("/cuentas-por-cobrar")
 async def cuentas_por_cobrar(
-    usuario: Annotated[Usuario, Depends(supervision)],
+    usuario: Annotated[Usuario, Depends(gestion_ordenes)],
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
     solo_proformas: bool = True,
 ):
     """
     Deuda por cliente con su antigüedad (0-30, 31-60, 61-90 y más de 90 días).
 
-    Solo supervisión: es el seguimiento de las entregas autorizadas antes de pagar.
+    Disponible para el personal que gestiona órdenes.
     """
     return {
         "status": "success",

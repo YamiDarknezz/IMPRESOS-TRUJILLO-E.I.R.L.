@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import obtener_sesion
 from app.core.fechas import a_fecha_peru, ahora_utc
-from app.core.security import supervision
+from app.core.security import gestion_ordenes
 from app.models import CanalIngreso, UnidadNegocio, Usuario
 from app.services import bi_service
 
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/bi", tags=["Inteligencia de negocio"])
 
 @router.get("/resumen")
 async def resumen_bi(
-    usuario: Annotated[Usuario, Depends(supervision)],
+    usuario: Annotated[Usuario, Depends(gestion_ordenes)],
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
     desde: date | None = None,
     hasta: date | None = None,

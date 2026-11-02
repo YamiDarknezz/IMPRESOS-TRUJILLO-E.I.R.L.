@@ -48,6 +48,7 @@ async def listar_ordenes(
     pendientes_hoy: bool = Query(default=False),
     desde: Optional[date] = Query(default=None),
     hasta: Optional[date] = Query(default=None),
+    busqueda: Optional[str] = Query(default=None, max_length=150),
     limit: int = Query(default=LIMITE_POR_DEFECTO, le=LIMITE_MAXIMO),
     offset: int = Query(default=0, ge=0),
 ):
@@ -60,12 +61,12 @@ async def listar_ordenes(
     ordenes = await ordenes_service.listar(
         sesion, usuario, estado, limit, offset, canal_ingreso=canal_ingreso,
         unidad_negocio=unidad_negocio, pendientes_hoy=pendientes_hoy,
-        desde=desde, hasta=hasta,
+        desde=desde, hasta=hasta, busqueda=busqueda,
     )
     total = await ordenes_service.contar(
         sesion, usuario, estado, canal_ingreso=canal_ingreso,
         unidad_negocio=unidad_negocio, pendientes_hoy=pendientes_hoy,
-        desde=desde, hasta=hasta,
+        desde=desde, hasta=hasta, busqueda=busqueda,
     )
     return {"status": "success", "data": [serializar_orden(o) for o in ordenes], "total": total}
 

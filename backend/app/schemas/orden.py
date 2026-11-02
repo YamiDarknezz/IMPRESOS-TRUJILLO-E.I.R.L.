@@ -197,6 +197,18 @@ class VentaRapidaData(BaseModel):
     unidad_negocio: UnidadNegocio = UnidadNegocio.IMPRENTA
     cliente_nombre: str = Field(default="Cliente Mostrador", max_length=150)
     referencia: str = Field(default="", max_length=120)
+    pagos: Optional[list[AdelantoParteData]] = None
+
+    @model_validator(mode="after")
+    def _validar_pagos(self) -> "VentaRapidaData":
+        if self.pagos is not None:
+            if not self.pagos:
+                raise ValueError("Registra al menos un pago.")
+            if len({p.metodo for p in self.pagos}) != len(self.pagos):
+                raise ValueError("No se puede repetir un método de pago.")
+            if round(sum(p.monto for p in self.pagos), 2) > round(self.monto_total, 2):
+                raise ValueError("Los pagos no pueden superar el monto total.")
+        return self
 
     @field_validator("descripcion")
     @classmethod

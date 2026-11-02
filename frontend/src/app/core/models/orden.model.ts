@@ -93,6 +93,7 @@ export interface VentaRapidaData {
   unidad_negocio?: UnidadNegocio;
   cliente_nombre?: string;
   referencia?: string;
+  pagos?: { metodo: MetodoPago; monto: number }[];
 }
 
 export interface FinanzasOrden {

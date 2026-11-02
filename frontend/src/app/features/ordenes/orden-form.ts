@@ -640,19 +640,23 @@ export class OrdenFormComponent {
     this.guardando.set(true);
     try {
       let idOrden: number;
+      let pagoYapeId: number | null = null;
       if (editando) {
         await this.ordenesService.actualizar(editando.id, datos);
         idOrden = editando.id;
       } else {
         // La orden se crea primero: la captura necesita a quién pertenecer.
-        idOrden = (await this.ordenesService.crear(datos)).id;
+        const creada = await this.ordenesService.crear(datos);
+        idOrden = creada.id;
+        pagoYapeId = creada.finanzas?.pagos?.find(p => p.metodo.startsWith('yape') && p.tipo === 'adelanto')?.id ?? null;
       }
 
       const pendientes = this.adjuntos();
       if (pendientes.length > 0) {
         const { subidos, fallidos } = await this.comprobantes.subirVarias(
           idOrden,
-          pendientes.map(adjunto => adjunto.archivo)
+          pendientes.map(adjunto => adjunto.archivo),
+          pagoYapeId
         );
         pendientes.filter(adjunto => subidos.length > 0).forEach(liberarCaptura);
         this.adjuntos.set(subidos.length > 0 ? [] : pendientes);

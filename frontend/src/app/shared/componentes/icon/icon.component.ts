@@ -35,6 +35,7 @@ export type IconName =
   | 'check-circle'
   | 'folder'
   | 'clock'
+  | 'calendar'
   | 'lock';
 
 /**
@@ -67,6 +68,10 @@ export type IconName =
           <path d="M12 16h4"/>
           <path d="M8 11h.01"/>
           <path d="M8 16h.01"/>
+        }
+        @case ('calendar') {
+          <rect x="3" y="5" width="18" height="16" rx="2" />
+          <path d="M16 3v4M8 3v4M3 10h18" />
         }
         @case ('package') {
           <path d="m7.5 4.27 9 5.15"/>

@@ -43,6 +43,10 @@ describe('OrdenesComponent', () => {
     totalOrdenes: ReturnType<typeof signal<number | null>>;
     hayMasOrdenes: ReturnType<typeof signal<boolean>>;
     cargandoMasOrdenes: ReturnType<typeof signal<boolean>>;
+    paginaActual: ReturnType<typeof signal<number>>;
+    totalPaginas: ReturnType<typeof signal<number>>;
+    tamanoPagina: number;
+    irPagina: ReturnType<typeof vi.fn>;
     cargarMetricas: ReturnType<typeof vi.fn>;
     cargarMasOrdenes: ReturnType<typeof vi.fn>;
     enProceso: ReturnType<typeof signal<number>>;
@@ -73,6 +77,10 @@ describe('OrdenesComponent', () => {
       totalOrdenes: signal(120),
       hayMasOrdenes: signal(true),
       cargandoMasOrdenes: signal(false),
+      paginaActual: signal(1),
+      totalPaginas: signal(6),
+      tamanoPagina: 20,
+      irPagina: vi.fn().mockResolvedValue(undefined),
       cargarMetricas: vi.fn().mockResolvedValue(undefined),
       cargarMasOrdenes: vi.fn().mockResolvedValue(undefined),
       enProceso: signal(1),
@@ -116,11 +124,11 @@ describe('OrdenesComponent', () => {
     });
   });
 
-  it('al crearse, carga las órdenes y las métricas del panel', () => {
+  it('al crearse, carga las órdenes sin solicitar métricas', () => {
     TestBed.createComponent(OrdenesComponent);
     expect(ordenesFalso.cargar).toHaveBeenCalledTimes(1);
     // Las tarjetas ya no se calculan sobre la lista cargada: vienen del backend.
-    expect(ordenesFalso.cargarMetricas).toHaveBeenCalledTimes(1);
+    expect(ordenesFalso.cargarMetricas).not.toHaveBeenCalled();
   });
 
   it('cargarMas() pide el siguiente bloque de órdenes', () => {
@@ -131,14 +139,12 @@ describe('OrdenesComponent', () => {
     expect(ordenesFalso.cargarMasOrdenes).toHaveBeenCalledTimes(1);
   });
 
-  it('ordenesFiltradas() aplica el filtro de estado y búsqueda combinados', () => {
+  it('envía el estado al servidor sin ocultar filas localmente', () => {
     const fixture = TestBed.createComponent(OrdenesComponent);
     const componente = fixture.componentInstance;
-    componente.filtroEstado.set('pendiente');
-    componente.busqueda.set('juan');
+    componente.cambiarFiltroEstado('pendiente');
+    expect(ordenesFalso.filtrarPor).toHaveBeenCalledWith({ estado: 'pendiente' });
     expect(componente.ordenesFiltradas()).toEqual([ordenBase()]);
-    componente.busqueda.set('nadie');
-    expect(componente.ordenesFiltradas()).toEqual([]);
   });
 
   it('limpiarFiltroFecha() vacía desde/hasta', () => {
@@ -309,7 +315,7 @@ describe('OrdenesComponent', () => {
       await fixture.componentInstance.actualizar();
 
       expect(ordenesFalso.recargar).toHaveBeenCalledTimes(1);
-      expect(ordenesFalso.cargarMetricas).toHaveBeenCalledTimes(1);
+      expect(ordenesFalso.cargarMetricas).not.toHaveBeenCalled();
     });
 
     it('si falla, avisa en vez de dejar el error sin atender', async () => {
@@ -417,7 +423,7 @@ describe('OrdenesComponent', () => {
       ).map(o => o.textContent?.trim());
 
       expect(opciones).toEqual(['Todos los locales', 'Imprenta', 'Gigantografías']);
-      expect(pagina.textContent).toContain('Pendientes de hoy');
+      expect(pagina.querySelector('[aria-label="Pendientes de hoy o vencidos"]')).not.toBeNull();
     });
   });
 
@@ -469,15 +475,17 @@ describe('OrdenesComponent', () => {
       expect(encabezados(pintar(true))).not.toContain('Asignado');
     });
 
-    it('la búsqueda encuentra la orden por su teléfono', () => {
+    it('envía la búsqueda de teléfono al servidor', () => {
+      vi.useFakeTimers();
       const fixture = TestBed.createComponent(OrdenesComponent);
       ordenesFalso.ordenes.set([
         ordenBase({ id: 1, id_documento: 'ORD-000001', telefono: '924 943 790' }),
         ordenBase({ id: 2, id_documento: 'ORD-000002', telefono: '987 654 321' }),
       ]);
-      fixture.componentInstance.busqueda.set('924943');
-
-      expect(fixture.componentInstance.ordenesFiltradas().map(o => o.id_documento)).toEqual(['ORD-000001']);
+      fixture.componentInstance.buscar('924943');
+      vi.advanceTimersByTime(300);
+      expect(ordenesFalso.filtrarPor).toHaveBeenCalledWith({ texto: '924943' });
+      vi.useRealTimers();
     });
   });
 
@@ -641,13 +649,14 @@ describe('OrdenesComponent', () => {
     it('confirmarPago(): manda método y referencia, y cierra el modal', async () => {
       const fixture = TestBed.createComponent(OrdenesComponent);
       const componente = fixture.componentInstance;
-      componente.abrirCobro(ordenBase());
+      componente.abrirCobro(ordenBase({ finanzas: { precio_total: 100, subtotal: 100, igv: 0, adelanto_pago: 20, saldo_pendiente: 80, metodo_pago_adelanto: 'efectivo', pagado_totalmente: false } }));
       componente.referenciaPago.set('  OP-99  ');
       componente.descripcionPago.set('  Abono de la semana ');
+      componente.montoPago.set(30);
 
       await componente.confirmarPago();
 
-      expect(ordenesFalso.confirmarPago).toHaveBeenCalledWith(1, 'efectivo', 'OP-99', 'Abono de la semana');
+      expect(ordenesFalso.confirmarPago).toHaveBeenCalledWith(1, 'efectivo', 'OP-99', 'Abono de la semana', 30);
       expect(componente.ordenACobrar()).toBeNull();
     });
 

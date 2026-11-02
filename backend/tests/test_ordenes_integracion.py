@@ -14,6 +14,7 @@ from app.models import (
     MetodoPago,
     MotivoMovimiento,
     MovimientoStock,
+    Orden,
     Rol,
     Usuario,
 )
@@ -34,6 +35,24 @@ async def test_filtrar_fechas_peruanas_antes_de_paginar(sesion, admin, material)
     assert [o.id for o in await ordenes_service.listar(sesion, admin, limite=1, **kwargs)] == [temprano.id]
     assert await ordenes_service.contar(sesion, admin, desde=date(2026, 10, 21)) == 1
     assert await ordenes_service.contar(sesion, admin, hasta=date(2026, 10, 19)) == 0
+
+
+async def test_busqueda_historica_y_fechas_antes_de_paginar(sesion, admin, cliente):
+    cliente.nombre = 'Mayoga Impresiones'
+    antigua = Orden(cliente_id=cliente.id, creado_por=admin.id, descripcion='Pedido especial',
+                    telefono='924 943 790', fecha_entrega=date(2026, 10, 20),
+                    creado_en=datetime(2026, 10, 10, 12, tzinfo=timezone.utc))
+    sesion.add(antigua)
+    await sesion.flush()
+    sesion.add_all([Orden(cliente_id=cliente.id, creado_por=admin.id, descripcion='Otros',
+                          fecha_entrega=date(2026, 10, 22),
+                          creado_en=datetime(2026, 10, 21, 12, tzinfo=timezone.utc)) for _ in range(105)])
+    await sesion.flush()
+    filtros = dict(busqueda='MAYOGA', desde=date(2026, 10, 10), hasta=date(2026, 10, 10))
+    assert await ordenes_service.contar(sesion, admin, **filtros) == 1
+    assert [o.id for o in await ordenes_service.listar(sesion, admin, limite=1, **filtros)] == [antigua.id]
+    assert [o.id for o in await ordenes_service.listar(sesion, admin, busqueda='924943790')] == [antigua.id]
+    assert [o.id for o in await ordenes_service.listar(sesion, admin, busqueda=antigua.codigo)] == [antigua.id]
 
 
 # ══ Creación y reserva de stock (RN-03) ════════════════════════════════════
@@ -300,6 +319,22 @@ async def test_trabajador_si_gestiona_su_orden(sesion, admin, operario, material
         sesion, orden.id, EstadoOrden.EN_DISENO, operario
     )
     assert orden.estado == EstadoOrden.EN_DISENO
+
+
+async def test_venta_rapida_mixta_y_abonos_parciales(sesion, admin):
+    from app.schemas.orden import VentaRapidaData
+
+    data = VentaRapidaData(descripcion="Copias", monto_total=100, pagos=[
+        {"metodo": "efectivo", "monto": 30}, {"metodo": "yape_marcell", "monto": 20},
+    ])
+    orden = await ordenes_service.crear_venta_rapida(sesion, data, admin)
+    assert [(p.metodo.value, float(p.monto)) for p in orden.pagos] == [("efectivo", 30), ("yape_marcell", 20)]
+    assert float(orden.saldo_pendiente) == 50
+    assert not orden.pagado_totalmente
+    await ordenes_service.confirmar_pago(sesion, orden.id, None, "", admin, monto=20)
+    assert float(orden.saldo_pendiente) == 30
+    await ordenes_service.confirmar_pago(sesion, orden.id, None, "", admin, monto=30)
+    assert orden.pagado_totalmente
 
 
 async def test_crear_venta_rapida_mostrador(sesion, admin):

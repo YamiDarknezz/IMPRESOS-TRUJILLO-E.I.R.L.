@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -9,7 +9,6 @@ import {
   estaEnPipeline,
   estaVencida,
   estadosDisponibles,
-  filtrarOrdenes,
 } from '../../core/services/ordenes.service';
 import { SesionService, nombreVisible } from '../../core/services/sesion.service';
 import { ComprobantesService } from '../../core/services/comprobantes.service';
@@ -58,8 +57,9 @@ interface OpcionFiltro {
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink, IconComponent, ModalComponent, VentaRapidaComponent],
   templateUrl: './ordenes.html',
+  styleUrl: './ordenes.css',
 })
-export class OrdenesComponent {
+export class OrdenesComponent implements OnDestroy {
   private ordenesService = inject(OrdenesService);
   private comprobantes = inject(ComprobantesService);
   sesion = inject(SesionService);
@@ -72,6 +72,14 @@ export class OrdenesComponent {
   readonly totalOrdenes = this.ordenesService.totalOrdenes;
   readonly hayMasOrdenes = this.ordenesService.hayMasOrdenes;
   readonly cargandoMas = this.ordenesService.cargandoMasOrdenes;
+  readonly paginaActual = this.ordenesService.paginaActual;
+  readonly totalPaginas = this.ordenesService.totalPaginas;
+  readonly tamanoPagina = this.ordenesService.tamanoPagina;
+
+  async irPagina(pagina: number): Promise<void> {
+    try { await this.ordenesService.irPagina(pagina); }
+    catch (e) { alert(mensajeDeError(e, 'No se pudo cargar la página.')); }
+  }
 
   readonly enProceso = this.ordenesService.enProceso;
   readonly finalizadas = this.ordenesService.finalizadas;
@@ -101,13 +109,34 @@ export class OrdenesComponent {
     { valor: 'cancelada',     etiqueta: 'Canceladas' },
   ];
 
-  readonly ordenesFiltradas = computed(() =>
-    filtrarOrdenes(this.ordenes(), {
-      estado: this.filtroEstado(),
-      texto: this.busqueda(),
-      canal: this.filtroCanal(),
-    })
-  );
+  readonly ordenesFiltradas = this.ordenes;
+  private temporizadorBusqueda: ReturnType<typeof setTimeout> | undefined;
+
+  private aplicarFiltros(cambios: Parameters<OrdenesService['filtrarPor']>[0]): void {
+    void this.ordenesService.filtrarPor(cambios).catch(e => {
+      alert(mensajeDeError(e, 'No se pudieron filtrar los pedidos. Intenta nuevamente.'));
+    });
+  }
+
+  ngOnDestroy(): void { clearTimeout(this.temporizadorBusqueda); }
+
+  buscar(valor: string): void {
+    this.busqueda.set(valor);
+    clearTimeout(this.temporizadorBusqueda);
+    this.temporizadorBusqueda = setTimeout(() => {
+      this.aplicarFiltros({ texto: valor });
+    }, 300);
+  }
+
+  cambiarFiltroEstado(valor: FiltroEstado): void {
+    this.filtroEstado.set(valor);
+    this.aplicarFiltros({ estado: valor });
+  }
+
+  cambiarCanal(valor: string): void {
+    this.filtroCanal.set(valor);
+    this.aplicarFiltros({ canal: valor });
+  }
 
   readonly hayFiltroFecha = computed(() => !!(this.desde() || this.hasta()));
 
@@ -132,11 +161,11 @@ export class OrdenesComponent {
   }
 
   cambiarLocal(valor: string): void {
-    void this.ordenesService.filtrarPor({ local: valor as UnidadNegocio | '' });
+    this.aplicarFiltros({ local: valor as UnidadNegocio | '' });
   }
 
   alternarPendientesHoy(): void {
-    void this.ordenesService.filtrarPor({ soloPendientesHoy: !this.soloPendientesHoy() });
+    this.aplicarFiltros({ soloPendientesHoy: !this.soloPendientesHoy() });
   }
 
   // ── Estado de la interfaz ────────────────────────────────────────────────
@@ -152,6 +181,7 @@ export class OrdenesComponent {
   /** Orden cuyo saldo se está cobrando. */
   readonly ordenACobrar = signal<Orden | null>(null);
   readonly metodoPago = signal<MetodoPago>('efectivo');
+  readonly montoPago = signal<number | null>(null);
   readonly referenciaPago = signal('');
   readonly descripcionPago = signal('');
 
@@ -183,15 +213,16 @@ export class OrdenesComponent {
   readonly nombreVisible = nombreVisible;
 
   constructor() {
+    this.busqueda.set(this.ordenesService.texto?.() ?? '');
+    this.filtroEstado.set((this.ordenesService.estado?.() ?? 'todos') as FiltroEstado);
+    this.filtroCanal.set(this.ordenesService.canal?.() ?? '');
     this.ordenesService.cargar();
-    // Las tarjetas salen de las métricas del backend, no de la lista cargada.
-    this.ordenesService.cargarMetricas();
   }
 
   /** Vuelve a pedir las órdenes y los indicadores (otros usuarios también las mueven). */
   async actualizar(): Promise<void> {
     try {
-      await Promise.all([this.ordenesService.recargar(), this.ordenesService.cargarMetricas()]);
+      await this.ordenesService.recargar();
     } catch (e) {
       alert(mensajeDeError(e, 'No se pudieron actualizar las órdenes.'));
     }
@@ -203,11 +234,11 @@ export class OrdenesComponent {
   }
 
   limpiarFiltroFecha(): void {
-    void this.ordenesService.filtrarPor({ desde: '', hasta: '' });
+    this.aplicarFiltros({ desde: '', hasta: '' });
   }
 
   cambiarFecha(campo: 'desde' | 'hasta', valor: string): void {
-    void this.ordenesService.filtrarPor({ [campo]: valor });
+    this.aplicarFiltros({ [campo]: valor });
   }
 
   // ── Etapa y asignación ───────────────────────────────────────────────────
@@ -381,6 +412,7 @@ export class OrdenesComponent {
     this.metodoPago.set(metodosPagoHeredados().includes(previo) ? 'efectivo' : previo);
     this.referenciaPago.set('');
     this.descripcionPago.set('');
+    this.montoPago.set(orden.finanzas?.saldo_pendiente ?? null);
     this.limpiarAdjuntosCobro();
   }
 
@@ -420,13 +452,20 @@ export class OrdenesComponent {
     const orden = this.ordenACobrar();
     if (!orden) return;
 
+    const monto = Number(this.montoPago());
+    if (!Number.isFinite(monto) || monto <= 0 || monto > (orden.finanzas?.saldo_pendiente ?? 0)) {
+      alert('Ingresa un monto mayor a cero que no supere el saldo pendiente.');
+      return;
+    }
+
     this.guardando.set(true);
     try {
       const actualizada = await this.ordenesService.confirmarPago(
         orden.id,
         this.metodoPago(),
         this.referenciaPago().trim(),
-        this.descripcionPago().trim()
+        this.descripcionPago().trim(),
+        monto
       );
 
       const pendientes = this.adjuntosCobro();

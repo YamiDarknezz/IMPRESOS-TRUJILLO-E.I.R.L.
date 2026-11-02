@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { OrdenesService } from '../../../core/services/ordenes.service';
+import { ComprobantesService } from '../../../core/services/comprobantes.service';
 import { VentaRapidaComponent } from './venta-rapida';
 
 describe('VentaRapidaComponent', () => {
@@ -23,6 +24,26 @@ describe('VentaRapidaComponent', () => {
     expect(ordenesFalso.crearVentaRapida).not.toHaveBeenCalled();
     expect(alertSpy).toHaveBeenCalledWith('Ingresa la descripción del servicio o producto rápido.');
     alertSpy.mockRestore();
+  });
+
+  it('registra efectivo y Yape por separado y vincula la captura al Yape', async () => {
+    const comprobantes = TestBed.inject(ComprobantesService);
+    const subir = vi.spyOn(comprobantes, 'subirVarias').mockResolvedValue({ subidos: [], fallidos: [] });
+    ordenesFalso.crearVentaRapida.mockResolvedValue({ id: 10, finanzas: { pagos: [{ id: 7, metodo: 'yape_angel' }] } });
+    const componente = TestBed.createComponent(VentaRapidaComponent).componentInstance;
+    componente.descripcion.set('Copias');
+    componente.monto.set(100);
+    componente.mixto.set(true);
+    componente.efectivo.set(30);
+    componente.yape.set(20);
+    componente.metodoYape.set('yape_angel');
+    const archivo = new File(['foto'], 'yape.png', { type: 'image/png' });
+    componente.archivos.set([archivo]);
+    await componente.guardar();
+    expect(ordenesFalso.crearVentaRapida).toHaveBeenCalledWith(expect.objectContaining({ pagos: [
+      { metodo: 'efectivo', monto: 30 }, { metodo: 'yape_angel', monto: 20 },
+    ] }));
+    expect(subir).toHaveBeenCalledWith(10, [archivo], 7);
   });
 
   it('guardar(): exige un monto mayor a 0', async () => {
