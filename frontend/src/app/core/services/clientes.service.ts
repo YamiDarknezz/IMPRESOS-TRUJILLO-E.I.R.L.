@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { celularPeruano } from '../../shared/utilidades/contactos';
 import { ApiService } from './api.service';
 import { ListaRemota } from './lista-remota';
 import { Cliente, RespuestaItem, ResumenCliente, TipoCliente } from '../models';
@@ -67,6 +68,10 @@ export function filtrarClientes(clientes: Cliente[], texto: string): Cliente[] {
   return clientes.filter(c =>
     c.nombre?.toLowerCase().includes(termino) ||
     c.documento?.toLowerCase().includes(termino) ||
-    c.telefono?.toLowerCase().includes(termino)
+    c.telefono?.toLowerCase().includes(termino) ||
+    (!!celularPeruano(termino) && (
+      celularPeruano(c.telefono ?? '') === celularPeruano(termino) ||
+      celularPeruano(c.nombre ?? '') === celularPeruano(termino)
+    ))
   );
 }

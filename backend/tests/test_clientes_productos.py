@@ -7,6 +7,52 @@ from app.services import ordenes_service
 from tests.apoyo import cabecera_token, datos_orden
 
 
+async def test_no_duplica_telefonos_con_formato_distinto_y_detecta_nombre_numerico(cliente_api, admin):
+    cabecera = cabecera_token(admin)
+    respuesta = await cliente_api.post('/api/clientes', json={'nombre': '+51 975 085 405'}, headers=cabecera)
+    assert respuesta.status_code == 200
+    assert respuesta.json()['data']['telefono'] == '+51975085405'
+    duplicado = await cliente_api.post('/api/clientes', json={'nombre': 'Otra ficha', 'telefono': '975 085 405'}, headers=cabecera)
+    assert duplicado.status_code == 409
+    encontrado = await cliente_api.get('/api/clientes', params={'q': '+51 975 085 405'}, headers=cabecera)
+    assert [c['id'] for c in encontrado.json()['data']] == [respuesta.json()['data']['id']]
+
+
+async def test_usuario_whatsapp_se_conserva_y_detecta_sin_distinguir_mayusculas(cliente_api, admin):
+    cabecera = cabecera_token(admin)
+    creado = await cliente_api.post('/api/clientes', json={'nombre': 'Ana', 'telefono': '@Anaa91s'}, headers=cabecera)
+    assert creado.status_code == 200
+    assert creado.json()['data']['telefono'] == '@anaa91s'
+    duplicado = await cliente_api.post('/api/clientes', json={'nombre': 'Ana duplicada', 'telefono': '@ANAA91S'}, headers=cabecera)
+    assert duplicado.status_code == 409
+
+
+async def test_alta_de_orden_reutiliza_cliente_por_telefono_historico(sesion, admin, material, cliente):
+    cliente.telefono = '+51 987 789 987'
+    await sesion.flush()
+    orden = await ordenes_service.crear_orden(sesion, datos_orden(material.id, cliente='Nombre diferente', telefono='987789987'), admin)
+    assert orden.cliente_id == cliente.id
+    assert orden.telefono == '+51987789987'
+
+
+async def test_no_fusiona_automaticamente_contactos_historicos_ambiguos(sesion, admin, material, cliente):
+    from app.core.errores import Conflicto
+    from app.models import Cliente
+    cliente.telefono = '+51 987 789 987'
+    sesion.add(Cliente(nombre='Otro cliente', telefono='987789987'))
+    await sesion.flush()
+    with pytest.raises(Conflicto, match='varios clientes'):
+        await ordenes_service.crear_orden(sesion, datos_orden(material.id, cliente='Cliente Nuevo', telefono='987 789 987'), admin)
+
+
+async def test_venta_rapida_detecta_telefono_en_nombre(sesion, admin):
+    from app.schemas.orden import VentaRapidaData
+    primera = await ordenes_service.crear_venta_rapida(sesion, VentaRapidaData(descripcion='Copias', monto_total=10, cliente_nombre='+51 975 085 405'), admin)
+    segunda = await ordenes_service.crear_venta_rapida(sesion, VentaRapidaData(descripcion='Copias', monto_total=10, cliente_nombre='975085405'), admin)
+    assert primera.cliente_id == segunda.cliente_id
+    assert primera.cliente.telefono == '+51975085405'
+
+
 # ══ Clientes ═══════════════════════════════════════════════════════════════
 
 async def test_resumen_del_cliente(sesion, admin, material, cliente):

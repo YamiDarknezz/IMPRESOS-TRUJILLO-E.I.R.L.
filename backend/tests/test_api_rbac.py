@@ -58,6 +58,14 @@ async def test_secretaria_puede_asignar_sin_acceso_a_gestion_de_usuarios(cliente
     assert (await cliente_api.post(f'/api/ordenes/{orden.id}/asignar', json={"asignado_a": admin.id}, headers=cabecera_token(operario))).status_code == 403
 
 
+async def test_secretaria_puede_avanzar_orden_ajena(cliente_api, sesion, admin, operario, material):
+    secretaria = await _usuario(sesion, Rol.SECRETARIA, 'secretaria-etapa@impresos.test')
+    orden = await ordenes_service.crear_orden(sesion, datos_orden(material.id, asignado_a=operario.id), admin)
+    respuesta = await cliente_api.post(f'/api/ordenes/{orden.id}/estado', json={'estado': 'en_diseno'}, headers=cabecera_token(secretaria))
+    assert respuesta.status_code == 200
+    assert respuesta.json()['data']['estado'] == 'en_diseno'
+
+
 async def test_estado_de_linea_exige_permiso_y_estado_valido(cliente_api, sesion, admin, operario, material):
     datos = datos_orden(material.id, asignado_a=admin.id, items=[{"descripcion": "Servicio", "cantidad": 1, "precio_unitario": 100}])
     orden = await ordenes_service.crear_orden(sesion, datos, admin)

@@ -147,6 +147,7 @@ export interface Orden {
   asignado_a: number | null;
   asignado: string;
   incluye_igv: boolean;
+  precio_incluye_igv?: boolean;
   subtotal: number;
   igv: number;
   items: OrdenItem[];

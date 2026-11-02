@@ -149,7 +149,11 @@
                    cliente; la asignación quedó al final de la fila, con menos peso. -->
               <td class="contacto-cell">
                 @if (orden.telefono) {
-                  <a class="enlace-telefono" [href]="'tel:' + orden.telefono">{{ orden.telefono }}</a>
+                  @if (orden.telefono.startsWith('@')) {
+                    <span>{{ orden.telefono }}</span>
+                  } @else {
+                    <a class="enlace-telefono" [href]="'tel:' + orden.telefono">{{ orden.telefono }}</a>
+                  }
                 } @else {
                   <span class="text-muted">—</span>
                 }

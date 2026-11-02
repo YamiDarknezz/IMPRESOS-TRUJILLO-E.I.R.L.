@@ -40,6 +40,7 @@
         @if (mostrarNuevoCliente()) {
           <div class="quick-add">
             <input type="text" [ngModel]="nuevoCliente().nombre" name="nuevoCliNombre"
+                   (blur)="detectarTelefonoClienteRapido()"
                    (ngModelChange)="nuevoCliente.set({ nombre: $event, telefono: nuevoCliente().telefono })"
                    placeholder="Nombre del cliente">
             <input type="text" [ngModel]="nuevoCliente().telefono" name="nuevoCliTel"
@@ -293,7 +294,7 @@
       </div>
 
       <div class="input-group">
-        <label>IGV (S/)</label>
+        <label>{{ precioIncluyeIgv() ? 'IGV incluido' : 'IGV adicional (pedido anterior)' }} (S/)</label>
         <input type="number" [value]="igv()" disabled class="disabled-input">
       </div>
 

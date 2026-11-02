@@ -167,9 +167,9 @@ async def test_precision_numerica_con_igv(sesion_pg, entorno_pg):
     )
 
     assert float(orden.subtotal) == 33.33
-    assert float(orden.igv) == 6.00
-    assert float(orden.total) == 39.33
-    assert float(orden.saldo_pendiente) == 19.33
+    assert float(orden.igv) == 5.08
+    assert float(orden.total) == 33.33
+    assert float(orden.saldo_pendiente) == 13.33
 
 
 async def test_cierre_de_caja_en_postgres(sesion_pg, entorno_pg):

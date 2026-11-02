@@ -45,6 +45,7 @@ from app.models import (
 )
 from app.schemas.orden import AdelantoParteData, MaterialEstimado, OrdenCreateData, VentaRapidaData
 from app.services import inventario_service
+from app.services.contactos import coincidencias_contacto, normalizar_contacto, telefono_en_nombre
 from app.services.inventario_service import AjusteStock
 
 # Etapas con el trabajo aún en curso: el stock sigue reservado con las
@@ -83,14 +84,19 @@ def calcular_totales(
     incluye_igv: bool,
     descuento: float | Decimal = 0,
     igv_porcentaje: float | None = None,
+    precio_incluye_igv: bool = True,
 ) -> tuple[Decimal, Decimal]:
-    """Devuelve (igv, total). El total es subtotal + IGV - descuento."""
+    """Desglosa el IGV incluido; conserva la fórmula histórica cuando se solicita."""
     subtotal_d = _decimal(subtotal)
     descuento_d = _decimal(descuento)
     if descuento_d > subtotal_d:
         raise ErrorDeNegocio("El descuento no puede superar el subtotal.")
 
     porcentaje = _decimal(igv_porcentaje if igv_porcentaje is not None else settings.igv_porcentaje)
+    if incluye_igv and precio_incluye_igv:
+        total = _redondear(subtotal_d - descuento_d)
+        igv = _redondear(total * porcentaje / (Decimal("100") + porcentaje))
+        return igv, total
     igv = _redondear(subtotal_d * porcentaje / Decimal("100")) if incluye_igv else Decimal("0.00")
     return igv, _redondear(subtotal_d + igv - descuento_d)
 
@@ -150,7 +156,7 @@ def puede_gestionar(orden: Orden, usuario: Usuario) -> bool:
 
 def puede_avanzar_etapa(orden: Orden, usuario: Usuario) -> bool:
     """Avanzar el pipeline es del admin/subgerente o del responsable asignado."""
-    if usuario.rol in (Rol.ADMIN, Rol.SUBGERENTE):
+    if usuario.rol in (Rol.ADMIN, Rol.SUBGERENTE, Rol.SECRETARIA):
         return True
     return orden.asignado_a == usuario.id
 
@@ -415,6 +421,20 @@ async def _resolver_cliente(sesion: AsyncSession, data: OrdenCreateData) -> Clie
     if not nombre:
         raise ErrorDeNegocio("Indica el cliente de la orden.")
 
+    contacto_nombre = telefono_en_nombre(nombre)
+    contacto = normalizar_contacto(data.telefono or contacto_nombre or "")
+    if contacto_nombre and contacto and contacto_nombre != contacto:
+        raise Conflicto("El número del nombre no coincide con el teléfono indicado.")
+    coincidencias = await coincidencias_contacto(sesion, contacto)
+    if len(coincidencias) > 1:
+        raise Conflicto("Hay varios clientes con ese contacto. Selecciona el cliente correcto.")
+    if coincidencias:
+        if not coincidencias[0].activo:
+            raise Conflicto("El cliente con ese contacto está inactivo. Consulta con administración.")
+        return coincidencias[0]
+    if contacto_nombre:
+        nombre = contacto_nombre
+
     existente = (
         await sesion.execute(select(Cliente).where(Cliente.nombre.ilike(nombre)))
     ).scalars().first()
@@ -422,7 +442,7 @@ async def _resolver_cliente(sesion: AsyncSession, data: OrdenCreateData) -> Clie
         return existente
 
     # Alta rápida desde el mostrador: se crea el cliente con los datos mínimos.
-    cliente = Cliente(nombre=nombre, telefono=data.telefono, direccion=data.direccion)
+    cliente = Cliente(nombre=nombre, telefono=contacto, direccion=data.direccion)
     sesion.add(cliente)
     await sesion.flush()
     return cliente
@@ -756,13 +776,14 @@ async def crear_orden(sesion: AsyncSession, data: OrdenCreateData, usuario: Usua
         # serializar el nombre sin provocar una carga perezosa en async.
         cliente=cliente,
         direccion=data.direccion or cliente.direccion,
-        telefono=data.telefono or cliente.telefono,
+        telefono=normalizar_contacto(data.telefono or cliente.telefono),
         asignado=asignado,
         creado_por=usuario.id,
         descripcion=data.descripcion,
         unidad_negocio=data.unidad_negocio,
         fecha_entrega=data.fecha_entrega,
         incluye_igv=data.incluye_igv,
+        precio_incluye_igv=True,
         subtotal=subtotal,
         igv=igv,
         descuento=descuento,
@@ -835,11 +856,17 @@ async def crear_venta_rapida(
     Se crea la orden con pago al 100% y queda inmediatamente entregada.
     """
     nombre_cliente = (data.cliente_nombre or "Cliente Mostrador").strip()
-    cliente = (
+    contacto_nombre = telefono_en_nombre(nombre_cliente)
+    coincidencias = await coincidencias_contacto(sesion, contacto_nombre or "")
+    if len(coincidencias) > 1:
+        raise Conflicto("Hay varios clientes con ese contacto. Selecciona el cliente correcto.")
+    cliente = coincidencias[0] if coincidencias else (
         await sesion.execute(select(Cliente).where(Cliente.nombre.ilike(nombre_cliente)))
     ).scalars().first()
+    if cliente is not None and not cliente.activo:
+        raise Conflicto("El cliente está inactivo. Consulta con administración.")
     if cliente is None:
-        cliente = Cliente(nombre=nombre_cliente)
+        cliente = Cliente(nombre=contacto_nombre or nombre_cliente, telefono=contacto_nombre or "")
         sesion.add(cliente)
         await sesion.flush()
 
@@ -931,7 +958,7 @@ async def actualizar(sesion: AsyncSession, id_orden: int, data: OrdenCreateData,
 
     subtotal = _calcular_subtotal(data)
     descuento = _redondear(_decimal(data.descuento))
-    igv, total = calcular_totales(subtotal, data.incluye_igv, descuento)
+    igv, total = calcular_totales(subtotal, data.incluye_igv, descuento, precio_incluye_igv=orden.precio_incluye_igv)
     # La exención de RN-01 solo aplica cuando el cliente fue seleccionado
     # explícitamente por id, no cuando se resolvió por coincidencia de nombre.
     validar_adelanto(
@@ -955,7 +982,7 @@ async def actualizar(sesion: AsyncSession, id_orden: int, data: OrdenCreateData,
 
     orden.cliente = cliente
     orden.direccion = data.direccion or cliente.direccion
-    orden.telefono = data.telefono or cliente.telefono
+    orden.telefono = normalizar_contacto(data.telefono or cliente.telefono)
     # El asignado NO se toca aquí a propósito: el formulario de edición ni
     # siquiera muestra ese campo salvo a supervisión, y por rol no puede
     # mandar "no cambiar" — solo puede mandar `asignado_a` o nada. Cambiar a

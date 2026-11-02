@@ -8,6 +8,7 @@ Las reglas que protegen el inventario y el cobro:
   - No se entrega sin haber cobrado el total, y la entrega es definitiva.
 """
 from types import SimpleNamespace
+from decimal import Decimal
 
 import pytest
 
@@ -99,8 +100,13 @@ def test_calcular_totales_sin_igv():
 
 def test_calcular_totales_con_igv_y_descuento():
     igv, total = calcular_totales(100, incluye_igv=True, descuento=20)
-    assert float(igv) == 18
-    assert float(total) == 98  # 100 + 18 - 20
+    assert float(igv) == 12.20
+    assert float(total) == 80
+
+
+def test_precio_incluye_igv_sin_inflar_total_y_conserva_modo_historico():
+    assert calcular_totales(100, incluye_igv=True) == (Decimal('15.25'), Decimal('100.00'))
+    assert calcular_totales(100, incluye_igv=True, precio_incluye_igv=False) == (Decimal('18.00'), Decimal('118.00'))
 
 
 def test_descuento_no_puede_superar_el_subtotal():
@@ -113,15 +119,15 @@ def test_descuento_no_puede_superar_el_subtotal():
 # guardaba como 6,88. El criterio comercial ahora es explícito y es el mismo.
 def test_calcular_totales_redondea_el_medio_centavo_hacia_arriba():
     igv, total = calcular_totales(38.25, incluye_igv=True)
-    assert float(igv) == 6.89  # 38.25 * 18% = 6.885
-    assert float(total) == 45.14
+    assert float(igv) == 5.83
+    assert float(total) == 38.25
 
 
 def test_calcular_totales_redondea_el_medio_centavo_en_subtotales_pares():
     # 57.25 * 18% = 10.305: con medio-par habría quedado en 10.30.
     igv, total = calcular_totales(57.25, incluye_igv=True)
-    assert float(igv) == 10.31
-    assert float(total) == 67.56
+    assert float(igv) == 8.73
+    assert float(total) == 57.25
 
 
 # ══ RN-01: adelanto obligatorio ═════════════════════════════════════════════
@@ -166,9 +172,8 @@ def test_operario_solo_gestiona_las_suyas():
     assert not puede_gestionar(_orden(asignado_a=2), _usuario(Rol.OPERARIO, id=1))
 
 
-def test_secretaria_no_avanza_etapas_de_produccion():
-    """Avanzar el pipeline es del taller o de la supervisión, no de mostrador."""
-    assert not puede_avanzar_etapa(_orden(asignado_a=2), _usuario(Rol.SECRETARIA, id=1))
+def test_secretaria_puede_avanzar_etapas_de_produccion():
+    assert puede_avanzar_etapa(_orden(asignado_a=2), _usuario(Rol.SECRETARIA, id=1))
 
 
 def test_operario_avanza_las_suyas():

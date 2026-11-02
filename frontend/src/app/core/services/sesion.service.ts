@@ -118,7 +118,7 @@ export class SesionService {
 
   /** ¿Puede avanzar la etapa de producción de esta orden? */
   puedeAvanzarEtapa(orden: { asignado_a?: number | null }): boolean {
-    if (this.esSupervisor()) return true;
+    if (this.puedeGestionarOrdenes()) return true;
     return (orden.asignado_a ?? null) === (this.usuario()?.id ?? -1);
   }
 }

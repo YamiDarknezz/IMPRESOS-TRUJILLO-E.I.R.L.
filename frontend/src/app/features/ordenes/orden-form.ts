@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { celularPeruano } from '../../shared/utilidades/contactos';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { ClientesService } from '../../core/services/clientes.service';
@@ -177,12 +178,18 @@ export class OrdenFormComponent {
     return redondear(f.precioTotal);
   });
 
-  readonly igv = computed(() =>
-    this.form().incluyeIgv ? redondear(this.subtotal() * igvPorcentaje() / 100) : 0
-  );
+  readonly precioIncluyeIgv = computed(() => this.editando()?.precio_incluye_igv !== false);
+
+  readonly igv = computed(() => {
+    if (!this.form().incluyeIgv) return 0;
+    const tasa = igvPorcentaje();
+    return this.precioIncluyeIgv()
+      ? redondear(Math.max(0, this.subtotal() - this.form().descuento) * tasa / (100 + tasa))
+      : redondear(this.subtotal() * tasa / 100);
+  });
 
   readonly total = computed(() =>
-    redondear(this.subtotal() + this.igv() - this.form().descuento)
+    redondear(this.subtotal() + (this.precioIncluyeIgv() ? 0 : this.igv()) - this.form().descuento)
   );
 
   /** Todo lo que se deja de adelanto: la primera parte más las otras (#124). */
@@ -443,6 +450,12 @@ export class OrdenFormComponent {
   }
 
   // ── Alta rápida de cliente ───────────────────────────────────────────────
+
+  detectarTelefonoClienteRapido(): void {
+    const actual = this.nuevoCliente();
+    const telefono = celularPeruano(actual.nombre);
+    if (telefono && !actual.telefono.trim()) this.nuevoCliente.set({ ...actual, telefono });
+  }
 
   async crearClienteRapido(): Promise<void> {
     const datos = this.nuevoCliente();

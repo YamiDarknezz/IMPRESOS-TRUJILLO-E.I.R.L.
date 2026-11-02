@@ -155,8 +155,8 @@ describe('OrdenFormComponent', () => {
       componente.actualizar('precioTotal', 100);
       expect(componente.igv()).toBe(0);
       componente.actualizar('incluyeIgv', true);
-      expect(componente.igv()).toBe(18);
-      expect(componente.total()).toBe(118);
+      expect(componente.igv()).toBe(15.25);
+      expect(componente.total()).toBe(100);
     });
 
     it('el descuento se resta del total, y el saldo nunca baja de 0', () => {
@@ -193,8 +193,8 @@ describe('OrdenFormComponent', () => {
       componente.actualizar('incluyeIgv', true);
 
       expect(componente.subtotal()).toBe(38.25);
-      expect(componente.igv()).toBe(6.89);
-      expect(componente.total()).toBe(45.14);
+      expect(componente.igv()).toBe(5.83);
+      expect(componente.total()).toBe(38.25);
     });
 
     it('cada línea se redondea a centavos antes de sumar, como el backend', () => {

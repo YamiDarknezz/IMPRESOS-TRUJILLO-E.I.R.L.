@@ -45,7 +45,7 @@ export class ShellComponent {
   theme = inject(ThemeService);
 
   /** Menú reducido a iconos, para ganar ancho de pantalla. */
-  readonly colapsado = signal(leerPreferencia(CLAVE_COLAPSADO) === '1');
+  readonly colapsado = signal(leerPreferencia(CLAVE_COLAPSADO) !== '0');
   /** En móvil el menú es un cajón que se superpone. */
   readonly cajonAbierto = signal(false);
 
@@ -120,6 +120,11 @@ export class ShellComponent {
   /** Al elegir una opción en móvil, el cajón debe cerrarse solo. */
   cerrarCajon(): void {
     this.cajonAbierto.set(false);
+  }
+
+  cerrarNavegacionAlTrabajar(): void {
+    this.cajonAbierto.set(false);
+    this.colapsado.set(true);
   }
 
   cerrarSesion(): void {

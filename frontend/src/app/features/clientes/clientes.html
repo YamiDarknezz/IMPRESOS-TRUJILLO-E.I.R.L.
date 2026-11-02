@@ -90,6 +90,7 @@
           <label>Nombre o razón social *</label>
           <input type="text" [ngModel]="form().nombre" name="nombre"
                  (ngModelChange)="actualizar('nombre', $event)"
+                 (blur)="detectarTelefonoEnNombre()"
                  [class.input-error]="errores()['nombre']">
           @if (errores()['nombre']) { <span class="field-error">{{ errores()['nombre'] }}</span> }
         </div>
@@ -110,9 +111,9 @@
         </div>
 
         <div class="input-group">
-          <label>Teléfono</label>
+          <label>Teléfono o usuario de WhatsApp</label>
           <input type="text" [ngModel]="form().telefono" name="telefono"
-                 (ngModelChange)="actualizar('telefono', $event)" placeholder="Opcional">
+                 (ngModelChange)="actualizar('telefono', $event)" placeholder="987654321 o @usuario">
         </div>
 
         <div class="input-group">

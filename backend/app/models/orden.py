@@ -83,6 +83,7 @@ class Orden(Base, TemporalMixin):
 
     # ── Contrato: montos ────────────────────────────────────────────────────
     incluye_igv: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    precio_incluye_igv: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", nullable=False)
     subtotal: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, nullable=False)
     igv: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, nullable=False)
     descuento: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, nullable=False)

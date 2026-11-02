@@ -9,6 +9,7 @@ import { ShellComponent } from './shell';
 describe('ShellComponent', () => {
   let sesionFalsa: {
     cargar: ReturnType<typeof vi.fn>;
+    usuario: ReturnType<typeof signal<null>>;
     puedeGestionarOrdenes: ReturnType<typeof signal<boolean>>;
     esSupervisor: ReturnType<typeof signal<boolean>>;
     esAdmin: ReturnType<typeof signal<boolean>>;
@@ -19,6 +20,7 @@ describe('ShellComponent', () => {
     localStorage.clear();
     sesionFalsa = {
       cargar: vi.fn().mockResolvedValue(undefined),
+      usuario: signal(null),
       puedeGestionarOrdenes: signal(false),
       esSupervisor: signal(false),
       esAdmin: signal(false),
@@ -103,15 +105,25 @@ describe('ShellComponent', () => {
   it('alternarColapsado(): alterna y persiste la preferencia', () => {
     const fixture = TestBed.createComponent(ShellComponent);
     const componente = fixture.componentInstance;
-    expect(componente.colapsado()).toBe(false);
-
-    componente.alternarColapsado();
     expect(componente.colapsado()).toBe(true);
-    expect(localStorage.getItem('it-sidebar-colapsado')).toBe('1');
 
     componente.alternarColapsado();
     expect(componente.colapsado()).toBe(false);
     expect(localStorage.getItem('it-sidebar-colapsado')).toBe('0');
+
+    componente.alternarColapsado();
+    expect(componente.colapsado()).toBe(true);
+    expect(localStorage.getItem('it-sidebar-colapsado')).toBe('1');
+  });
+
+  it('cierra la navegación al interactuar con el área de trabajo', () => {
+    const fixture = TestBed.createComponent(ShellComponent);
+    fixture.componentInstance.colapsado.set(false);
+    fixture.componentInstance.cajonAbierto.set(true);
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('main') as HTMLElement).click();
+    expect(fixture.componentInstance.colapsado()).toBe(true);
+    expect(fixture.componentInstance.cajonAbierto()).toBe(false);
   });
 
   it('arranca colapsado si así quedó guardado', () => {

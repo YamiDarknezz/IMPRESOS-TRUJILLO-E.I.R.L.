@@ -93,6 +93,28 @@ async def test_busqueda_historica_y_fechas_antes_de_paginar(sesion, admin, clien
 
 # ══ Creación y reserva de stock (RN-03) ════════════════════════════════════
 
+@pytest.mark.parametrize(('descuento', 'igv', 'total'), [(0, 15.25, 100), (20, 12.20, 80)])
+async def test_orden_nueva_desglosa_igv_incluido(sesion, admin, material, descuento, igv, total):
+    datos = datos_orden(material.id, precio_total=100, incluye_igv=True, descuento=descuento)
+    orden = await ordenes_service.crear_orden(sesion, datos, admin)
+    assert orden.precio_incluye_igv is True
+    assert float(orden.igv) == igv
+    assert float(orden.total) == total
+
+
+async def test_editar_orden_historica_conserva_igv_adicional(sesion, admin, material):
+    datos = datos_orden(material.id, precio_total=100, incluye_igv=True)
+    orden = await ordenes_service.crear_orden(sesion, datos, admin)
+    orden.precio_incluye_igv = False
+    orden.igv = 18
+    orden.total = 118
+    orden.saldo_pendiente = 68
+    await sesion.flush()
+    actualizada = await ordenes_service.actualizar(sesion, orden.id, datos, admin)
+    assert actualizada.precio_incluye_igv is False
+    assert float(actualizada.igv) == 18
+    assert float(actualizada.total) == 118
+
 async def test_crear_orden_reserva_el_stock(sesion, admin, material):
     orden = await ordenes_service.crear_orden(sesion, datos_orden(material.id), admin)
 

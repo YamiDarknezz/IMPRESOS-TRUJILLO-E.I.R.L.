@@ -302,6 +302,7 @@ def serializar_orden(orden) -> dict[str, Any]:
         "asignado_a": orden.asignado_a,
         "asignado": orden.asignado.nombre if orden.asignado else "",
         "incluye_igv": orden.incluye_igv,
+        "precio_incluye_igv": orden.precio_incluye_igv,
         "subtotal": num(orden.subtotal),
         "igv": num(orden.igv),
         "items": [
