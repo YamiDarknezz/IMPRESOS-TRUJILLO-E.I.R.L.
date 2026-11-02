@@ -119,7 +119,7 @@ describe('OrdenesComponent', () => {
             resumen: () => '',
           },
         },
-        { provide: SesionService, useValue: { esSupervisor: signal(true), puedeVender: signal(true), puedeGestionarOrdenes: signal(true), usuarios: signal([]), puedeGestionar: () => true, puedeAvanzarEtapa: () => true } },
+        { provide: SesionService, useValue: { esSupervisor: signal(true), puedeVender: signal(true), puedeGestionarOrdenes: signal(true), usuarios: signal([]), asignables: signal([]), puedeGestionar: () => true, puedeAvanzarEtapa: () => true } },
       ],
     });
   });
@@ -137,6 +137,28 @@ describe('OrdenesComponent', () => {
     componente.cargarMas();
 
     expect(ordenesFalso.cargarMasOrdenes).toHaveBeenCalledTimes(1);
+  });
+
+  it('muestra acciones fijas y deshabilita editar en pedidos cerrados', () => {
+    ordenesFalso.ordenes.set([ordenBase({ estado: 'entregada' })]);
+    const fixture = TestBed.createComponent(OrdenesComponent);
+    Object.assign(fixture.componentInstance, { etiquetaUnidad: { imprenta: 'Imprenta' }, etiquetaEstado: { entregada: 'Entregada' } });
+    fixture.detectChanges();
+    const fila: HTMLElement = fixture.nativeElement.querySelector('tbody tr');
+    expect(fila.querySelector('[aria-label="Ver detalle"]')).not.toBeNull();
+    expect((fila.querySelector('[aria-label="Editar orden no disponible"]') as HTMLButtonElement).disabled).toBe(true);
+    expect(fila.querySelector('[aria-label="Registrar cobro"]')).not.toBeNull();
+  });
+
+  it('abre las líneas del pedido sin salir del listado', () => {
+    ordenesFalso.ordenes.set([ordenBase({ items: [{ descripcion: 'Banner', cantidad: 2, precio_unitario: 30 }] })]);
+    const fixture = TestBed.createComponent(OrdenesComponent);
+    Object.assign(fixture.componentInstance, { etiquetaUnidad: { imprenta: 'Imprenta' }, etiquetaEstado: { pendiente: 'Pendiente' } });
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('[aria-label="Ver detalle"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Banner');
+    expect(fixture.nativeElement.textContent).toContain('Precio unitario');
   });
 
   it('envía el estado al servidor sin ocultar filas localmente', () => {
@@ -471,8 +493,8 @@ describe('OrdenesComponent', () => {
       expect(columnas.indexOf('Asignado')).toBe(columnas.indexOf('Acciones') - 1);
     });
 
-    it('quien no es supervisión no ve la columna de asignación', () => {
-      expect(encabezados(pintar(true))).not.toContain('Asignado');
+    it('secretaría también ve la columna de asignación', () => {
+      expect(encabezados(pintar(true))).toContain('Asignado');
     });
 
     it('envía la búsqueda de teléfono al servidor', () => {

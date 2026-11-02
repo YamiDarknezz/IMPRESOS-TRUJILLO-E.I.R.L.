@@ -90,7 +90,7 @@ export class OrdenesService {
   readonly canal = signal('');
 
   /** Se pide por bloques de 100 y el backend informa cuántas hay en total. */
-  private lista = new ListaRemota<Orden>(this.api, () => this.rutaDeLista(), 20);
+  private lista = new ListaRemota<Orden>(this.api, () => this.rutaDeLista(), 10);
   private recargaFiltros: Promise<void> = Promise.resolve();
 
   private rutaDeLista(): string {
@@ -131,7 +131,7 @@ export class OrdenesService {
   readonly cargandoMasOrdenes = this.lista.cargandoMas;
   readonly paginaActual = this.lista.pagina;
   readonly totalPaginas = this.lista.paginas;
-  readonly tamanoPagina = 20;
+  readonly tamanoPagina = 10;
   irPagina = (pagina: number) => this.lista.irPagina(pagina);
 
   cargar = (forzar = false) => this.lista.cargar(forzar);

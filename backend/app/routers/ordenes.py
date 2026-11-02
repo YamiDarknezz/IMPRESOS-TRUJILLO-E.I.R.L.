@@ -198,7 +198,7 @@ async def cancelar_orden(
 async def asignar_orden(
     id_orden: int,
     data: AsignarData,
-    usuario: Annotated[Usuario, Depends(supervision)],
+    usuario: Annotated[Usuario, Depends(gestion_ordenes)],
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
 ):
     orden = await ordenes_service.asignar(sesion, id_orden, data.asignado_a, usuario)

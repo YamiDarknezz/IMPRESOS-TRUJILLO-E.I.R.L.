@@ -20,6 +20,7 @@ export class SesionService {
   readonly usuario = signal<UsuarioSistema | null>(null);
   /** Lista de usuarios; la pueden leer administrador y subgerencia. */
   readonly usuarios = signal<UsuarioSistema[]>([]);
+  readonly asignables = signal<{ id: number; nombre: string }[]>([]);
 
   readonly esAdmin = computed(() => this.usuario()?.rol === 'admin');
   readonly esSupervisor = computed(() =>
@@ -75,6 +76,12 @@ export class SesionService {
     }
 
     if (this.esSupervisor()) await this.cargarUsuarios();
+    if (this.puedeGestionarOrdenes()) {
+      try {
+        const res = await this.api.get<RespuestaLista<{ id: number; nombre: string }>>('/api/usuarios/asignables');
+        this.asignables.set(res.data ?? []);
+      } catch { this.asignables.set([]); }
+    }
   }
 
   /** Tras iniciar o cerrar sesión, se vuelve a pedir el perfil. */
@@ -83,6 +90,7 @@ export class SesionService {
     this.enVuelo = null;
     this.usuario.set(null);
     this.usuarios.set([]);
+    this.asignables.set([]);
   }
 
   private async cargarUsuarios(): Promise<void> {

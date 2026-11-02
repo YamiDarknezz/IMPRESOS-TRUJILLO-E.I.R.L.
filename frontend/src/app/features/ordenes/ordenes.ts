@@ -196,6 +196,7 @@ export class OrdenesComponent implements OnDestroy {
 
   /** Orden cuyo historial de pagos se está mirando (#110). */
   readonly ordenHistorial = signal<Orden | null>(null);
+  readonly ordenDetalle = signal<Orden | null>(null);
 
   // Helpers reexpuestos para la plantilla
   readonly canales = computed(() => canalesIngreso());

@@ -64,7 +64,7 @@ describe('OrdenesService', () => {
     await servicio.crear(datos);
 
     expect(apiFalsa.post).toHaveBeenCalledWith('/api/ordenes', datos);
-    expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes?limit=20&offset=0');
+    expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes?limit=10&offset=0');
     expect(inventarioFalso.recargar).toHaveBeenCalledTimes(1);
   });
 
@@ -73,24 +73,24 @@ describe('OrdenesService', () => {
     it('pide el rango al servidor antes de paginar y lo conserva al recargar', async () => {
       await servicio.filtrarPor({ desde: '2026-10-01', hasta: '2026-10-20' });
       expect(apiFalsa.get).toHaveBeenCalledWith(
-        '/api/ordenes?desde=2026-10-01&hasta=2026-10-20&limit=20&offset=0'
+        '/api/ordenes?desde=2026-10-01&hasta=2026-10-20&limit=10&offset=0'
       );
       apiFalsa.get.mockClear();
       await servicio.recargar();
       expect(apiFalsa.get).toHaveBeenCalledWith(
-        '/api/ordenes?desde=2026-10-01&hasta=2026-10-20&limit=20&offset=0'
+        '/api/ordenes?desde=2026-10-01&hasta=2026-10-20&limit=10&offset=0'
       );
     });
 
     it('combina búsqueda, estado y canal antes de paginar', async () => {
       await servicio.filtrarPor({ texto: 'Mayoga', estado: 'pendiente', canal: 'whatsapp' });
-      expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes?busqueda=Mayoga&estado=pendiente&canal_ingreso=whatsapp&limit=20&offset=0');
+      expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes?busqueda=Mayoga&estado=pendiente&canal_ingreso=whatsapp&limit=10&offset=0');
     });
 
     it('filtrarPor({ local }) pide la lista y las métricas de ese local', async () => {
       await servicio.filtrarPor({ local: 'imprenta' });
 
-      expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes?unidad_negocio=imprenta&limit=20&offset=0');
+      expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes?unidad_negocio=imprenta&limit=10&offset=0');
       expect(servicio.local()).toBe('imprenta');
     });
 
@@ -98,7 +98,7 @@ describe('OrdenesService', () => {
       await servicio.filtrarPor({ local: 'gigantografias', soloPendientesHoy: true });
 
       expect(apiFalsa.get).toHaveBeenCalledWith(
-        '/api/ordenes?unidad_negocio=gigantografias&pendientes_hoy=true&limit=20&offset=0'
+        '/api/ordenes?unidad_negocio=gigantografias&pendientes_hoy=true&limit=10&offset=0'
       );
     });
 
@@ -108,7 +108,7 @@ describe('OrdenesService', () => {
 
       await servicio.filtrarPor({ local: '', soloPendientesHoy: false });
 
-      expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes?limit=20&offset=0');
+      expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes?limit=10&offset=0');
     });
 
     it('recargar tras una operación conserva el local elegido', async () => {
@@ -118,7 +118,7 @@ describe('OrdenesService', () => {
 
       await servicio.cancelar(1);
 
-      expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes?unidad_negocio=imprenta&limit=20&offset=0');
+      expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes?unidad_negocio=imprenta&limit=10&offset=0');
     });
   });
 
@@ -325,7 +325,7 @@ describe('OrdenesService', () => {
 
       await servicio.cargar();
 
-      expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes?limit=20&offset=0');
+      expect(apiFalsa.get).toHaveBeenCalledWith('/api/ordenes?limit=10&offset=0');
       expect(servicio.totalOrdenes()).toBe(120);
       expect(servicio.hayMasOrdenes()).toBe(true);
     });
@@ -337,7 +337,7 @@ describe('OrdenesService', () => {
       apiFalsa.get.mockResolvedValue({ status: 'success', data: [ordenBase({ id: 2 })], total: 2 });
       await servicio.cargarMasOrdenes();
 
-      expect(apiFalsa.get).toHaveBeenLastCalledWith('/api/ordenes?limit=20&offset=1');
+      expect(apiFalsa.get).toHaveBeenLastCalledWith('/api/ordenes?limit=10&offset=1');
       expect(servicio.ordenes().map(o => o.id)).toEqual([1, 2]);
       expect(servicio.hayMasOrdenes()).toBe(false);
     });

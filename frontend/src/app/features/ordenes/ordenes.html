@@ -1,18 +1,14 @@
 <div class="pedidos-heading">
-  <div><h1>Pedidos</h1><p>Consulta y gestiona las órdenes de trabajo.</p></div>
-  <div class="pedidos-acciones">
-    <button type="button" class="btn-secondary" (click)="actualizar()" [disabled]="cargando()" title="Actualizar pedidos" aria-label="Actualizar pedidos"><app-icon name="refresh-cw" [size]="17" /></button>
-    @if (sesion.puedeVender()) {
-      <button type="button" class="btn-secondary" (click)="ventaRapidaAbierta.set(true)">Venta rápida</button>
-    }
-    @if (sesion.puedeGestionarOrdenes()) {
-      <a class="btn-primary" routerLink="/ordenes/nueva"><app-icon name="plus" [size]="17" /> Nuevo pedido</a>
-    }
-  </div>
+  <h1>Pedidos</h1>
 </div>
 
 <div class="toolbar toolbar-organizada ordenes-toolbar">
   <div class="toolbar-filtros ordenes-filtros">
+    <div class="pedidos-acciones">
+      <button type="button" class="filtro-icono" (click)="actualizar()" [disabled]="cargando()" title="Actualizar pedidos" aria-label="Actualizar pedidos"><app-icon name="refresh-cw" [size]="18" /></button>
+      @if (sesion.puedeGestionarOrdenes()) { <a class="filtro-icono crear-pedido" routerLink="/ordenes/nueva" title="Nuevo pedido" aria-label="Nuevo pedido"><app-icon name="plus" [size]="18" /></a> }
+      @if (sesion.puedeVender()) { <button type="button" class="filtro-icono" (click)="ventaRapidaAbierta.set(true)" title="Venta rápida" aria-label="Venta rápida"><app-icon name="dollar-sign" [size]="18" /></button> }
+    </div>
     <details class="filtro-desplegable"><summary class="filtro-icono" [class.filtro-activo]="filtroEstado() !== 'todos'" title="Filtrar por estado" aria-label="Filtrar por estado"><app-icon name="clipboard-list" [size]="18" /></summary><div class="filtro-panel"><label for="filtro-estado">Estado</label><select id="filtro-estado" class="search-input filtro-estado" [ngModel]="filtroEstado()" (ngModelChange)="cambiarFiltroEstado($event)" name="filtroEstado" aria-label="Filtrar por estado">
       @for (opcion of opcionesFiltro; track opcion.valor) {
         <option [value]="opcion.valor">{{ opcion.valor === 'todos' ? 'Todos los estados' : opcion.etiqueta }}</option>
@@ -134,7 +130,7 @@
             <th>Finanzas</th>
             <th>Pago</th>
             <th>Estado</th>
-            @if (sesion.esSupervisor()) { <th>Asignado</th> }
+            @if (sesion.puedeGestionarOrdenes()) { <th>Asignado</th> }
             <th>Acciones</th>
           </tr>
         </thead>
@@ -143,7 +139,7 @@
             <tr [class.row-vencida]="estaVencida(orden)"
                 [class.row-cancelada]="orden.estado === 'cancelada'">
 
-              <td><code class="id-chip">{{ orden.id_documento }}</code></td>
+              <td><button type="button" class="id-chip pedido-detalle-link" (click)="ordenDetalle.set(orden)" [attr.aria-label]="'Ver detalle de ' + orden.id_documento">{{ orden.id_documento }}</button></td>
               <td>
                 {{ orden.cliente }}
                 <small class="text-muted bloque">vía {{ etiquetaCanal()[orden.canal_ingreso] || orden.canal_ingreso }}</small>
@@ -160,7 +156,7 @@
               </td>
 
               <td class="desc-cell">
-                {{ orden.descripcion }}
+                <button type="button" class="pedido-descripcion" (click)="ordenDetalle.set(orden)" [title]="'Ver detalle de ' + orden.id_documento">{{ orden.descripcion }}</button>
                 <span class="unidad-linea">
                   <span class="badge" [ngClass]="orden.unidad_negocio === 'imprenta' ? 'badge-info' : 'badge-warning'">{{ etiquetaUnidad[orden.unidad_negocio] }}</span>
                   <span class="metodo-label">{{ orden.tipo_documento }}</span>
@@ -229,61 +225,33 @@
                 }
               </td>
 
-              @if (sesion.esSupervisor()) {
+              @if (sesion.puedeGestionarOrdenes()) {
                 <td>
                   @if (estaEnPipeline(orden)) {
                     <select class="assign-select" [ngModel]="orden.asignado_a || ''"
                             (ngModelChange)="asignar(orden, $event)"
                             [name]="'asignado-' + orden.id_documento">
                       <option value="">Sin asignar</option>
-                      @for (u of sesion.usuarios(); track u.id) {
-                        <option [value]="u.id">{{ nombreVisible(u) }}</option>
+                      @for (u of sesion.asignables(); track u.id) {
+                        <option [value]="u.id">{{ u.nombre }}</option>
                       }
                     </select>
                   } @else {
-                    {{ sesion.nombreDe(orden.asignado_a) || '—' }}
+                    {{ orden.asignado || '—' }}
                   }
                 </td>
               }
 
               <td class="actions-cell">
-                <details class="pedido-acciones-menu">
-                  <summary [attr.aria-label]="'Acciones de ' + orden.id_documento">Acciones</summary>
                 <div class="actions-wrapper">
-                  @if (estaEnPipeline(orden)) {
-                    @if (sesion.puedeGestionarOrdenes()) {
-                      <a class="btn-icon" title="Editar orden" aria-label="Editar orden"
-                         [routerLink]="['/ordenes', orden.id, 'editar']">
-                        <app-icon name="pencil" [size]="14" />
-                      </a>
-                    }
-                    @if (sesion.puedeGestionar(orden)) {
-                      <button class="btn-icon btn-icon-complete"
-                              title="Reportar uso de insumos y finalizar producción"
-                              aria-label="Reportar uso de insumos y finalizar producción"
-                              (click)="abrirCompletar(orden)">
-                        <app-icon name="package-check" [size]="14" />
-                      </button>
-                    }
-                    @if (sesion.esSupervisor()) {
-                      <button class="btn-icon btn-icon-cancel"
-                              title="Cancelar orden (devuelve stock al inventario)"
-                              aria-label="Cancelar orden"
-                              (click)="cancelar(orden)">
-                        <app-icon name="x" [size]="14" />
-                      </button>
-                    }
+                  <button type="button" class="btn-icon" title="Ver detalle" aria-label="Ver detalle" (click)="ordenDetalle.set(orden)"><app-icon name="eye" [size]="15" /></button>
+                  @if (sesion.puedeGestionarOrdenes() && estaEnPipeline(orden)) {
+                    <a class="btn-icon" title="Editar orden" aria-label="Editar orden" [routerLink]="['/ordenes', orden.id, 'editar']"><app-icon name="pencil" [size]="15" /></a>
+                  } @else {
+                    <button type="button" class="btn-icon" disabled title="No se puede editar esta orden" aria-label="Editar orden no disponible"><app-icon name="pencil" [size]="15" /></button>
                   }
-                  @if (orden.estado !== 'cancelada'
-                       && !orden.finanzas?.pagado_totalmente
-                       && sesion.puedeGestionar(orden)) {
-                    <button class="btn-icon btn-icon-pago"
-                            title="Registrar cobro de saldo pendiente"
-                            aria-label="Registrar cobro de saldo pendiente"
-                            (click)="abrirCobro(orden)">
-                      <app-icon name="dollar-sign" [size]="14" />
-                    </button>
-                  }
+                  <button type="button" class="btn-icon btn-icon-complete" title="Finalizar producción" aria-label="Finalizar producción" [disabled]="!estaEnPipeline(orden) || !sesion.puedeGestionar(orden)" (click)="abrirCompletar(orden)"><app-icon name="package-check" [size]="15" /></button>
+                  <button type="button" class="btn-icon btn-icon-pago" title="Registrar cobro" aria-label="Registrar cobro" [disabled]="orden.estado === 'cancelada' || orden.finanzas?.pagado_totalmente || !sesion.puedeGestionar(orden)" (click)="abrirCobro(orden)"><app-icon name="dollar-sign" [size]="15" /></button>
                   <a class="btn-icon" [routerLink]="['/ordenes', orden.id, 'imprimir']"
                      title="Imprimir o guardar el contrato en PDF"
                      aria-label="Imprimir o guardar el contrato en PDF">
@@ -301,20 +269,9 @@
                           (click)="abrirHistorial(orden)">
                     <app-icon name="history" [size]="14" />
                   </button>
-                  @if (orden.comprobantes?.length) {
-                    <button class="btn-capturas"
-                            [title]="orden.comprobantes?.length + ' captura(s) de pago adjunta(s)'"
-                            [attr.aria-label]="'Ver las capturas de pago de ' + orden.id_documento"
-                            (click)="abrirCapturas(orden)">
-                      <app-icon name="receipt-text" [size]="13" />
-                      <span>{{ orden.comprobantes?.length }}</span>
-                    </button>
-                  }
-                  @if (!estaEnPipeline(orden) && (orden.estado === 'cancelada' || (orden.estado === 'entregada' && orden.finanzas?.pagado_totalmente))) {
-                    <span class="text-muted">—</span>
-                  }
+                  <button type="button" class="btn-icon" title="Ver capturas de pago" aria-label="Ver capturas de pago" [disabled]="!orden.comprobantes?.length" (click)="abrirCapturas(orden)"><app-icon name="file-text" [size]="15" /></button>
+                  <button type="button" class="btn-icon btn-icon-cancel" title="Cancelar orden" aria-label="Cancelar orden" [disabled]="!estaEnPipeline(orden) || !sesion.esSupervisor()" (click)="cancelar(orden)"><app-icon name="x" [size]="15" /></button>
                 </div>
-                </details>
               </td>
             </tr>
           }
@@ -323,6 +280,23 @@
     </div>
   }
 </div>
+
+@if (ordenDetalle(); as orden) {
+  <app-modal titulo="Detalle del pedido" (cerrar)="ordenDetalle.set(null)">
+    <span modal-cabecera class="modal-orden-id">{{ orden.id_documento }}</span>
+    <p><strong>{{ orden.cliente }}</strong> · {{ orden.descripcion }}</p>
+    @if (orden.items.length) {
+      <div class="table-wrapper"><table class="data-table detalle-lineas">
+        <thead><tr><th>Descripción</th><th>Cantidad</th><th>Medidas</th><th>Precio unitario</th><th>Importe</th></tr></thead>
+        <tbody>@for (item of orden.items; track $index) {
+          <tr><td>{{ item.descripcion }}</td><td>{{ item.cantidad }}</td><td>{{ item.ancho_m && item.alto_m ? item.ancho_m + ' × ' + item.alto_m + ' m' : '—' }}</td><td>S/ {{ item.precio_unitario | number:'1.2-2' }}</td><td>S/ {{ (item.importe ?? item.precio_unitario * item.cantidad) | number:'1.2-2' }}</td></tr>
+        }</tbody>
+      </table></div>
+    } @else { <p>Este pedido no tiene líneas detalladas.</p> }
+    <p><strong>Total: S/ {{ orden.finanzas?.precio_total | number:'1.2-2' }}</strong> · Saldo: S/ {{ orden.finanzas?.saldo_pendiente | number:'1.2-2' }}</p>
+    <div class="form-actions"><button type="button" class="btn-secondary" (click)="ordenDetalle.set(null)">Cerrar</button></div>
+  </app-modal>
+}
 
 <!-- ═══ Modal: reportar uso de materiales ═════════════════════════════════ -->
 @if (ordenACompletar(); as orden) {
