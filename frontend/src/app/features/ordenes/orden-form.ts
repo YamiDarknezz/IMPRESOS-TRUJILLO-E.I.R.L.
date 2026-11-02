@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { celularPeruano } from '../../shared/utilidades/contactos';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { ClientesService } from '../../core/services/clientes.service';
+import { ClientesService, filtrarClientes } from '../../core/services/clientes.service';
 import { ComprobantesService } from '../../core/services/comprobantes.service';
 import { InventarioService } from '../../core/services/inventario.service';
 import { DatosOrden, OrdenesService, ParteAdelantoData } from '../../core/services/ordenes.service';
@@ -156,6 +156,8 @@ export class OrdenFormComponent {
   readonly clienteSeleccionado = computed(() =>
     this.clientes().find(c => c.id === this.form().clienteId) ?? null
   );
+  readonly busquedaCliente = signal('');
+  readonly clientesFiltrados = computed(() => filtrarClientes(this.clientes(), this.busquedaCliente()));
 
   /**
    * Subtotal: sale de las líneas si las hay; si no, del total directo.

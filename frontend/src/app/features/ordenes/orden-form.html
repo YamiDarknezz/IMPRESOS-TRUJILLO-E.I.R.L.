@@ -19,14 +19,26 @@
     <div class="form-grid">
 
       <div class="input-group">
-        <label>Cliente *</label>
+        <label for="buscar-cliente">Buscar cliente</label>
+        <input id="buscar-cliente" type="search" name="buscarCliente"
+               [ngModel]="busquedaCliente()" (ngModelChange)="busquedaCliente.set($event)"
+               placeholder="Nombre, teléfono o @usuario" autocomplete="off">
+        <label for="seleccionar-cliente">Cliente *</label>
         <select [ngModel]="form().clienteId" (ngModelChange)="actualizar('clienteId', $event)"
-                name="clienteSel" [class.input-error]="errores()['cliente']">
+                id="seleccionar-cliente" name="clienteSel" [class.input-error]="errores()['cliente']">
           <option [ngValue]="null">Selecciona un cliente...</option>
-          @for (c of clientes(); track c.id) {
-            <option [ngValue]="c.id">{{ c.nombre }}{{ c.documento ? ' — ' + c.documento : '' }}{{ c.es_corporativo ? ' (corporativo)' : '' }}</option>
+          @if (clienteSeleccionado(); as seleccionado) {
+            @if (!clientesFiltrados().includes(seleccionado)) {
+              <option [ngValue]="seleccionado.id">{{ seleccionado.nombre }} (seleccionado)</option>
+            }
+          }
+          @for (c of clientesFiltrados(); track c.id) {
+            <option [ngValue]="c.id">{{ c.nombre }}{{ c.telefono ? ' — ' + c.telefono : '' }}{{ c.documento ? ' — ' + c.documento : '' }}{{ c.es_corporativo ? ' (corporativo)' : '' }}</option>
           }
         </select>
+        @if (busquedaCliente().trim() && clientesFiltrados().length === 0) {
+          <span class="field-hint" role="status">No se encontraron clientes. Prueba otra búsqueda o crea uno nuevo.</span>
+        }
         @if (errores()['cliente']) {
           <span class="field-error">{{ errores()['cliente'] }}</span>
         }

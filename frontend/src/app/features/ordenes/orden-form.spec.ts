@@ -111,6 +111,31 @@ describe('OrdenFormComponent', () => {
     expect(fixture.componentInstance.editando()).toBeNull();
   });
 
+  it('filtra clientes por nombre, teléfono con formatos distintos y usuario', () => {
+    clientesFalso.clientes.set([
+      { ...clientePersona, telefono: '+51975123456' },
+      { ...clienteCorporativo, telefono: '@empresa' },
+    ]);
+    const componente = TestBed.createComponent(OrdenFormComponent).componentInstance;
+    for (const texto of ['juan', '975 123 456', '123 456']) {
+      componente.busquedaCliente.set(texto);
+      expect(componente.clientesFiltrados().map(c => c.id)).toEqual([1]);
+    }
+    componente.busquedaCliente.set('@EMPRESA');
+    expect(componente.clientesFiltrados().map(c => c.id)).toEqual([2]);
+    componente.busquedaCliente.set('inexistente');
+    expect(componente.clientesFiltrados()).toEqual([]);
+  });
+
+  it('mantiene el cliente seleccionado al buscar otro', () => {
+    const fixture = TestBed.createComponent(OrdenFormComponent);
+    fixture.componentInstance.actualizar('clienteId', 1);
+    fixture.componentInstance.busquedaCliente.set('Empresa');
+    expect(fixture.componentInstance.clienteSeleccionado()?.nombre).toBe('Juan Pérez');
+    expect(fixture.componentInstance.clientesFiltrados().map(c => c.id)).toEqual([2]);
+    expect(fixture.componentInstance.form().clienteId).toBe(1);
+  });
+
   describe('modo edición', () => {
     it('con un id que existe, precarga el formulario con los datos de la orden', async () => {
       configurar('9');
