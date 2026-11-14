@@ -484,3 +484,88 @@
   .user-actions { gap: 0.5rem; }
   .user-badge { max-width: 6.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
+
+/* ============================================================================
+   MEJORAS DE UI: Layout (Sidebar y Topbar) - VERSIÓN FINAL LIMPIA
+   ============================================================================ */
+
+/* 1. Animación suave para los ítems del menú lateral */
+.sidebar-item {
+  transition: background-color 0.2s ease, transform 0.2s ease, color 0.2s ease !important;
+}
+
+/* 2. Efecto Hover normal (Modo Claro) */
+.sidebar-item:hover:not(.active):not(.btn-sidebar-logout) {
+  background: rgba(37, 99, 235, 0.1) !important; /* Azul celeste transparente */
+  color: var(--primary) !important; /* Texto azul noche */
+  transform: translateX(4px);
+}
+
+/* 3. Efecto Hover en MODO OSCURO */
+.dark .sidebar-item:hover:not(.active):not(.btn-sidebar-logout),
+body.dark .sidebar-item:hover:not(.active):not(.btn-sidebar-logout) {
+  background: rgba(255, 255, 255, 0.1) !important; /* Brillo blanco sutil */
+  color: #ffffff !important; /* Texto blanco para que resalte */
+}
+
+/* 4. Estado activo (La pantalla en la que estás) */
+.sidebar-item.active {
+  background: var(--primary) !important; /* Tu azul noche sólido */
+  color: var(--primary-contrast) !important; /* Texto blanco */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* 5. El botón de la luna (Modo Oscuro/Claro) - Gira un poquito al pasar el mouse */
+.btn-theme {
+  transition: transform 0.3s ease, background 0.2s ease !important;
+}
+
+.btn-theme:hover {
+  transform: rotate(15deg) scale(1.05) !important;
+}
+
+/* 6. El botón de "Contraer Navegación" */
+.sidebar-toggle-btn {
+  transition: background 0.2s ease, color 0.2s ease !important;
+}
+
+.sidebar-toggle-btn:hover {
+  background: var(--surface-2) !important;
+}
+
+/* 7. Sombra sutil al menú lateral para separarlo del fondo */
+.sidebar {
+  box-shadow: 1px 0 10px rgba(0, 0, 0, 0.03) !important;
+}
+
+/* ============================================================================
+   ARREGLO DEFINITIVO: Botón "Cerrar sesión" (Rojo)
+   ============================================================================ */
+
+.sidebar .btn-sidebar-logout,
+.sidebar .btn-sidebar-logout:focus,
+.sidebar .btn-sidebar-logout:focus-visible,
+.sidebar .btn-sidebar-logout:active {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.sidebar .btn-sidebar-logout {
+  background-color: transparent !important;
+  color: var(--danger) !important;
+  border: 1px solid transparent !important;
+  transition: all 0.2s ease !important;
+}
+
+.sidebar .btn-sidebar-logout:hover {
+  background-color: var(--danger-bg) !important;
+  color: var(--danger-fg) !important;
+  border-color: var(--error-border) !important;
+}
+
+.sidebar .btn-sidebar-logout:active {
+  background-color: var(--danger) !important;
+  color: #ffffff !important;
+  border-color: var(--danger) !important;
+  transform: scale(0.98) !important; /* Efecto de que se hunde */
+}

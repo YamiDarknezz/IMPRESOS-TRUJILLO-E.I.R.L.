@@ -53,6 +53,8 @@ describe('OrdenesComponent', () => {
     recargar: ReturnType<typeof vi.fn>;
     local: ReturnType<typeof signal<string>>;
     soloPendientesHoy: ReturnType<typeof signal<boolean>>;
+    desde: ReturnType<typeof signal<string>>;
+    hasta: ReturnType<typeof signal<string>>;
     filtrarPor: ReturnType<typeof vi.fn>;
     entregarConSaldo: ReturnType<typeof vi.fn>;
     rollosDeOrden: ReturnType<typeof vi.fn>;
@@ -81,7 +83,13 @@ describe('OrdenesComponent', () => {
       recargar: vi.fn().mockResolvedValue(undefined),
       local: signal(''),
       soloPendientesHoy: signal(false),
-      filtrarPor: vi.fn().mockResolvedValue(undefined),
+      desde: signal(''),
+      hasta: signal(''),
+      filtrarPor: vi.fn((cambios: { desde?: string; hasta?: string }) => {
+        if (cambios.desde !== undefined) ordenesFalso.desde.set(cambios.desde);
+        if (cambios.hasta !== undefined) ordenesFalso.hasta.set(cambios.hasta);
+        return Promise.resolve();
+      }),
       entregarConSaldo: vi.fn().mockResolvedValue(undefined),
       rollosDeOrden: vi.fn().mockResolvedValue({ data: [], resumen: [] }),
       cambiarEstado: vi.fn().mockResolvedValue(undefined),
@@ -142,6 +150,14 @@ describe('OrdenesComponent', () => {
     expect(componente.desde()).toBe('');
     expect(componente.hasta()).toBe('');
     expect(componente.hayFiltroFecha()).toBe(false);
+    expect(ordenesFalso.filtrarPor).toHaveBeenCalledWith({ desde: '', hasta: '' });
+  });
+
+  it('envía el rango al servidor sin filtrar la página cargada localmente', () => {
+    const componente = TestBed.createComponent(OrdenesComponent).componentInstance;
+    componente.cambiarFecha('hasta', '2026-10-20');
+    expect(ordenesFalso.filtrarPor).toHaveBeenCalledWith({ hasta: '2026-10-20' });
+    expect(componente.ordenesFiltradas()).toEqual([ordenBase()]);
   });
 
   describe('venta rápida / mostrador (#12)', () => {

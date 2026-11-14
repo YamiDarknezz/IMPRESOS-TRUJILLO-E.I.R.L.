@@ -87,8 +87,8 @@ export class OrdenesComponent {
   readonly local = this.ordenesService.local;
   readonly soloPendientesHoy = this.ordenesService.soloPendientesHoy;
   readonly unidades = UNIDADES_NEGOCIO;
-  readonly desde = signal('');
-  readonly hasta = signal('');
+  readonly desde = this.ordenesService.desde;
+  readonly hasta = this.ordenesService.hasta;
 
   readonly opcionesFiltro: OpcionFiltro[] = [
     { valor: 'todos',         etiqueta: 'Todos' },
@@ -105,8 +105,6 @@ export class OrdenesComponent {
     filtrarOrdenes(this.ordenes(), {
       estado: this.filtroEstado(),
       texto: this.busqueda(),
-      desde: this.desde(),
-      hasta: this.hasta(),
       canal: this.filtroCanal(),
     })
   );
@@ -205,8 +203,11 @@ export class OrdenesComponent {
   }
 
   limpiarFiltroFecha(): void {
-    this.desde.set('');
-    this.hasta.set('');
+    void this.ordenesService.filtrarPor({ desde: '', hasta: '' });
+  }
+
+  cambiarFecha(campo: 'desde' | 'hasta', valor: string): void {
+    void this.ordenesService.filtrarPor({ [campo]: valor });
   }
 
   // ── Etapa y asignación ───────────────────────────────────────────────────

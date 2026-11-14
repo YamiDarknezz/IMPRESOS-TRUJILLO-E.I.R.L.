@@ -539,6 +539,8 @@
   font-weight: 700;
 }
 
+.modal-title.text-danger { color: var(--danger); }
+
 .modal-orden-id {
   font-family: monospace;
   font-size: 0.75rem;
@@ -1351,15 +1353,108 @@ select.date-filter-input:focus {
 
 /* ─── Responsivo ─────────────────────────────────────────────────────────── */
 
-/* ─── Pestañas (inventario) ──────────────────────────────────────────────── */
-.tabs-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 1.5rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--border-soft);
+/* ─── Caja: clases que reemplazan estilos inline (Issue #37) ─────────────── */
+
+.section-title.mt-0 { margin-top: 0; }
+.mt-xs { margin-top: 0.35rem; }
+.card.mb-seccion { margin-bottom: 1.5rem; }
+
+.card.card-compacta { padding: 1.25rem 1.5rem; }
+.toolbar.toolbar-compacta { padding: 1rem 1.25rem 0; }
+.card.borde-izq-danger,
+.stat-card.borde-izq-danger { border-left: 4px solid var(--danger); }
+
+.text-danger { color: var(--danger); }
+.toolbar-title.text-danger { color: var(--danger); }
+.text-muted.text-xs { font-size: 0.75rem; }
+.empty-state .empty-hint {
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
 }
+
+.date-filter-group .filter-group { align-self: flex-end; margin-bottom: 2px; }
+
+.modal-body .modal-text { font-size: 0.9rem; margin-bottom: 1rem; }
+.modal-body .form-group { margin-bottom: 1rem; }
+.modal-body .form-group:last-child { margin-bottom: 0; }
+.modal-body .form-row { display: flex; gap: 1rem; margin-bottom: 1rem; }
+.modal-body .form-row .form-group { flex: 1; margin-bottom: 0; }
+
+/* ─── Inventario: clases que reemplazan estilos inline (Issue #37) ──────── */
+
+/* Badge compacto (mismo que el inline font-size:0.75rem) */
+.badge.badge-sm { font-size: 0.75rem; }
+
+/* Grupo de acciones en toolbar (antes: style="display:flex; gap:0.5rem;") */
+.toolbar-actions { display: flex; gap: 0.5rem; }
+
+/* Barra de progreso de rollos/planchas */
+.progreso-riel {
+  background: var(--surface-3);
+  border-radius: 4px;
+  height: 6px;
+  width: 100%;
+  margin-top: 4px;
+  overflow: hidden;
+}
+.progreso-relleno { height: 100%; }
+
+/* Input que ocupa toda la fila del form-grid */
+.input-group.grid-full { grid-column: 1 / -1; }
+
+/* Modal ancho (antes: style="max-width:850px;") */
+.modal-content.modal-content-lg { max-width: 850px; }
+
+
+/* ─── Finanzas: clases que reemplazan estilos inline (Issue #37) ────────── */
+
+/* Select compacto (mismo que style="max-width:240px") */
+.search-input.search-input-sm { max-width: 240px; }
+
+/* Texto de ayuda en stat-card (mismo que style="font-size:0.75rem; color:#6b7280; display:block; margin-top:2px;") */
+.stat-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  display: block;
+  margin-top: 2px;
+}
+
+/* ─── Unidades: clases que reemplazan estilos inline (Issue #37) ────────── */
+
+/* Pista de campo sin margen superior (mismo que style="margin-top:0") */
+.field-hint.field-hint-flush { margin-top: 0; }
+
+/* ─── Pestañas (inventario) ──────────────────────────────────────────────── */
+/* Pestañas de Inventario con efecto de movimiento */
+.tabs-nav .btn-sm {
+  transition: transform 0.1s ease, box-shadow 0.1s ease !important;
+}
+
+.tabs-nav .btn-sm:hover {
+  transform: translateY(-2px); /* Se levanta un poquito al pasar el mouse */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+.tabs-nav .btn-sm:active {
+  transform: translateY(0); /* Se hunde al hacer clic */
+  box-shadow: none !important;
+}
+
+/* ─── Clientes: clases que reemplazan estilos inline (Issue #37) ────────── */
+
+/* Subtítulo con ícono alineado (mismo que style="margin-top:1rem; display:flex; align-items:center; gap:0.4rem") */
+.modal-subtitle.modal-subtitle-icono {
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* ─── Usuarios: clases que reemplazan estilos inline (Issue #37) ────────── */
+
+/* Pista de campo con padding lateral (mismo que style="padding:0 1.25rem 1rem") */
+.field-hint.field-hint-padded { padding: 0 1.5rem 1rem 1.25rem; }
 
 /* ─── Checkbox con texto (clientes, orden-form) ──────────────────────────── */
 .input-group .checkbox-label {
@@ -1848,4 +1943,488 @@ select.date-filter-input:focus {
 
 .monto-tachado {
   text-decoration: line-through;
+}
+
+/* ============================================================================
+   MEJORAS DE UI: Toolbar y Botones (Manteniendo el Azul Noche Original)
+   ============================================================================ */
+
+/* 1. Contenedor principal de la barra (Le da un aspecto de tarjeta limpia) */
+.toolbar-organizada {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  padding: 0.75rem 1rem;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+/* 2. Grupo de Filtros (Izquierda) - Integrados y limpios */
+.toolbar-filtros {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  background: var(--surface-2);
+  padding: 0.25rem;
+  border-radius: var(--r-md);
+}
+
+.toolbar-filtros input[type="date"],
+.toolbar-filtros select,
+.toolbar-filtros .filter-btn {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 0.45rem 0.7rem;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.toolbar-filtros input[type="date"]:hover,
+.toolbar-filtros select:hover,
+.toolbar-filtros .filter-btn:hover {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+}
+
+/* El botón seleccionado (Hoy/Ayer) resalta con tu color azul noche */
+.toolbar-filtros .filter-btn.active {
+  background: var(--surface) !important;
+  color: var(--accent) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* 3. Grupo de Acciones (Derecha) */
+.toolbar-acciones {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+/* 4. Estilo base de botones (Se mantiene el color original de la app) */
+.toolbar-acciones button,
+.toolbar-acciones .btn-primary,
+.toolbar-acciones .btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: var(--r-md);
+  /* Aquí NO cambiamos el color, dejamos que tu clase .btn-primary 
+     o .btn-secondary haga su trabajo con el azul noche */
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+/* 5. Efecto "elevación" (Hover) - Muy profesional */
+.toolbar-acciones button:hover,
+.toolbar-acciones .btn-primary:hover,
+.toolbar-acciones .btn-secondary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  filter: brightness(1.1); /* Ilumina un poquito el botón sin cambiar el tono */
+}
+
+.toolbar-acciones button:active,
+.toolbar-acciones .btn-primary:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* 6. LA SOLUCIÓN A LOS CANDADOS GORDOS: Forzar a que sean íconos de línea */
+.toolbar-acciones app-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+  opacity: 0.9;
+  transition: transform 0.2s ease;
+}
+
+/* Hacemos que el SVG interno use líneas (stroke) en vez de relleno (fill) */
+.toolbar-acciones app-icon svg {
+  width: 100%;
+  height: 100%;
+  fill: none !important;          /* Quita el relleno gordo */
+  stroke: currentColor !important; /* Usa el color de texto del botón */
+  stroke-width: 2px !important;    /* Grosor de línea */
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Si el SVG tiene paths con fill explícito, lo anulamos */
+.toolbar-acciones app-icon svg path {
+  fill: none !important;
+  stroke: currentColor !important;
+}
+
+/* Efecto: el candadito se mueve un poquito al pasar el mouse */
+.toolbar-acciones button:hover app-icon {
+  transform: scale(1.15);
+}
+
+/* 7. Ajuste en pantallas pequeñas */
+@media (max-width: 1100px) {
+  .toolbar-organizada {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .toolbar-acciones {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+  
+  .toolbar-filtros {
+    overflow-x: auto;
+    justify-content: flex-start;
+  }
+}
+
+/* ============================================================================
+   MEJORAS DE UI: Pantalla de Órdenes (Diseño Limpio y Alineado)
+   ============================================================================ */
+
+/* 1. La barra principal (Usamos Flexbox para ordenar naturalmente) */
+.ordenes-toolbar {
+  display: flex;
+  flex-direction: column; /* Apilamos los filtros arriba y los botones abajo */
+  gap: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+/* 2. Contenedor de filtros (Arriba) */
+.ordenes-filtros {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap; /* Si no caben, bajan a la siguiente línea, pero sin romperse */
+  gap: 0.75rem;
+  width: 100%;
+}
+
+/* 3. Los selectores (Canales y Locales) */
+.ordenes-filtros select,
+.ordenes-filtros .filtro-canal {
+  height: 36px !important;
+  padding: 0 2rem 0 0.75rem !important;
+  border-radius: var(--r-sm) !important;
+  border: 1px solid var(--border) !important;
+  background-color: var(--surface-2) !important;
+  color: var(--text) !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  width: 160px !important; /* Ancho fijo, ni muy corto ni muy largo */
+  appearance: none !important;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 0.5rem center !important;
+  background-size: 12px !important;
+  transition: all 0.2s ease !important;
+}
+
+.ordenes-filtros select:hover,
+.ordenes-filtros .filtro-canal:hover {
+  border-color: var(--accent) !important;
+  background-color: var(--surface) !important;
+}
+
+/* 4. El buscador de la lupa */
+.ordenes-filtros .search-box {
+  height: 36px;
+  flex: 1 1 250px; /* Ocupa el espacio disponible */
+  max-width: 380px;
+}
+
+.ordenes-filtros .search-input {
+  height: 100%;
+  padding-left: 2.2rem !important;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  font-size: 0.8rem !important;
+  width: 100%;
+}
+
+/* 5. Botón "Pendientes de hoy" */
+.ordenes-filtros > .filter-btn {
+  height: 36px !important;
+  padding: 0 1rem !important;
+  border-radius: var(--r-sm) !important;
+  border: 1px solid var(--border) !important;
+  background-color: var(--surface-2) !important;
+  color: var(--text-muted) !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  transition: all 0.15s ease !important;
+}
+
+.ordenes-filtros > .filter-btn:hover {
+  border-color: var(--text-muted) !important;
+  color: var(--text) !important;
+}
+
+.ordenes-filtros > .filter-btn.active {
+  background-color: var(--surface) !important;
+  color: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+
+/* 6. Fechas (Desde / Hasta) */
+.ordenes-filtros .date-filter-group {
+  display: flex;
+  align-items: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 0 0.5rem;
+  height: 36px;
+  gap: 0.5rem;
+}
+
+/* 7. ¡AQUÍ ESTÁ LO QUE PEDISTE! Botones de la derecha ABAJO */
+.ordenes-acciones {
+  display: flex;
+  justify-content: flex-start; /* O pon "center" o "flex-end" si los quieres a la derecha */
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--border-soft); /* Una líneíta sutil para separar los botones de los filtros */
+}
+
+/* 8. Estilo de los botones de acción (Actualizar, Nueva Orden, Venta) */
+.ordenes-acciones .btn-primary,
+.ordenes-acciones .btn-secondary,
+.ordenes-acciones .btn-success-soft {
+  height: 38px;
+  padding: 0 1.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: var(--r-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ordenes-acciones .btn-primary:hover,
+.ordenes-acciones .btn-secondary:hover,
+.ordenes-acciones .btn-success-soft:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* ============================================================================
+   MEJORAS DE UI: Inventario (Pestañas sólidas y Barra limpia)
+   ============================================================================ */
+
+/* 1. Arreglamos las pestañas para que vuelvan a ser botones sólidos */
+.tabs-nav {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.tabs-nav .btn-sm {
+  padding: 0.6rem 1.2rem !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  border-radius: var(--r-md) !important;
+  transition: all 0.2s ease !important;
+}
+
+/* Solo le damos un poquito más de sombra al botón activo para que resalte */
+.tabs-nav .btn-primary {
+  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.2) !important; /* Sombra azul noche */
+  transform: translateY(-1px);
+}
+
+/* 2. La barra de herramientas (Buscador y Nuevo Material) */
+.toolbar.toolbar-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  padding: 0.85rem 1rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* El texto "1 materiales registrados" un poco más elegante */
+.toolbar-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* El buscador */
+.toolbar.toolbar-wrap .search-box {
+  flex: 1 1 300px;
+  max-width: 400px;
+  height: 38px;
+}
+
+.toolbar.toolbar-wrap .search-input {
+  height: 100% !important;
+  border-radius: var(--r-md) !important;
+  border: 1px solid var(--border) !important;
+  background-color: var(--surface-2) !important;
+  font-size: 0.85rem !important;
+}
+
+/* El botón azul noche (Mismo color, solo elevación) */
+.toolbar.toolbar-wrap .btn-primary {
+  height: 38px;
+  padding: 0 1.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: var(--r-md);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  white-space: nowrap;
+}
+
+.toolbar.toolbar-wrap .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* 3. Un poco más de aire a las filas de la tabla */
+.table-card .data-table td {
+  padding: 0.85rem 0.75rem !important;
+}
+
+/* ============================================================================
+   MEJORAS DE UI: Formulario de Nuevo Material (Botones y Orden)
+   ============================================================================ */
+
+/* 1. El botón "← Volver" de arriba a la derecha */
+.form-header .btn-secondary {
+  height: 34px;
+  padding: 0 1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: var(--r-md);
+  background-color: var(--surface-2) !important; /* Fondo gris suave */
+  color: var(--text-muted) !important;
+  border: 1px solid var(--border) !important;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.form-header .btn-secondary:hover {
+  background-color: var(--surface) !important;
+  color: var(--accent) !important; /* Se pinta con tu azul noche al pasar el mouse */
+  border-color: var(--accent) !important;
+  transform: translateX(-3px); /* Se mueve un poquito a la izquierda, como "volviendo" */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+/* 2. El botón "Cancelar" de abajo */
+.form-actions .btn-secondary {
+  height: 38px;
+  padding: 0 1.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: var(--r-md);
+  transition: all 0.2s ease;
+}
+
+.form-actions .btn-secondary:hover {
+  background-color: var(--surface-2) !important;
+  transform: translateY(-2px);
+}
+
+/* 3. El botón "Guardar Material" (Tu azul noche, solo con efecto de elevación) */
+.form-actions .btn-primary {
+  height: 38px;
+  padding: 0 1.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: var(--r-md);
+  transition: all 0.2s ease;
+}
+
+.form-actions .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15); /* Sombra para que resalte */
+}
+
+.form-actions .btn-primary:active {
+  transform: translateY(0);
+}
+
+/* 4. Un poco de aire para el título "Nuevo Material" */
+.form-header h3 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ============================================================================
+   MEJORAS DE UI: Botón de acción en pantallas vacías (Empty State)
+   ============================================================================ */
+
+/* Le damos movimiento y sombra al botón de "Registrar primer rollo/plancha" */
+.empty-state .btn-primary {
+  height: 40px;
+  padding: 0 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: var(--r-md);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Sombra base para que resalte */
+}
+
+/* El efecto "salto" al pasar el mouse */
+.empty-state .btn-primary:hover {
+  transform: translateY(-3px); /* Salta un poquito más alto */
+  box-shadow: 0 8px 16px rgba(30, 58, 138, 0.25); /* Sombra azul noche difuminada */
+  filter: brightness(1.1); /* Se ilumina sutilmente */
+}
+
+/* Efecto al hacer clic (se hunde) */
+.empty-state .btn-primary:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+/* También aplicamos el mismo efecto al botón de "Ver más" del pie de página si existe */
+.listado-pie .btn-secondary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }

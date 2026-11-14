@@ -83,23 +83,35 @@ export class OrdenesService {
    */
   readonly local = signal<UnidadNegocio | ''>('');
   readonly soloPendientesHoy = signal(false);
+  readonly desde = signal('');
+  readonly hasta = signal('');
 
   /** Se pide por bloques de 100 y el backend informa cuántas hay en total. */
   private lista = new ListaRemota<Orden>(this.api, () => this.rutaDeLista(), 100);
+  private recargaFiltros: Promise<void> = Promise.resolve();
 
   private rutaDeLista(): string {
     const parametros = new URLSearchParams();
     if (this.local()) parametros.set('unidad_negocio', this.local());
     if (this.soloPendientesHoy()) parametros.set('pendientes_hoy', 'true');
+    if (this.desde()) parametros.set('desde', this.desde());
+    if (this.hasta()) parametros.set('hasta', this.hasta());
     const texto = parametros.toString();
     return texto ? `/api/ordenes?${texto}` : '/api/ordenes';
   }
 
   /** Cambia los filtros del servidor y vuelve a traer la lista y el panel. */
-  async filtrarPor(cambios: { local?: UnidadNegocio | ''; soloPendientesHoy?: boolean }): Promise<void> {
+  async filtrarPor(cambios: { local?: UnidadNegocio | ''; soloPendientesHoy?: boolean; desde?: string; hasta?: string }): Promise<void> {
     if (cambios.local !== undefined) this.local.set(cambios.local);
     if (cambios.soloPendientesHoy !== undefined) this.soloPendientesHoy.set(cambios.soloPendientesHoy);
-    await Promise.all([this.lista.recargar(), this.cargarMetricas()]);
+    if (cambios.desde !== undefined) this.desde.set(cambios.desde);
+    if (cambios.hasta !== undefined) this.hasta.set(cambios.hasta);
+    // ListaRemota comparte peticiones en vuelo: encadenar evita que un cambio
+    // rápido de fechas conserve el resultado de un filtro anterior.
+    this.recargaFiltros = this.recargaFiltros.catch(() => {}).then(async () => {
+      await Promise.all([this.lista.recargar(), this.cargarMetricas()]);
+    });
+    await this.recargaFiltros;
   }
 
   readonly ordenes = this.lista.items;

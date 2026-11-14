@@ -70,6 +70,18 @@ describe('OrdenesService', () => {
 
   // Issue #123: Imprenta / Gigantografías y "pendientes de hoy" se piden al servidor.
   describe('filtros del servidor (#123)', () => {
+    it('pide el rango al servidor antes de paginar y lo conserva al recargar', async () => {
+      await servicio.filtrarPor({ desde: '2026-10-01', hasta: '2026-10-20' });
+      expect(apiFalsa.get).toHaveBeenCalledWith(
+        '/api/ordenes?desde=2026-10-01&hasta=2026-10-20&limit=100&offset=0'
+      );
+      apiFalsa.get.mockClear();
+      await servicio.recargar();
+      expect(apiFalsa.get).toHaveBeenCalledWith(
+        '/api/ordenes?desde=2026-10-01&hasta=2026-10-20&limit=100&offset=0'
+      );
+    });
+
     it('filtrarPor({ local }) pide la lista y las métricas de ese local', async () => {
       await servicio.filtrarPor({ local: 'imprenta' });
 

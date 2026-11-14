@@ -5,6 +5,7 @@ sostienen el sistema, de punta a punta: reserva de stock, edición con
 reajuste, cancelación, reporte de consumo real, candado de entrega y permisos.
 """
 import pytest
+from datetime import date, datetime, timezone
 from sqlalchemy import select
 
 from app.core.errores import Conflicto, ErrorDeNegocio, NoEncontrado, PermisoDenegado
@@ -19,6 +20,20 @@ from app.models import (
 from app.schemas import MaterialEstimado
 from app.services import ordenes_service
 from tests.apoyo import datos_orden
+
+
+async def test_filtrar_fechas_peruanas_antes_de_paginar(sesion, admin, material):
+    temprano = await ordenes_service.crear_orden(sesion, datos_orden(material.id), admin)
+    tarde = await ordenes_service.crear_orden(sesion, datos_orden(material.id), admin)
+    temprano.creado_en = datetime(2026, 10, 21, 4, 59, tzinfo=timezone.utc)
+    tarde.creado_en = datetime(2026, 10, 21, 5, 0, tzinfo=timezone.utc)
+    await sesion.flush()
+
+    kwargs = {"desde": date(2026, 10, 20), "hasta": date(2026, 10, 20)}
+    assert await ordenes_service.contar(sesion, admin, **kwargs) == 1
+    assert [o.id for o in await ordenes_service.listar(sesion, admin, limite=1, **kwargs)] == [temprano.id]
+    assert await ordenes_service.contar(sesion, admin, desde=date(2026, 10, 21)) == 1
+    assert await ordenes_service.contar(sesion, admin, hasta=date(2026, 10, 19)) == 0
 
 
 # ══ Creación y reserva de stock (RN-03) ════════════════════════════════════
