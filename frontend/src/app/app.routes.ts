@@ -55,12 +55,17 @@ export const routes: Routes = [
       },
       {
         path: 'bi',
-        canActivate: [rolesGuard('admin', 'subgerente')],
+        canActivate: [rolesGuard('admin', 'subgerente', 'secretaria')],
         loadComponent: () => import('./features/bi/bi').then(m => m.BiComponent),
       },
       {
-        path: 'cuentas-por-cobrar',
+        path: 'ia',
         canActivate: [rolesGuard('admin', 'subgerente')],
+        loadComponent: () => import('./features/ia/ia').then(m => m.IaComponent),
+      },
+      {
+        path: 'cuentas-por-cobrar',
+        canActivate: [rolesGuard('admin', 'subgerente', 'secretaria')],
         loadComponent: () =>
           import('./features/cuentas-por-cobrar/cuentas-por-cobrar').then(
             m => m.CuentasPorCobrarComponent
@@ -73,7 +78,7 @@ export const routes: Routes = [
       },
       {
         path: 'productos',
-        canActivate: [rolesGuard('admin')],
+        canActivate: [rolesGuard('admin', 'subgerente', 'secretaria')],
         loadComponent: () => import('./features/productos/productos').then(m => m.ProductosComponent),
       },
       {

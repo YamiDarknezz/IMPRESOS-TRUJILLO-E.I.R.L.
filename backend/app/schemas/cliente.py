@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.models import TipoCliente
 from app.schemas.comunes import exigir_texto, limpiar
+from app.services.contactos import normalizar_contacto, telefono_en_nombre
 
 # DNI (persona) y RUC (empresa): cantidad de dígitos que exige SUNAT/RENIEC.
 _LONGITUD_DOCUMENTO = {TipoCliente.PERSONA: 8, TipoCliente.EMPRESA: 11}
@@ -36,6 +37,13 @@ class ClienteCreateData(BaseModel):
     @model_validator(mode="after")
     def _documento_valido(self) -> "ClienteCreateData":
         """Si se da un documento, debe ser solo dígitos y del largo que exige el tipo."""
+        self.telefono = normalizar_contacto(self.telefono)
+        telefono_nombre = telefono_en_nombre(self.nombre)
+        if telefono_nombre:
+            if self.telefono and self.telefono != telefono_nombre:
+                raise ValueError("El número del nombre no coincide con el teléfono indicado.")
+            self.nombre = telefono_nombre
+            self.telefono = telefono_nombre
         if not self.documento:
             return self
         if not self.documento.isdigit():

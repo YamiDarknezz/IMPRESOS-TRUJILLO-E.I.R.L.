@@ -7,20 +7,51 @@
              placeholder="Ej: 10 Fotocopias a color, Fotocheck con mica...">
     </div>
 
+    <div class="form-group">
+      <label><input type="checkbox" [ngModel]="mixto()" (ngModelChange)="mixto.set($event)" name="vrMixto"> Pago mixto: efectivo y Yape</label>
+    </div>
+    @if (mixto()) {
+      <div class="form-row">
+        <div class="form-group">
+          <label for="vr-efectivo">Efectivo recibido (S/)</label>
+          <input id="vr-efectivo" type="number" min="0.01" step="0.01" class="form-input" [ngModel]="efectivo()" (ngModelChange)="efectivo.set($event)" name="vrEfectivo">
+        </div>
+        <div class="form-group">
+          <label for="vr-yape">Yape recibido (S/)</label>
+          <input id="vr-yape" type="number" min="0.01" step="0.01" class="form-input" [ngModel]="yape()" (ngModelChange)="yape.set($event)" name="vrYape">
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="vr-metodo-yape">Cuenta de Yape</label>
+        <select id="vr-metodo-yape" class="form-input" [ngModel]="metodoYape()" (ngModelChange)="metodoYape.set($event)" name="vrMetodoYape">
+          @for (m of metodos(); track m) {
+            @if (m.startsWith('yape')) { <option [value]="m">{{ etiquetaMetodo()[m] }}</option> }
+          }
+        </select>
+      </div>
+      <p class="field-hint">Si la suma es menor al total, el resto quedará pendiente.</p>
+    }
+    @if (mixto() || metodo().startsWith('yape')) {
+      <div class="form-group">
+        <label for="vr-capturas">Capturas de Yape (opcional)</label>
+        <input id="vr-capturas" type="file" accept="image/*,application/pdf" multiple (change)="seleccionarArchivos($event)">
+      </div>
+    }
+
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Monto Total (S/) *</label>
         <input type="number" step="0.50" min="0.10" [ngModel]="monto()" (ngModelChange)="monto.set($event)"
                name="vrMonto" class="form-input" placeholder="0.00">
       </div>
-      <div class="form-group">
+      @if (!mixto()) { <div class="form-group">
         <label class="form-label">Método de Pago</label>
         <select [ngModel]="metodo()" (ngModelChange)="metodo.set($event)" name="vrMetodo" class="form-input">
           @for (m of metodos(); track m) {
             <option [value]="m">{{ etiquetaMetodo()[m] }}</option>
           }
         </select>
-      </div>
+      </div> }
     </div>
 
     <div class="form-row">
@@ -48,7 +79,7 @@
   <div class="modal-footer">
     <button class="btn-secondary" (click)="cerrar()" [disabled]="guardando()">Cancelar</button>
     <button class="btn-primary btn-success" (click)="guardar()" [disabled]="guardando()">
-      {{ guardando() ? 'Cobrando...' : 'Cobrar y Finalizar Venta' }}
+      {{ guardando() ? 'Guardando...' : 'Registrar venta' }}
     </button>
   </div>
 </app-modal>

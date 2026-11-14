@@ -9,6 +9,7 @@ import { ShellComponent } from './shell';
 describe('ShellComponent', () => {
   let sesionFalsa: {
     cargar: ReturnType<typeof vi.fn>;
+    usuario: ReturnType<typeof signal<null>>;
     puedeGestionarOrdenes: ReturnType<typeof signal<boolean>>;
     esSupervisor: ReturnType<typeof signal<boolean>>;
     esAdmin: ReturnType<typeof signal<boolean>>;
@@ -19,6 +20,7 @@ describe('ShellComponent', () => {
     localStorage.clear();
     sesionFalsa = {
       cargar: vi.fn().mockResolvedValue(undefined),
+      usuario: signal(null),
       puedeGestionarOrdenes: signal(false),
       esSupervisor: signal(false),
       esAdmin: signal(false),
@@ -63,23 +65,25 @@ describe('ShellComponent', () => {
     it('quien gestiona órdenes ve "Clientes"', () => {
       sesionFalsa.puedeGestionarOrdenes.set(true);
       const fixture = TestBed.createComponent(ShellComponent);
-      expect(fixture.componentInstance.menuComercial().map(o => o.ruta)).toEqual(['/clientes']);
+      expect(fixture.componentInstance.menuComercial().map(o => o.ruta)).toEqual(['/clientes', '/productos']);
     });
 
-    it('la supervisión ve BI y Cuentas por cobrar, no el catálogo admin-only', () => {
+    it('secretaría ve BI y Cuentas por cobrar', () => {
       sesionFalsa.esSupervisor.set(true);
+      sesionFalsa.puedeGestionarOrdenes.set(true);
       const fixture = TestBed.createComponent(ShellComponent);
       const componente = fixture.componentInstance;
-      expect(componente.menuAnalitica().map(o => o.ruta)).toEqual(['/bi']);
+      expect(componente.menuAnalitica().map(o => o.ruta)).toEqual(['/bi', '/ia']);
       expect(componente.menuFinanzas().map(o => o.ruta)).toEqual(['/finanzas', '/cuentas-por-cobrar']);
-      expect(componente.menuComercial().map(o => o.ruta)).toEqual([]);
+      expect(componente.menuComercial().map(o => o.ruta)).toEqual(['/clientes', '/productos']);
     });
 
     it('el admin ve Productos, Unidades, Usuarios y Auditoría', () => {
       sesionFalsa.esAdmin.set(true);
+      sesionFalsa.puedeGestionarOrdenes.set(true);
       const fixture = TestBed.createComponent(ShellComponent);
       const componente = fixture.componentInstance;
-      expect(componente.menuComercial().map(o => o.ruta)).toEqual(['/productos']);
+      expect(componente.menuComercial().map(o => o.ruta)).toEqual(['/clientes', '/productos']);
       expect(componente.menuAdministracion().map(o => o.ruta)).toEqual(['/unidades', '/usuarios', '/auditoria']);
     });
 
@@ -92,7 +96,7 @@ describe('ShellComponent', () => {
         ['operacion', ['/ordenes', '/caja', '/inventario']],
         ['comercial', ['/clientes', '/productos']],
         ['finanzas', ['/finanzas', '/cuentas-por-cobrar']],
-        ['analitica', ['/bi']],
+        ['analitica', ['/bi', '/ia']],
         ['administracion', ['/unidades', '/usuarios', '/auditoria']],
       ]);
     });
@@ -101,15 +105,25 @@ describe('ShellComponent', () => {
   it('alternarColapsado(): alterna y persiste la preferencia', () => {
     const fixture = TestBed.createComponent(ShellComponent);
     const componente = fixture.componentInstance;
-    expect(componente.colapsado()).toBe(false);
-
-    componente.alternarColapsado();
     expect(componente.colapsado()).toBe(true);
-    expect(localStorage.getItem('it-sidebar-colapsado')).toBe('1');
 
     componente.alternarColapsado();
     expect(componente.colapsado()).toBe(false);
     expect(localStorage.getItem('it-sidebar-colapsado')).toBe('0');
+
+    componente.alternarColapsado();
+    expect(componente.colapsado()).toBe(true);
+    expect(localStorage.getItem('it-sidebar-colapsado')).toBe('1');
+  });
+
+  it('cierra la navegación al interactuar con el área de trabajo', () => {
+    const fixture = TestBed.createComponent(ShellComponent);
+    fixture.componentInstance.colapsado.set(false);
+    fixture.componentInstance.cajonAbierto.set(true);
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('main') as HTMLElement).click();
+    expect(fixture.componentInstance.colapsado()).toBe(true);
+    expect(fixture.componentInstance.cajonAbierto()).toBe(false);
   });
 
   it('arranca colapsado si así quedó guardado', () => {

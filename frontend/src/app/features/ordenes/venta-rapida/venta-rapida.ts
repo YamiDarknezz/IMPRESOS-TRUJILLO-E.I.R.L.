@@ -2,6 +2,7 @@ import { Component, computed, inject, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 import { OrdenesService } from '../../../core/services/ordenes.service';
+import { ComprobantesService } from '../../../core/services/comprobantes.service';
 import { ETIQUETA_UNIDAD, MetodoPago, UNIDADES_NEGOCIO, UnidadNegocio } from '../../../core/models';
 import { etiquetasMetodo, metodosPago } from '../../../core/estado/catalogos';
 import { mensajeDeError } from '../../../shared/utilidades/errores';
@@ -21,6 +22,7 @@ import { ModalComponent } from '../../../shared/componentes/modal/modal.componen
 })
 export class VentaRapidaComponent {
   private ordenesService = inject(OrdenesService);
+  private comprobantes = inject(ComprobantesService);
 
   /** Se emite al cancelar y también tras registrar la venta. */
   readonly cerrado = output<void>();
@@ -31,6 +33,11 @@ export class VentaRapidaComponent {
   readonly unidad = signal<UnidadNegocio>('imprenta');
   readonly cliente = signal('Cliente Mostrador');
   readonly referencia = signal('');
+  readonly mixto = signal(false);
+  readonly efectivo = signal<number | null>(null);
+  readonly yape = signal<number | null>(null);
+  readonly metodoYape = signal<MetodoPago>('yape_marcell');
+  readonly archivos = signal<File[]>([]);
   readonly guardando = signal(false);
 
   readonly unidades = UNIDADES_NEGOCIO;
@@ -41,6 +48,10 @@ export class VentaRapidaComponent {
 
   cerrar(): void {
     this.cerrado.emit();
+  }
+
+  seleccionarArchivos(evento: Event): void {
+    this.archivos.set(Array.from((evento.target as HTMLInputElement).files ?? []));
   }
 
   async guardar(): Promise<void> {
@@ -55,16 +66,29 @@ export class VentaRapidaComponent {
       return;
     }
 
+    const efectivo = Number(this.efectivo() ?? 0);
+    const yape = Number(this.yape() ?? 0);
+    if (this.mixto() && (!Number.isFinite(efectivo) || !Number.isFinite(yape) || efectivo <= 0 || yape <= 0 || Math.round((efectivo + yape) * 100) > Math.round(monto * 100))) {
+      alert('Ingresa importes válidos de efectivo y Yape cuya suma no supere el total.');
+      return;
+    }
+
     this.guardando.set(true);
     try {
-      await this.ordenesService.crearVentaRapida({
+      const creada = await this.ordenesService.crearVentaRapida({
         descripcion,
         monto_total: monto,
-        metodo_pago: this.metodo(),
+        metodo_pago: this.mixto() ? 'efectivo' : this.metodo(),
         unidad_negocio: this.unidad(),
         cliente_nombre: this.cliente().trim() || 'Cliente Mostrador',
         referencia: this.referencia().trim(),
+        ...(this.mixto() ? { pagos: [{ metodo: 'efectivo' as const, monto: efectivo }, { metodo: this.metodoYape(), monto: yape }] } : {}),
       });
+      if (this.archivos().length && (this.mixto() || this.metodo().startsWith('yape'))) {
+        const pago = creada.finanzas?.pagos?.find(p => p.metodo.startsWith('yape'));
+        const resultado = await this.comprobantes.subirVarias(creada.id, this.archivos(), pago?.id ?? null);
+        if (resultado.fallidos.length) alert('La venta quedó registrada, pero no se pudieron subir algunas capturas. Adjunta los archivos desde la orden.');
+      }
       this.cerrar();
     } catch (e) {
       alert(mensajeDeError(e, 'No se pudo registrar la venta rápida.'));

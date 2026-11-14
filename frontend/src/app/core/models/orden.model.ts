@@ -93,6 +93,7 @@ export interface VentaRapidaData {
   unidad_negocio?: UnidadNegocio;
   cliente_nombre?: string;
   referencia?: string;
+  pagos?: { metodo: MetodoPago; monto: number }[];
 }
 
 export interface FinanzasOrden {
@@ -111,6 +112,7 @@ export interface FinanzasOrden {
 /** Línea del contrato: medidas para gran formato (alto × ancho). */
 export interface OrdenItem {
   id?: number;
+  estado_produccion?: 'pendiente' | 'en_produccion' | 'finalizado' | null;
   producto_id?: number | null;
   descripcion: string;
   ancho_m?: number | null;
@@ -145,6 +147,7 @@ export interface Orden {
   asignado_a: number | null;
   asignado: string;
   incluye_igv: boolean;
+  precio_incluye_igv?: boolean;
   subtotal: number;
   igv: number;
   items: OrdenItem[];

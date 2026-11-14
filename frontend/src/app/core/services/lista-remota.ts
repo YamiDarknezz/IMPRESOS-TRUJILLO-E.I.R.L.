@@ -22,6 +22,8 @@ export class ListaRemota<T> {
   readonly total = signal<number | null>(null);
   readonly cargando = signal(false);
   readonly cargandoMas = signal(false);
+  readonly pagina = signal(1);
+  readonly paginas = computed(() => Math.max(1, Math.ceil((this.total() ?? 0) / (this.tamanoBloque ?? 1))));
 
   /** ¿Quedan registros por traer? Solo con `tamanoBloque` y total conocido. */
   readonly hayMas = computed(
@@ -43,7 +45,7 @@ export class ListaRemota<T> {
     if (this.cargado && !forzar) return;
     if (this.enVuelo) return this.enVuelo;
 
-    this.enVuelo = this.pedir(0, true);
+    this.enVuelo = this.pedir((this.pagina() - 1) * (this.tamanoBloque ?? 0), true);
     try {
       await this.enVuelo;
     } finally {
@@ -52,9 +54,20 @@ export class ListaRemota<T> {
   }
 
   /** Vuelve a pedir los datos aunque ya estén en caché (tras crear o editar). */
-  recargar(): Promise<void> {
+  async recargar(): Promise<void> {
+    if (this.enVuelo) await this.enVuelo.catch(() => {});
     return this.cargar(true);
   }
+
+  async irPagina(pagina: number): Promise<void> {
+    if (!this.tamanoBloque || pagina < 1 || pagina > this.paginas() || this.cargando()) return;
+    const anterior = this.pagina();
+    this.pagina.set(pagina);
+    try { await this.recargar(); }
+    catch (error) { this.pagina.set(anterior); throw error; }
+  }
+
+  reiniciarPagina(): void { this.pagina.set(1); }
 
   /** Trae el siguiente bloque y lo agrega al final (carga incremental). */
   async cargarMas(): Promise<void> {
@@ -71,7 +84,9 @@ export class ListaRemota<T> {
   private async pedir(desplazamiento: number, reemplazar: boolean): Promise<void> {
     if (reemplazar) this.cargando.set(true);
     try {
-      const res = await this.api.get<RespuestaLista<T>>(this.rutaConBloque(desplazamiento));
+      const ruta = this.rutaConBloque(desplazamiento);
+      const res = await this.api.get<RespuestaLista<T>>(ruta);
+      if (ruta !== this.rutaConBloque(desplazamiento)) return;
       if (res.total !== undefined && res.total !== null) this.total.set(res.total);
 
       const datos = res.data ?? [];

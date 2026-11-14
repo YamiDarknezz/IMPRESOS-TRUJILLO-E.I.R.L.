@@ -33,6 +33,7 @@ from app.routers import (
     configuracion,
     finanzas,
     inventario,
+    ia,
     ordenes,
     productos,
     unidades,
@@ -127,7 +128,7 @@ async def manejar_error_inesperado(request: Request, exc: Exception):
 
 for modulo in (
     auth, usuarios, clientes, unidades, inventario, productos, ordenes, comprobantes,
-    configuracion, finanzas, caja, auditoria, bi,
+    configuracion, finanzas, caja, auditoria, bi, ia,
 ):
     app.include_router(modulo.router)
 

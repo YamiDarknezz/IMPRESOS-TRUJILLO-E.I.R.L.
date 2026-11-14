@@ -302,11 +302,13 @@ def serializar_orden(orden) -> dict[str, Any]:
         "asignado_a": orden.asignado_a,
         "asignado": orden.asignado.nombre if orden.asignado else "",
         "incluye_igv": orden.incluye_igv,
+        "precio_incluye_igv": orden.precio_incluye_igv,
         "subtotal": num(orden.subtotal),
         "igv": num(orden.igv),
         "items": [
             {
                 "id": item.id,
+                "estado_produccion": item.estado_produccion,
                 "producto_id": item.producto_id,
                 "descripcion": item.descripcion,
                 "ancho_m": num(item.ancho_m) if item.ancho_m is not None else None,

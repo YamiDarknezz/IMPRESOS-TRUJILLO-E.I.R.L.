@@ -1,107 +1,66 @@
-<!-- ═══ Métricas del negocio (supervisión) ════════════════════════════════ -->
-@if (sesion.esSupervisor()) {
-  <div class="stats-row">
-    <div class="stat-card">
-      <div class="stat-icon stat-icon-neutral">
-        <app-icon name="folder" [size]="20" />
-      </div>
-      <div class="stat-body">
-        <span class="stat-label">Total órdenes</span>
-        <span class="stat-value">{{ totalOrdenes() ?? ordenes().length }}</span>
-      </div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon stat-icon-warning">
-        <app-icon name="clock" [size]="20" />
-      </div>
-      <div class="stat-body">
-        <span class="stat-label">En proceso</span>
-        <span class="stat-value stat-color-warning">{{ enProceso() }}</span>
-        @if (vencidas() > 0) {
-          <span class="stat-vencidas">
-            <app-icon name="alert-triangle" [size]="13" />
-            <span>{{ vencidas() }} vencida{{ vencidas() > 1 ? 's' : '' }}</span>
-          </span>
-        }
-      </div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon stat-icon-success">
-        <app-icon name="check-circle" [size]="20" />
-      </div>
-      <div class="stat-body">
-        <span class="stat-label">Finalizadas</span>
-        <span class="stat-value stat-color-success">{{ finalizadas() }}</span>
-      </div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon stat-icon-danger">
-        <app-icon name="coins" [size]="20" />
-      </div>
-      <div class="stat-body">
-        <span class="stat-label">Por cobrar</span>
-        <span class="stat-value stat-color-danger">S/ {{ porCobrar() | number:'1.2-2' }}</span>
-      </div>
-    </div>
-  </div>
-}
+<div class="pedidos-heading">
+  <h1>Pedidos</h1>
+</div>
 
-<!-- ═══ Filtros ═══════════════════════════════════════════════════════════ -->
 <div class="toolbar toolbar-organizada ordenes-toolbar">
   <div class="toolbar-filtros ordenes-filtros">
-    <div class="filter-group" role="group" aria-label="Filtrar por estado">
-      @for (opcion of opcionesFiltro; track opcion.valor) {
-        <button class="filter-btn" [class.active]="filtroEstado() === opcion.valor"
-                [attr.aria-pressed]="filtroEstado() === opcion.valor"
-                (click)="filtroEstado.set(opcion.valor)">{{ opcion.etiqueta }}</button>
-      }
+    <div class="pedidos-acciones">
+      <button type="button" class="filtro-icono" (click)="actualizar()" [disabled]="cargando()" title="Actualizar pedidos" aria-label="Actualizar pedidos"><app-icon name="refresh-cw" [size]="18" /></button>
+      @if (sesion.puedeGestionarOrdenes()) { <a class="filtro-icono crear-pedido" routerLink="/ordenes/nueva" title="Nuevo pedido" aria-label="Nuevo pedido"><app-icon name="plus" [size]="18" /></a> }
+      @if (sesion.puedeVender()) { <button type="button" class="filtro-icono" (click)="ventaRapidaAbierta.set(true)" title="Venta rápida" aria-label="Venta rápida"><app-icon name="dollar-sign" [size]="18" /></button> }
     </div>
+    <details name="filtros-pedidos" class="filtro-desplegable"><summary class="filtro-icono" [class.filtro-activo]="filtroEstado() !== 'todos'" title="Filtrar por estado" aria-label="Filtrar por estado"><app-icon name="clipboard-list" [size]="18" /></summary><div class="filtro-panel"><label for="filtro-estado">Estado</label><select id="filtro-estado" class="search-input filtro-estado" [ngModel]="filtroEstado()" (ngModelChange)="cambiarFiltroEstado($event)" name="filtroEstado" aria-label="Filtrar por estado">
+      @for (opcion of opcionesFiltro; track opcion.valor) {
+        <option [value]="opcion.valor">{{ opcion.valor === 'todos' ? 'Todos los estados' : opcion.etiqueta }}</option>
+      }
+    </select></div></details>
 
     <div class="search-box">
       <span class="search-icon"><app-icon name="search" [size]="15" /></span>
-      <input type="text" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)"
+      <input type="text" [ngModel]="busqueda()" (ngModelChange)="buscar($event)"
              name="busquedaOrdenes" class="search-input"
+             aria-label="Buscar pedidos"
              placeholder="Buscar por código, cliente, teléfono o descripción...">
       @if (busqueda()) {
-        <button class="search-clear" (click)="busqueda.set('')" title="Limpiar búsqueda" aria-label="Limpiar búsqueda">
+        <button class="search-clear" (click)="buscar('')" title="Limpiar búsqueda" aria-label="Limpiar búsqueda">
           <app-icon name="x" [size]="13" />
         </button>
       }
     </div>
 
-    <select class="search-input filtro-canal" [ngModel]="filtroCanal()" (ngModelChange)="filtroCanal.set($event)"
+    <details name="filtros-pedidos" class="filtro-desplegable"><summary class="filtro-icono" [class.filtro-activo]="!!filtroCanal()" title="Filtrar por canal" aria-label="Filtrar por canal"><app-icon name="smartphone" [size]="18" /></summary><div class="filtro-panel"><label for="filtro-canal">Canal de ingreso</label><select id="filtro-canal" class="search-input filtro-canal" [ngModel]="filtroCanal()" (ngModelChange)="cambiarCanal($event)"
             name="filtroCanal" aria-label="Filtrar por canal de ingreso">
       <option value="">Todos los canales</option>
       @for (c of canales(); track c.valor) {
         <option [value]="c.valor">{{ c.etiqueta }}</option>
       }
-    </select>
+    </select></div></details>
 
     <!-- Imprenta o Gigantografías (#123): se filtra en el servidor, así vale con más de 100 órdenes. -->
-    <select class="search-input filtro-canal" [ngModel]="local()" (ngModelChange)="cambiarLocal($event)"
+    <details name="filtros-pedidos" class="filtro-desplegable"><summary class="filtro-icono" [class.filtro-activo]="!!local()" title="Filtrar por local" aria-label="Filtrar por local"><app-icon name="landmark" [size]="18" /></summary><div class="filtro-panel"><label for="filtro-local">Local</label><select id="filtro-local" class="search-input filtro-canal" [ngModel]="local()" (ngModelChange)="cambiarLocal($event)"
             name="filtroLocal" aria-label="Filtrar por local">
       <option value="">Todos los locales</option>
       @for (u of unidades; track u) {
         <option [value]="u">{{ etiquetaUnidad[u] }}</option>
       }
-    </select>
+    </select></div></details>
 
-    <button type="button" class="filter-btn" [class.active]="soloPendientesHoy()"
+    <button type="button" class="filtro-icono" [class.filtro-activo]="soloPendientesHoy()"
             [attr.aria-pressed]="soloPendientesHoy()"
             (click)="alternarPendientesHoy()"
-            title="En proceso con entrega hoy o ya vencida">
-      Pendientes de hoy
+            title="Pendientes de hoy o vencidos" aria-label="Pendientes de hoy o vencidos">
+      <app-icon name="clock" [size]="18" />
     </button>
 
-    <div class="date-filter-group">
+    <details name="filtros-pedidos" class="filtro-desplegable"><summary class="filtro-icono" [class.filtro-activo]="hayFiltroFecha()" title="Filtrar por fecha de creación" aria-label="Filtrar por fecha de creación"><app-icon name="calendar" [size]="18" /></summary><div class="filtro-panel filtro-fechas">
       <div class="date-filter-item">
-        <label class="date-filter-label">Desde</label>
-        <input type="date" [ngModel]="desde()" (ngModelChange)="cambiarFecha('desde', $event)"
+        <label class="date-filter-label" for="pedidos-desde">Creación desde</label>
+        <input id="pedidos-desde" type="date" [ngModel]="desde()" (ngModelChange)="cambiarFecha('desde', $event)"
                name="desde" class="date-filter-input">
       </div>
       <div class="date-filter-item">
-        <label class="date-filter-label">Hasta</label>
-        <input type="date" [ngModel]="hasta()" (ngModelChange)="cambiarFecha('hasta', $event)"
+        <label class="date-filter-label" for="pedidos-hasta">Hasta</label>
+        <input id="pedidos-hasta" type="date" [ngModel]="hasta()" (ngModelChange)="cambiarFecha('hasta', $event)"
                name="hasta" class="date-filter-input">
       </div>
       @if (hayFiltroFecha()) {
@@ -109,37 +68,27 @@
           <app-icon name="x" [size]="13" />
         </button>
       }
-    </div>
+    </div></details>
   </div>
 
-  <div class="toolbar-acciones ordenes-acciones">
-    <button type="button" class="btn-secondary" (click)="actualizar()" [disabled]="cargando()">
-      <app-icon name="refresh-cw" [size]="16" /> Actualizar
-    </button>
-    @if (sesion.puedeGestionarOrdenes()) {
-      <a class="btn-primary" routerLink="/ordenes/nueva"><app-icon name="plus" [size]="17" /> Nueva Orden</a>
-    }
-
-    @if (sesion.puedeVender()) {
-      <button type="button" class="btn-secondary btn-success-soft" (click)="ventaRapidaAbierta.set(true)">
-        <app-icon name="dollar-sign" [size]="16" /> Venta Rápida / Mostrador
-      </button>
-    }
-  </div>
 </div>
+
+@if (desde() && hasta() && desde() > hasta()) {
+  <p role="alert" class="pedidos-fecha-error">La fecha inicial debe ser anterior o igual a la fecha final.</p>
+}
 
 <!-- Aviso de recorte: la tabla trae un bloque y el backend informa el total.
      Sin esto, con más de 100 órdenes la pantalla parecía completa (#27). -->
 @if (totalOrdenes() !== null && !cargando()) {
   <div class="listado-pie">
     <span class="text-muted">
-      Mostrando {{ ordenes().length }} de {{ totalOrdenes() }} órdenes
+      {{ totalOrdenes() ? (paginaActual() - 1) * tamanoPagina + 1 : 0 }}–{{ (paginaActual() - 1) * tamanoPagina + ordenes().length }} de {{ totalOrdenes() }} pedidos
     </span>
-    @if (hayMasOrdenes()) {
-      <button class="btn-secondary btn-sm" (click)="cargarMas()" [disabled]="cargandoMas()">
-        {{ cargandoMas() ? 'Cargando...' : 'Ver más' }}
-      </button>
-    }
+    <nav class="paginacion" aria-label="Paginación de pedidos">
+      <button class="btn-secondary btn-sm" (click)="irPagina(paginaActual() - 1)" [disabled]="cargando() || paginaActual() <= 1">Anterior</button>
+      <span>Página {{ paginaActual() }} de {{ totalPaginas() }}</span>
+      <button class="btn-secondary btn-sm" (click)="irPagina(paginaActual() + 1)" [disabled]="cargando() || paginaActual() >= totalPaginas()">Siguiente</button>
+    </nav>
   </div>
 }
 
@@ -155,7 +104,7 @@
       <span class="empty-icon"><app-icon name="clipboard-list" [size]="40" /></span>
       @if (busqueda()) {
         <p>No se encontraron órdenes para "{{ busqueda() }}".</p>
-        <button class="btn-secondary btn-sm" (click)="busqueda.set('')">Limpiar búsqueda</button>
+        <button class="btn-secondary btn-sm" (click)="buscar('')">Limpiar búsqueda</button>
       } @else if (hayFiltroFecha()) {
   <p>No hay órdenes en el rango de fechas seleccionado.</p>
   <button class="btn-secondary btn-sm" (click)="limpiarFiltroFecha()">
@@ -169,7 +118,7 @@
       }
     </div>
   } @else {
-    <div class="table-wrapper">
+    <div class="table-wrapper pedidos-tabla-scroll" tabindex="0" role="region" aria-label="Tabla de pedidos; desplázate horizontalmente para ver las acciones">
       <table class="data-table">
         <thead>
           <tr>
@@ -181,16 +130,16 @@
             <th>Finanzas</th>
             <th>Pago</th>
             <th>Estado</th>
-            @if (sesion.esSupervisor()) { <th>Asignado</th> }
+            @if (sesion.puedeGestionarOrdenes()) { <th>Asignado</th> }
             <th>Acciones</th>
           </tr>
         </thead>
         <tbody>
           @for (orden of ordenesFiltradas(); track orden.id_documento) {
-            <tr [class.row-vencida]="estaVencida(orden)"
+            <tr (click)="alternarDetalleFila(orden, $event)" [class.row-vencida]="estaVencida(orden)"
                 [class.row-cancelada]="orden.estado === 'cancelada'">
 
-              <td><code class="id-chip">{{ orden.id_documento }}</code></td>
+              <td><button type="button" class="id-chip pedido-detalle-link" (click)="alternarLineas(orden.id)" [attr.aria-expanded]="ordenExpandida() === orden.id" [attr.aria-label]="'Mostrar líneas de ' + orden.id_documento">{{ orden.id_documento }}</button></td>
               <td>
                 {{ orden.cliente }}
                 <small class="text-muted bloque">vía {{ etiquetaCanal()[orden.canal_ingreso] || orden.canal_ingreso }}</small>
@@ -200,14 +149,18 @@
                    cliente; la asignación quedó al final de la fila, con menos peso. -->
               <td class="contacto-cell">
                 @if (orden.telefono) {
-                  <a class="enlace-telefono" [href]="'tel:' + orden.telefono">{{ orden.telefono }}</a>
+                  @if (orden.telefono.startsWith('@')) {
+                    <span>{{ orden.telefono }}</span>
+                  } @else {
+                    <a class="enlace-telefono" [href]="'tel:' + orden.telefono">{{ orden.telefono }}</a>
+                  }
                 } @else {
                   <span class="text-muted">—</span>
                 }
               </td>
 
               <td class="desc-cell">
-                {{ orden.descripcion }}
+                <button type="button" class="pedido-descripcion" (click)="alternarLineas(orden.id)" [attr.aria-expanded]="ordenExpandida() === orden.id" [title]="'Mostrar líneas de ' + orden.id_documento">{{ orden.descripcion }}</button>
                 <span class="unidad-linea">
                   <span class="badge" [ngClass]="orden.unidad_negocio === 'imprenta' ? 'badge-info' : 'badge-warning'">{{ etiquetaUnidad[orden.unidad_negocio] }}</span>
                   <span class="metodo-label">{{ orden.tipo_documento }}</span>
@@ -276,97 +229,88 @@
                 }
               </td>
 
-              @if (sesion.esSupervisor()) {
+              @if (sesion.puedeGestionarOrdenes()) {
                 <td>
                   @if (estaEnPipeline(orden)) {
                     <select class="assign-select" [ngModel]="orden.asignado_a || ''"
                             (ngModelChange)="asignar(orden, $event)"
                             [name]="'asignado-' + orden.id_documento">
                       <option value="">Sin asignar</option>
-                      @for (u of sesion.usuarios(); track u.id) {
-                        <option [value]="u.id">{{ nombreVisible(u) }}</option>
+                      @for (u of sesion.asignables(); track u.id) {
+                        <option [value]="u.id">{{ u.nombre }}</option>
                       }
                     </select>
                   } @else {
-                    {{ sesion.nombreDe(orden.asignado_a) || '—' }}
+                    {{ orden.asignado || '—' }}
                   }
                 </td>
               }
 
               <td class="actions-cell">
                 <div class="actions-wrapper">
-                  @if (estaEnPipeline(orden)) {
-                    @if (sesion.puedeGestionarOrdenes()) {
-                      <a class="btn-icon" title="Editar orden" aria-label="Editar orden"
-                         [routerLink]="['/ordenes', orden.id, 'editar']">
-                        <app-icon name="pencil" [size]="14" />
-                      </a>
-                    }
-                    @if (sesion.puedeGestionar(orden)) {
-                      <button class="btn-icon btn-icon-complete"
-                              title="Reportar uso de insumos y finalizar producción"
-                              aria-label="Reportar uso de insumos y finalizar producción"
-                              (click)="abrirCompletar(orden)">
-                        <app-icon name="package-check" [size]="14" />
-                      </button>
-                    }
-                    @if (sesion.esSupervisor()) {
-                      <button class="btn-icon btn-icon-cancel"
-                              title="Cancelar orden (devuelve stock al inventario)"
-                              aria-label="Cancelar orden"
-                              (click)="cancelar(orden)">
-                        <app-icon name="x" [size]="14" />
-                      </button>
-                    }
+                  <button type="button" class="btn-icon" title="Ver detalle" aria-label="Ver detalle" (click)="ordenDetalle.set(orden)"><app-icon name="eye" [size]="15" /></button>
+                  @if (sesion.puedeGestionarOrdenes() && estaEnPipeline(orden)) {
+                    <a class="btn-icon" title="Editar orden" aria-label="Editar orden" [routerLink]="['/ordenes', orden.id, 'editar']"><app-icon name="pencil" [size]="15" /></a>
+                  } @else {
+                    <button type="button" class="btn-icon" disabled title="No se puede editar esta orden" aria-label="Editar orden no disponible"><app-icon name="pencil" [size]="15" /></button>
                   }
-                  @if (orden.estado !== 'cancelada'
-                       && !orden.finanzas?.pagado_totalmente
-                       && sesion.puedeGestionar(orden)) {
-                    <button class="btn-icon btn-icon-pago"
-                            title="Registrar cobro de saldo pendiente"
-                            aria-label="Registrar cobro de saldo pendiente"
-                            (click)="abrirCobro(orden)">
-                      <app-icon name="dollar-sign" [size]="14" />
-                    </button>
-                  }
+                  <button type="button" class="btn-icon btn-icon-complete" title="Finalizar producción" aria-label="Finalizar producción" [disabled]="!estaEnPipeline(orden) || !sesion.puedeGestionar(orden)" (click)="abrirCompletar(orden)"><app-icon name="package-check" [size]="15" /></button>
+                  <button type="button" class="btn-icon btn-icon-pago" title="Registrar cobro" aria-label="Registrar cobro" [disabled]="orden.estado === 'cancelada' || orden.finanzas?.pagado_totalmente || !sesion.puedeGestionar(orden)" (click)="abrirCobro(orden)"><app-icon name="dollar-sign" [size]="15" /></button>
                   <a class="btn-icon" [routerLink]="['/ordenes', orden.id, 'imprimir']"
                      title="Imprimir o guardar el contrato en PDF"
                      aria-label="Imprimir o guardar el contrato en PDF">
                     <app-icon name="receipt-text" [size]="14" />
                   </a>
                   <button class="btn-icon"
-                          title="Rollos y planchas usados en el pedido"
-                          aria-label="Rollos y planchas usados en el pedido"
-                          (click)="abrirRollos(orden)">
-                    <app-icon name="package-check" [size]="14" />
-                  </button>
-                  <button class="btn-icon"
                           title="Historial de pagos de la orden"
                           aria-label="Historial de pagos de la orden"
                           (click)="abrirHistorial(orden)">
                     <app-icon name="history" [size]="14" />
                   </button>
-                  @if (orden.comprobantes?.length) {
-                    <button class="btn-capturas"
-                            [title]="orden.comprobantes?.length + ' captura(s) de pago adjunta(s)'"
-                            [attr.aria-label]="'Ver las capturas de pago de ' + orden.id_documento"
-                            (click)="abrirCapturas(orden)">
-                      <app-icon name="receipt-text" [size]="13" />
-                      <span>{{ orden.comprobantes?.length }}</span>
-                    </button>
-                  }
-                  @if (!estaEnPipeline(orden) && (orden.estado === 'cancelada' || (orden.estado === 'entregada' && orden.finanzas?.pagado_totalmente))) {
-                    <span class="text-muted">—</span>
-                  }
+                  <button type="button" class="btn-icon" title="Ver capturas de pago" aria-label="Ver capturas de pago" [disabled]="!orden.comprobantes?.length" (click)="abrirCapturas(orden)"><app-icon name="file-text" [size]="15" /></button>
+                  <button type="button" class="btn-icon btn-icon-cancel" title="Cancelar orden" aria-label="Cancelar orden" [disabled]="!estaEnPipeline(orden) || !sesion.esSupervisor()" (click)="cancelar(orden)"><app-icon name="x" [size]="15" /></button>
                 </div>
               </td>
             </tr>
+            @if (ordenExpandida() === orden.id) {
+              <tr class="lineas-expandidas"><td [attr.colspan]="sesion.puedeGestionarOrdenes() ? 10 : 9">
+                @if (orden.items.length) {
+                  <table class="lineas-tabla"><thead><tr><th>Servicio / producto</th><th>Cantidad</th><th>Medidas</th><th>Importe</th><th>Estado del servicio</th></tr></thead>
+                    <tbody>@for (linea of orden.items; track linea.id) {
+                      <tr><td>{{ linea.descripcion }}</td><td>{{ linea.cantidad }}</td><td>{{ linea.ancho_m && linea.alto_m ? linea.ancho_m + ' × ' + linea.alto_m + ' m' : '—' }}</td><td>S/ {{ linea.importe ?? linea.cantidad * linea.precio_unitario | number:'1.2-2' }}</td><td>
+                        <select [ngModel]="linea.estado_produccion ?? ''" (ngModelChange)="cambiarEstadoLinea(orden, linea.id, $event)" [disabled]="!sesion.puedeGestionar(orden) || orden.estado === 'cancelada' || orden.estado === 'entregada'" [attr.aria-label]="'Estado de ' + linea.descripcion">
+                          @if (!linea.estado_produccion) { <option value="" disabled>Sin seguimiento previo</option> }
+                          <option value="pendiente">Pendiente</option><option value="en_produccion">En producción</option><option value="finalizado">Finalizado</option>
+                        </select>
+                      </td></tr>
+                    }</tbody>
+                  </table>
+                } @else { <span>Este pedido no tiene líneas detalladas.</span> }
+              </td></tr>
+            }
           }
         </tbody>
       </table>
     </div>
   }
 </div>
+
+@if (ordenDetalle(); as orden) {
+  <app-modal titulo="Detalle del pedido" (cerrar)="ordenDetalle.set(null)">
+    <span modal-cabecera class="modal-orden-id">{{ orden.id_documento }}</span>
+    <p><strong>{{ orden.cliente }}</strong> · {{ orden.descripcion }}</p>
+    @if (orden.items.length) {
+      <div class="table-wrapper"><table class="data-table detalle-lineas">
+        <thead><tr><th>Descripción</th><th>Cantidad</th><th>Medidas</th><th>Precio unitario</th><th>Importe</th></tr></thead>
+        <tbody>@for (item of orden.items; track $index) {
+          <tr><td>{{ item.descripcion }}</td><td>{{ item.cantidad }}</td><td>{{ item.ancho_m && item.alto_m ? item.ancho_m + ' × ' + item.alto_m + ' m' : '—' }}</td><td>S/ {{ item.precio_unitario | number:'1.2-2' }}</td><td>S/ {{ (item.importe ?? item.precio_unitario * item.cantidad) | number:'1.2-2' }}</td></tr>
+        }</tbody>
+      </table></div>
+    } @else { <p>Este pedido no tiene líneas detalladas.</p> }
+    <p><strong>Total: S/ {{ orden.finanzas?.precio_total | number:'1.2-2' }}</strong> · Saldo: S/ {{ orden.finanzas?.saldo_pendiente | number:'1.2-2' }}</p>
+    <div class="form-actions"><button type="button" class="btn-secondary" (click)="ordenDetalle.set(null)">Cerrar</button></div>
+  </app-modal>
+}
 
 <!-- ═══ Modal: reportar uso de materiales ═════════════════════════════════ -->
 @if (ordenACompletar(); as orden) {
@@ -420,10 +364,17 @@
   <app-modal titulo="Confirmar pago" (cerrar)="cerrarCobro()">
     <span modal-cabecera class="modal-orden-id">{{ orden.id_documento }}</span>
     <p class="modal-subtitle">
-      Vas a registrar como recibido el saldo pendiente de "{{ orden.cliente }}":
+      Saldo pendiente de "{{ orden.cliente }}":
       <strong>S/ {{ orden.finanzas?.saldo_pendiente | number:'1.2-2' }}</strong>.
       Esta acción no se puede deshacer.
     </p>
+
+    <div class="input-group">
+      <label for="monto-cobro">Monto recibido (S/)</label>
+      <input id="monto-cobro" type="number" min="0.01" step="0.01"
+             [max]="orden.finanzas?.saldo_pendiente ?? 0" [ngModel]="montoPago()"
+             (ngModelChange)="montoPago.set($event)" name="montoPago">
+    </div>
 
     <div class="input-group">
       <label>Método de pago recibido</label>

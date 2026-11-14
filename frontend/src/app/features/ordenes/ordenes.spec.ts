@@ -43,6 +43,10 @@ describe('OrdenesComponent', () => {
     totalOrdenes: ReturnType<typeof signal<number | null>>;
     hayMasOrdenes: ReturnType<typeof signal<boolean>>;
     cargandoMasOrdenes: ReturnType<typeof signal<boolean>>;
+    paginaActual: ReturnType<typeof signal<number>>;
+    totalPaginas: ReturnType<typeof signal<number>>;
+    tamanoPagina: number;
+    irPagina: ReturnType<typeof vi.fn>;
     cargarMetricas: ReturnType<typeof vi.fn>;
     cargarMasOrdenes: ReturnType<typeof vi.fn>;
     enProceso: ReturnType<typeof signal<number>>;
@@ -59,6 +63,7 @@ describe('OrdenesComponent', () => {
     entregarConSaldo: ReturnType<typeof vi.fn>;
     rollosDeOrden: ReturnType<typeof vi.fn>;
     cambiarEstado: ReturnType<typeof vi.fn>;
+    cambiarEstadoLinea: ReturnType<typeof vi.fn>;
     asignar: ReturnType<typeof vi.fn>;
     cancelar: ReturnType<typeof vi.fn>;
     completar: ReturnType<typeof vi.fn>;
@@ -73,6 +78,10 @@ describe('OrdenesComponent', () => {
       totalOrdenes: signal(120),
       hayMasOrdenes: signal(true),
       cargandoMasOrdenes: signal(false),
+      paginaActual: signal(1),
+      totalPaginas: signal(6),
+      tamanoPagina: 20,
+      irPagina: vi.fn().mockResolvedValue(undefined),
       cargarMetricas: vi.fn().mockResolvedValue(undefined),
       cargarMasOrdenes: vi.fn().mockResolvedValue(undefined),
       enProceso: signal(1),
@@ -93,6 +102,7 @@ describe('OrdenesComponent', () => {
       entregarConSaldo: vi.fn().mockResolvedValue(undefined),
       rollosDeOrden: vi.fn().mockResolvedValue({ data: [], resumen: [] }),
       cambiarEstado: vi.fn().mockResolvedValue(undefined),
+      cambiarEstadoLinea: vi.fn().mockResolvedValue(undefined),
       asignar: vi.fn().mockResolvedValue(undefined),
       cancelar: vi.fn().mockResolvedValue(undefined),
       completar: vi.fn().mockResolvedValue(undefined),
@@ -111,16 +121,16 @@ describe('OrdenesComponent', () => {
             resumen: () => '',
           },
         },
-        { provide: SesionService, useValue: { esSupervisor: signal(true), puedeVender: signal(true), puedeGestionarOrdenes: signal(true), usuarios: signal([]), puedeGestionar: () => true, puedeAvanzarEtapa: () => true } },
+        { provide: SesionService, useValue: { esSupervisor: signal(true), puedeVender: signal(true), puedeGestionarOrdenes: signal(true), usuarios: signal([]), asignables: signal([]), puedeGestionar: () => true, puedeAvanzarEtapa: () => true } },
       ],
     });
   });
 
-  it('al crearse, carga las órdenes y las métricas del panel', () => {
+  it('al crearse, carga las órdenes sin solicitar métricas', () => {
     TestBed.createComponent(OrdenesComponent);
     expect(ordenesFalso.cargar).toHaveBeenCalledTimes(1);
     // Las tarjetas ya no se calculan sobre la lista cargada: vienen del backend.
-    expect(ordenesFalso.cargarMetricas).toHaveBeenCalledTimes(1);
+    expect(ordenesFalso.cargarMetricas).not.toHaveBeenCalled();
   });
 
   it('cargarMas() pide el siguiente bloque de órdenes', () => {
@@ -131,14 +141,53 @@ describe('OrdenesComponent', () => {
     expect(ordenesFalso.cargarMasOrdenes).toHaveBeenCalledTimes(1);
   });
 
-  it('ordenesFiltradas() aplica el filtro de estado y búsqueda combinados', () => {
+  it('muestra acciones fijas y deshabilita editar en pedidos cerrados', () => {
+    ordenesFalso.ordenes.set([ordenBase({ estado: 'entregada' })]);
+    const fixture = TestBed.createComponent(OrdenesComponent);
+    Object.assign(fixture.componentInstance, { etiquetaUnidad: { imprenta: 'Imprenta' }, etiquetaEstado: { entregada: 'Entregada' } });
+    fixture.detectChanges();
+    const fila: HTMLElement = fixture.nativeElement.querySelector('tbody tr');
+    expect(fila.querySelector('[aria-label="Ver detalle"]')).not.toBeNull();
+    expect((fila.querySelector('[aria-label="Editar orden no disponible"]') as HTMLButtonElement).disabled).toBe(true);
+    expect(fila.querySelector('[aria-label="Registrar cobro"]')).not.toBeNull();
+    expect(fila.querySelector('[aria-label="Rollos y planchas usados en el pedido"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[aria-label^="Tabla de pedidos;"]')).not.toBeNull();
+  });
+
+  it('abre las líneas del pedido sin salir del listado', () => {
+    ordenesFalso.ordenes.set([ordenBase({ items: [{ descripcion: 'Banner', cantidad: 2, precio_unitario: 30 }] })]);
+    const fixture = TestBed.createComponent(OrdenesComponent);
+    Object.assign(fixture.componentInstance, { etiquetaUnidad: { imprenta: 'Imprenta' }, etiquetaEstado: { pendiente: 'Pendiente' } });
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('[aria-label="Ver detalle"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Banner');
+    expect(fixture.nativeElement.textContent).toContain('Precio unitario');
+  });
+
+  it('al pulsar la fila expande sus servicios y actualiza solo la línea elegida', async () => {
+    ordenesFalso.ordenes.set([ordenBase({ items: [
+      { id: 12, descripcion: 'Lapiceros', cantidad: 2, precio_unitario: 10, estado_produccion: 'pendiente' },
+    ] })]);
+    const fixture = TestBed.createComponent(OrdenesComponent);
+    Object.assign(fixture.componentInstance, { etiquetaUnidad: { imprenta: 'Imprenta' }, etiquetaEstado: { pendiente: 'Pendiente' } });
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector('tbody tr td:nth-child(2)') as HTMLElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.lineas-expandidas').textContent).toContain('Lapiceros');
+    const selector = fixture.nativeElement.querySelector('[aria-label="Estado de Lapiceros"]') as HTMLSelectElement;
+    selector.value = 'finalizado';
+    selector.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+    expect(ordenesFalso.cambiarEstadoLinea).toHaveBeenCalledWith(1, 12, 'finalizado');
+  });
+
+  it('envía el estado al servidor sin ocultar filas localmente', () => {
     const fixture = TestBed.createComponent(OrdenesComponent);
     const componente = fixture.componentInstance;
-    componente.filtroEstado.set('pendiente');
-    componente.busqueda.set('juan');
+    componente.cambiarFiltroEstado('pendiente');
+    expect(ordenesFalso.filtrarPor).toHaveBeenCalledWith({ estado: 'pendiente' });
     expect(componente.ordenesFiltradas()).toEqual([ordenBase()]);
-    componente.busqueda.set('nadie');
-    expect(componente.ordenesFiltradas()).toEqual([]);
   });
 
   it('limpiarFiltroFecha() vacía desde/hasta', () => {
@@ -309,7 +358,7 @@ describe('OrdenesComponent', () => {
       await fixture.componentInstance.actualizar();
 
       expect(ordenesFalso.recargar).toHaveBeenCalledTimes(1);
-      expect(ordenesFalso.cargarMetricas).toHaveBeenCalledTimes(1);
+      expect(ordenesFalso.cargarMetricas).not.toHaveBeenCalled();
     });
 
     it('si falla, avisa en vez de dejar el error sin atender', async () => {
@@ -417,7 +466,7 @@ describe('OrdenesComponent', () => {
       ).map(o => o.textContent?.trim());
 
       expect(opciones).toEqual(['Todos los locales', 'Imprenta', 'Gigantografías']);
-      expect(pagina.textContent).toContain('Pendientes de hoy');
+      expect(pagina.querySelector('[aria-label="Pendientes de hoy o vencidos"]')).not.toBeNull();
     });
   });
 
@@ -465,19 +514,21 @@ describe('OrdenesComponent', () => {
       expect(columnas.indexOf('Asignado')).toBe(columnas.indexOf('Acciones') - 1);
     });
 
-    it('quien no es supervisión no ve la columna de asignación', () => {
-      expect(encabezados(pintar(true))).not.toContain('Asignado');
+    it('secretaría también ve la columna de asignación', () => {
+      expect(encabezados(pintar(true))).toContain('Asignado');
     });
 
-    it('la búsqueda encuentra la orden por su teléfono', () => {
+    it('envía la búsqueda de teléfono al servidor', () => {
+      vi.useFakeTimers();
       const fixture = TestBed.createComponent(OrdenesComponent);
       ordenesFalso.ordenes.set([
         ordenBase({ id: 1, id_documento: 'ORD-000001', telefono: '924 943 790' }),
         ordenBase({ id: 2, id_documento: 'ORD-000002', telefono: '987 654 321' }),
       ]);
-      fixture.componentInstance.busqueda.set('924943');
-
-      expect(fixture.componentInstance.ordenesFiltradas().map(o => o.id_documento)).toEqual(['ORD-000001']);
+      fixture.componentInstance.buscar('924943');
+      vi.advanceTimersByTime(300);
+      expect(ordenesFalso.filtrarPor).toHaveBeenCalledWith({ texto: '924943' });
+      vi.useRealTimers();
     });
   });
 
@@ -641,13 +692,14 @@ describe('OrdenesComponent', () => {
     it('confirmarPago(): manda método y referencia, y cierra el modal', async () => {
       const fixture = TestBed.createComponent(OrdenesComponent);
       const componente = fixture.componentInstance;
-      componente.abrirCobro(ordenBase());
+      componente.abrirCobro(ordenBase({ finanzas: { precio_total: 100, subtotal: 100, igv: 0, adelanto_pago: 20, saldo_pendiente: 80, metodo_pago_adelanto: 'efectivo', pagado_totalmente: false } }));
       componente.referenciaPago.set('  OP-99  ');
       componente.descripcionPago.set('  Abono de la semana ');
+      componente.montoPago.set(30);
 
       await componente.confirmarPago();
 
-      expect(ordenesFalso.confirmarPago).toHaveBeenCalledWith(1, 'efectivo', 'OP-99', 'Abono de la semana');
+      expect(ordenesFalso.confirmarPago).toHaveBeenCalledWith(1, 'efectivo', 'OP-99', 'Abono de la semana', 30);
       expect(componente.ordenACobrar()).toBeNull();
     });
 

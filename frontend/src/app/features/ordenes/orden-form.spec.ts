@@ -111,6 +111,46 @@ describe('OrdenFormComponent', () => {
     expect(fixture.componentInstance.editando()).toBeNull();
   });
 
+  it('filtra clientes por nombre, teléfono con formatos distintos y usuario', () => {
+    clientesFalso.clientes.set([
+      { ...clientePersona, telefono: '+51975123456' },
+      { ...clienteCorporativo, telefono: '@empresa' },
+    ]);
+    const componente = TestBed.createComponent(OrdenFormComponent).componentInstance;
+    for (const texto of ['juan', '975 123 456', '123 456']) {
+      componente.busquedaCliente.set(texto);
+      expect(componente.clientesFiltrados().map(c => c.id)).toEqual([1]);
+    }
+    componente.busquedaCliente.set('@EMPRESA');
+    expect(componente.clientesFiltrados().map(c => c.id)).toEqual([2]);
+    componente.busquedaCliente.set('inexistente');
+    expect(componente.clientesFiltrados()).toEqual([]);
+  });
+
+  it('mantiene el cliente seleccionado al buscar otro', () => {
+    const fixture = TestBed.createComponent(OrdenFormComponent);
+    fixture.componentInstance.actualizar('clienteId', 1);
+    fixture.componentInstance.busquedaCliente.set('Empresa');
+    expect(fixture.componentInstance.clienteSeleccionado()?.nombre).toBe('Juan Pérez');
+    expect(fixture.componentInstance.clientesFiltrados().map(c => c.id)).toEqual([2]);
+    expect(fixture.componentInstance.form().clienteId).toBe(1);
+  });
+
+  it('abre, filtra y selecciona un cliente con el teclado', () => {
+    const componente = TestBed.createComponent(OrdenFormComponent).componentInstance;
+    componente.abrirClientes();
+    expect(componente.selectorClienteAbierto()).toBe(true);
+    componente.buscarCliente('Empresa');
+    expect(componente.clientesFiltrados().map(c => c.id)).toEqual([2]);
+    componente.teclaCliente(new KeyboardEvent('keydown', { key: 'Enter' }));
+    expect(componente.form().clienteId).toBe(2);
+    expect(componente.selectorClienteAbierto()).toBe(false);
+    componente.abrirClientes();
+    expect(componente.busquedaCliente()).toBe('');
+    componente.teclaCliente(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(componente.selectorClienteAbierto()).toBe(false);
+  });
+
   describe('modo edición', () => {
     it('con un id que existe, precarga el formulario con los datos de la orden', async () => {
       configurar('9');
@@ -155,8 +195,8 @@ describe('OrdenFormComponent', () => {
       componente.actualizar('precioTotal', 100);
       expect(componente.igv()).toBe(0);
       componente.actualizar('incluyeIgv', true);
-      expect(componente.igv()).toBe(18);
-      expect(componente.total()).toBe(118);
+      expect(componente.igv()).toBe(15.25);
+      expect(componente.total()).toBe(100);
     });
 
     it('el descuento se resta del total, y el saldo nunca baja de 0', () => {
@@ -169,12 +209,12 @@ describe('OrdenFormComponent', () => {
       expect(componente.saldoPendiente()).toBe(0);
     });
 
-    it('adelantoMinimo(): 50% del total para clientes generales, 0 para corporativos', () => {
+    it('adelantoMinimo(): 20% del total para clientes generales, 0 para corporativos', () => {
       const fixture = TestBed.createComponent(OrdenFormComponent);
       const componente = fixture.componentInstance;
       componente.actualizar('precioTotal', 100);
       componente.actualizar('clienteId', 1);
-      expect(componente.adelantoMinimo()).toBe(50);
+      expect(componente.adelantoMinimo()).toBe(20);
       componente.actualizar('clienteId', 2);
       expect(componente.adelantoMinimo()).toBe(0);
     });
@@ -193,8 +233,8 @@ describe('OrdenFormComponent', () => {
       componente.actualizar('incluyeIgv', true);
 
       expect(componente.subtotal()).toBe(38.25);
-      expect(componente.igv()).toBe(6.89);
-      expect(componente.total()).toBe(45.14);
+      expect(componente.igv()).toBe(5.83);
+      expect(componente.total()).toBe(38.25);
     });
 
     it('cada línea se redondea a centavos antes de sumar, como el backend', () => {
@@ -395,7 +435,7 @@ describe('OrdenFormComponent', () => {
 
       // Ambas reglas de "adelanto" se evalúan y la del mínimo (0 < 50) es la
       // que queda como mensaje final, por ir después en `validar()`.
-      expect(componente.errores()['adelanto']).toContain('S/ 50.00');
+      expect(componente.errores()['adelanto']).toContain('S/ 20.00');
       expect(ordenesFalso.crear).not.toHaveBeenCalled();
     });
 
@@ -411,7 +451,7 @@ describe('OrdenFormComponent', () => {
 
       await componente.guardar();
 
-      expect(componente.errores()['adelanto']).toContain('S/ 50.00');
+      expect(componente.errores()['adelanto']).toContain('S/ 20.00');
       expect(ordenesFalso.crear).not.toHaveBeenCalled();
     });
 
@@ -443,7 +483,7 @@ describe('OrdenFormComponent', () => {
       componente.actualizar('precioTotal', 100);
 
       expect(componente.exentoDeAdelanto()).toBe(false);
-      expect(componente.adelantoMinimo()).toBe(50);
+      expect(componente.adelantoMinimo()).toBe(20);
     });
 
     it('un cliente corporativo no necesita adelanto', async () => {

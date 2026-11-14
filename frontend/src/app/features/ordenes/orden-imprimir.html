@@ -69,7 +69,7 @@
     </section>
 
     <section class="documento-totales">
-      <div><span>Subtotal</span><span>S/ {{ o.finanzas?.subtotal ?? o.subtotal | number:'1.2-2' }}</span></div>
+      <div><span>{{ o.incluye_igv && o.precio_incluye_igv ? 'Importe con IGV incluido' : 'Subtotal' }}</span><span>S/ {{ o.finanzas?.subtotal ?? o.subtotal | number:'1.2-2' }}</span></div>
       @if ((o.finanzas?.descuento ?? 0) > 0) {
         <div>
           <span>Descuento{{ o.finanzas?.motivo_descuento ? ' (' + o.finanzas?.motivo_descuento + ')' : '' }}</span>
@@ -77,7 +77,7 @@
         </div>
       }
       @if (o.incluye_igv) {
-        <div><span>IGV</span><span>S/ {{ o.finanzas?.igv ?? o.igv | number:'1.2-2' }}</span></div>
+        <div><span>{{ o.precio_incluye_igv ? 'IGV incluido (informativo)' : 'IGV' }}</span><span>S/ {{ o.finanzas?.igv ?? o.igv | number:'1.2-2' }}</span></div>
       }
       <div class="total"><span>Total</span><span>S/ {{ o.finanzas?.precio_total | number:'1.2-2' }}</span></div>
       <div><span>A cuenta</span><span>S/ {{ (o.finanzas?.precio_total ?? 0) - (o.finanzas?.saldo_pendiente ?? 0) | number:'1.2-2' }}</span></div>

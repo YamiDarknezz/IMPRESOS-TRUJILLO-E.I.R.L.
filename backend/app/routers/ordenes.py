@@ -5,10 +5,11 @@ en `services.ordenes_service`. Las reglas del negocio y el manejo de errores
 viven fuera de aquí.
 """
 from datetime import date
-from typing import Annotated, Optional
+from typing import Annotated, Optional, Literal
 
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
+from pydantic import BaseModel
 
 from app.core.database import obtener_sesion
 from app.core.security import (
@@ -36,6 +37,20 @@ LIMITE_POR_DEFECTO = 100
 LIMITE_MAXIMO = 500
 
 
+class EstadoLineaData(BaseModel):
+    estado: Literal["pendiente", "en_produccion", "finalizado"]
+
+
+@router.patch("/{id_orden}/items/{id_linea}/estado")
+async def cambiar_estado_linea(
+    id_orden: int, id_linea: int, data: EstadoLineaData,
+    usuario: Annotated[Usuario, Depends(personal_produccion)],
+    sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
+):
+    orden = await ordenes_service.cambiar_estado_linea(sesion, id_orden, id_linea, data.estado, usuario)
+    return {"status": "success", "data": serializar_orden(orden)}
+
+
 @router.get("")
 async def listar_ordenes(
     usuario: Annotated[Usuario, Depends(usuario_actual)],
@@ -48,6 +63,7 @@ async def listar_ordenes(
     pendientes_hoy: bool = Query(default=False),
     desde: Optional[date] = Query(default=None),
     hasta: Optional[date] = Query(default=None),
+    busqueda: Optional[str] = Query(default=None, max_length=150),
     limit: int = Query(default=LIMITE_POR_DEFECTO, le=LIMITE_MAXIMO),
     offset: int = Query(default=0, ge=0),
 ):
@@ -60,12 +76,12 @@ async def listar_ordenes(
     ordenes = await ordenes_service.listar(
         sesion, usuario, estado, limit, offset, canal_ingreso=canal_ingreso,
         unidad_negocio=unidad_negocio, pendientes_hoy=pendientes_hoy,
-        desde=desde, hasta=hasta,
+        desde=desde, hasta=hasta, busqueda=busqueda,
     )
     total = await ordenes_service.contar(
         sesion, usuario, estado, canal_ingreso=canal_ingreso,
         unidad_negocio=unidad_negocio, pendientes_hoy=pendientes_hoy,
-        desde=desde, hasta=hasta,
+        desde=desde, hasta=hasta, busqueda=busqueda,
     )
     return {"status": "success", "data": [serializar_orden(o) for o in ordenes], "total": total}
 
@@ -197,7 +213,7 @@ async def cancelar_orden(
 async def asignar_orden(
     id_orden: int,
     data: AsignarData,
-    usuario: Annotated[Usuario, Depends(supervision)],
+    usuario: Annotated[Usuario, Depends(gestion_ordenes)],
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
 ):
     orden = await ordenes_service.asignar(sesion, id_orden, data.asignado_a, usuario)

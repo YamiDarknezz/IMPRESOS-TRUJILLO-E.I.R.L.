@@ -29,6 +29,7 @@ from app.models.enums import (
 from app.models.inventario import ConsumoPieza, Material, MovimientoStock, PiezaLoteMaterial
 from app.models.orden import Orden, OrdenItem, OrdenMaterial, PagoOrden
 from app.models.producto import Producto, ProductoMaterial
+from app.models.pronostico_ia import PronosticoIA
 from app.models.unidad import Unidad
 from app.models.usuario import Usuario
 
@@ -49,6 +50,7 @@ __all__ = [
     "PiezaLoteMaterial",
     "Producto",
     "ProductoMaterial",
+    "PronosticoIA",
     "Unidad",
     "Usuario",
     "EstadoCierre",

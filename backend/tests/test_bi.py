@@ -131,7 +131,8 @@ async def test_api_bi_solo_supervision_y_validacion(cliente_api, sesion, admin, 
         u = Usuario(nombre="Prueba", email=f"{rol}@test.pe", password_hash="x", rol=rol)
         sesion.add(u)
         await sesion.flush()
-        assert (await cliente_api.get(url, headers=cabecera_token(u))).status_code == 403
+        assert (await cliente_api.get(url, headers=cabecera_token(u))).status_code == (200 if rol == Rol.SECRETARIA else 403)
+        assert (await cliente_api.get('/api/finanzas/cuentas-por-cobrar', headers=cabecera_token(u))).status_code == (200 if rol == Rol.SECRETARIA else 403)
     assert (await cliente_api.get(url, headers=cabecera_token(operario))).status_code == 403
     assert (await cliente_api.get(url)).status_code == 401
     assert (await cliente_api.get(url, headers=cabecera_token(admin))).status_code == 200

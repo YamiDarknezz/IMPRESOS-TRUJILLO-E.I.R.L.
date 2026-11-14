@@ -2,7 +2,7 @@
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auditoria import registrar
@@ -12,6 +12,7 @@ from app.core.security import gestion_ordenes
 from app.models import Cliente, TipoEventoAuditoria, Usuario
 from app.schemas import ClienteCreateData, ClienteUpdateData
 from app.services import ordenes_service
+from app.services.contactos import coincidencias_contacto, normalizar_contacto, telefono_en_nombre
 from app.services.serializadores import serializar_cliente
 
 router = APIRouter(prefix="/api/clientes", tags=["Clientes"])
@@ -29,9 +30,14 @@ async def listar_clientes(
         consulta = consulta.where(Cliente.activo.is_(True))
     if q:
         patron = f"%{q.strip()}%"
-        consulta = consulta.where(
-            Cliente.nombre.ilike(patron) | Cliente.documento.ilike(patron)
-        )
+        condiciones = [Cliente.nombre.ilike(patron), Cliente.documento.ilike(patron), Cliente.telefono.ilike(patron)]
+        if telefono_en_nombre(q):
+            for columna in (Cliente.nombre, Cliente.telefono):
+                normalizado = columna
+                for caracter in (' ', '+', '-', '(', ')', '.'):
+                    normalizado = func.replace(normalizado, caracter, '')
+                condiciones.append(normalizado.like('%' + normalizar_contacto(q)[-9:]))
+        consulta = consulta.where(or_(*condiciones))
     clientes = (await sesion.execute(consulta)).scalars()
     return {"status": "success", "data": [serializar_cliente(c) for c in clientes]}
 
@@ -67,6 +73,8 @@ async def crear_cliente(
     usuario: Annotated[Usuario, Depends(gestion_ordenes)],
     sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
 ):
+    if await coincidencias_contacto(sesion, data.telefono):
+        raise Conflicto("Ya existe un cliente con ese teléfono o usuario de WhatsApp. Búscalo antes de crear otro.")
     existente = (
         await sesion.execute(
             select(Cliente).where(func.lower(Cliente.nombre) == data.nombre.lower())
@@ -111,6 +119,10 @@ async def actualizar_cliente(
     if cliente is None:
         raise NoEncontrado("Cliente no encontrado.")
 
+    if normalizar_contacto(cliente.telefono) != normalizar_contacto(data.telefono) and any(
+        c.id != cliente_id for c in await coincidencias_contacto(sesion, data.telefono)
+    ):
+        raise Conflicto("Ya existe otro cliente con ese teléfono o usuario de WhatsApp.")
     anteriores = {"nombre": cliente.nombre, "telefono": cliente.telefono}
     for campo, valor in data.model_dump().items():
         setattr(cliente, campo, valor)

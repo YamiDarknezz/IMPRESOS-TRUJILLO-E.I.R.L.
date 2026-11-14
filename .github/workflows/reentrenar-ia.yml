@@ -1,0 +1,27 @@
+name: Reentrenar IA
+
+on:
+  schedule:
+    # Lunes a las 06:00 en Perú (UTC-5); GitHub puede iniciar con retraso.
+    - cron: '0 11 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: despliegue-impresos-vps
+  cancel-in-progress: false
+
+jobs:
+  reentrenar:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reentrenar únicamente el commit desplegado
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.DEPLOY_KEY }}
+          command_timeout: 10m
+          script: |
+            set -e
+            bash "$HOME/data/repos/impresos-trujillo/scripts/reentrenar-ia.sh" "${{ github.sha }}"

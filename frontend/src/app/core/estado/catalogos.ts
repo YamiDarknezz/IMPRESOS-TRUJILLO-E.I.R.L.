@@ -57,7 +57,7 @@ const VACIO: Catalogos = {
 
 const parametros = signal<ParametrosNegocio>({
   igv_porcentaje: 18,
-  adelanto_minimo_porcentaje: 50,
+  adelanto_minimo_porcentaje: 20,
 });
 const catalogos = signal<Catalogos>(VACIO);
 const EMPRESA_VACIA: DatosEmpresa = { razon_social: 'Impresos Trujillo', ruc: '', direccion: '', telefono: '', horario: '' };
@@ -84,7 +84,7 @@ export function hidratarConfiguracion(datos: {
  * otro; esto deja cada una empezando de cero.
  */
 export function reiniciarConfiguracion(): void {
-  parametros.set({ igv_porcentaje: 18, adelanto_minimo_porcentaje: 50 });
+  parametros.set({ igv_porcentaje: 18, adelanto_minimo_porcentaje: 20 });
   catalogos.set(VACIO);
   datosEmpresa.set(EMPRESA_VACIA);
   configurada.set(false);

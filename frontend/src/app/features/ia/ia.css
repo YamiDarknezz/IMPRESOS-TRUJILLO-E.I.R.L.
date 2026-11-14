@@ -1,0 +1,41 @@
+:host { display: block; min-width: 0; color: var(--text); font-variant-numeric: tabular-nums; }
+h1 { margin: 0; font-size: 1.6rem; }
+h2 { margin: 0; font-size: 1.15rem; }
+p { line-height: 1.6; }
+button:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.ia-heading { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.6rem; }
+.ia-heading p { color: var(--text-muted); margin: .4rem 0 0; max-width: 65ch; }
+.ia-heading button { display: inline-flex; align-items: center; gap: .45rem; }
+.ia-resumen { display: flex; justify-content: space-between; flex-wrap: wrap; align-items: end; gap: 1.5rem; padding: 1.35rem 1.5rem; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+.ia-resumen p { margin: .35rem 0 0; color: var(--text-muted); font-size: .86rem; }
+.ia-totales { display: flex; flex-wrap: wrap; gap: 1.5rem 2.5rem; }
+.ia-totales div { display: grid; gap: .3rem; }
+.ia-totales span { font-size: .78rem; color: var(--text-soft); }
+.ia-totales strong { font-size: 1.4rem; font-weight: 650; }
+.ia-tabla-scroll { overflow-x: auto; margin-top: 1.25rem; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+caption { text-align: left; padding: 1rem 1.2rem; font-weight: 650; color: var(--text); }
+th, td { padding: .8rem 1.2rem; border-top: 1px solid var(--border); }
+thead { background: var(--surface-2); }
+th { text-align: left; font-weight: 600; }
+td { text-align: right; }
+thead th:not(:first-child) { text-align: right; }
+tbody tr:hover { background: var(--surface-2); }
+.ia-metodo { margin-top: 2rem; padding-top: 1.4rem; border-top: 1px solid var(--border); max-width: 76ch; }
+.ia-metodo > p { margin: .7rem 0 0; font-size: .88rem; color: var(--text-soft); }
+.ia-estado { font-weight: 600; color: var(--text) !important; }
+.ia-metricas { margin: 1rem 0 0; font-size: .87rem; }
+.ia-metricas div { display: flex; justify-content: space-between; gap: 1rem; padding: .75rem 0; border-top: 1px solid var(--border); }
+.ia-metricas dd { margin: 0; text-align: right; }
+.ia-info, .ia-aviso { font-size: .83rem; color: var(--text-muted); }
+.ia-aviso { background: var(--warning-bg); color: var(--warning-fg); border-radius: 8px; padding: .9rem; }
+.ia-error { display: flex; flex-wrap: wrap; align-items: center; gap: .8rem; background: var(--error-bg); color: var(--error-fg); padding: 1rem; border-radius: 8px; }
+.ia-vacio { padding: 2rem; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+.ia-vacio p { color: var(--text-muted); max-width: 58ch; }
+@media (max-width: 640px) {
+  .ia-resumen, .ia-vacio { padding: 1rem; }
+  .ia-totales { width: 100%; }
+  .ia-tabla-scroll table { min-width: 470px; }
+  .ia-metricas div { display: block; }
+  .ia-metricas dd { text-align: left; margin-top: .3rem; }
+}

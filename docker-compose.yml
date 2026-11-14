@@ -30,7 +30,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://impresos:impresos@db:5432/impresos
       ALLOWED_ORIGINS: http://localhost:4200
       JWT_SECRET: ${JWT_SECRET:-cambia-esta-clave-en-produccion}
-      ADELANTO_MINIMO_PORCENTAJE: ${ADELANTO_MINIMO_PORCENTAJE:-50}
+      ADELANTO_MINIMO_PORCENTAJE: "20"
       IGV_PORCENTAJE: ${IGV_PORCENTAJE:-18}
     volumes:
       # Capturas de Yape o transferencia (RF-11). En desarrollo, un volumen

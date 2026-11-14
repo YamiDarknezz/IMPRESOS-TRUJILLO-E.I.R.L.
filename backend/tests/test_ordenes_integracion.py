@@ -14,6 +14,7 @@ from app.models import (
     MetodoPago,
     MotivoMovimiento,
     MovimientoStock,
+    Orden,
     Rol,
     Usuario,
 )
@@ -36,7 +37,83 @@ async def test_filtrar_fechas_peruanas_antes_de_paginar(sesion, admin, material)
     assert await ordenes_service.contar(sesion, admin, hasta=date(2026, 10, 19)) == 0
 
 
+async def test_estado_independiente_de_lineas_se_conserva_al_editar(sesion, admin, material):
+    datos = datos_orden(material.id, precio_total=None, adelanto_pago=20, items=[
+        {"descripcion": "Gigantografía", "cantidad": 1, "precio_unitario": 50},
+        {"descripcion": "Lapiceros", "cantidad": 1, "precio_unitario": 50},
+    ])
+    orden = await ordenes_service.crear_orden(sesion, datos, admin)
+    primero, segundo = orden.items
+    await ordenes_service.cambiar_estado_linea(sesion, orden.id, segundo.id, 'finalizado', admin)
+    assert primero.estado_produccion == 'pendiente'
+    assert orden.estado == EstadoOrden.PENDIENTE
+    datos.items[0].id = primero.id
+    datos.items[1].id = segundo.id
+    datos.items[1].descripcion = 'Lapiceros personalizados'
+    actualizado = await ordenes_service.actualizar(sesion, orden.id, datos, admin)
+    assert actualizado.items[1].id == segundo.id
+    assert actualizado.items[1].estado_produccion == 'finalizado'
+
+
+async def test_estado_linea_rechaza_identificador_de_otra_orden(sesion, admin, material):
+    datos = datos_orden(material.id, items=[{"descripcion": "Servicio", "cantidad": 1, "precio_unitario": 100}])
+    primera = await ordenes_service.crear_orden(sesion, datos, admin)
+    segunda = await ordenes_service.crear_orden(sesion, datos, admin)
+    with pytest.raises(NoEncontrado):
+        await ordenes_service.cambiar_estado_linea(sesion, primera.id, segunda.items[0].id, 'finalizado', admin)
+
+
+async def test_historial_acepta_fechas_utc_con_y_sin_zona(sesion, admin, material):
+    orden = await ordenes_service.crear_orden(sesion, datos_orden(material.id), admin)
+    await ordenes_service.confirmar_pago(sesion, orden.id, None, "", admin, monto=25)
+    orden.pagos[0].fecha = datetime(2026, 10, 20, 12)
+    orden.pagos[1].fecha = datetime(2026, 10, 21, 12, tzinfo=timezone.utc)
+    historial = ordenes_service.historial_de_pagos([orden])
+    assert [p["monto"] for p in historial] == [25.0, 50.0]
+    assert [p["saldo_despues"] for p in historial] == [25.0, 50.0]
+
+
+async def test_busqueda_historica_y_fechas_antes_de_paginar(sesion, admin, cliente):
+    cliente.nombre = 'Mayoga Impresiones'
+    antigua = Orden(cliente_id=cliente.id, creado_por=admin.id, descripcion='Pedido especial',
+                    telefono='924 943 790', fecha_entrega=date(2026, 10, 20),
+                    creado_en=datetime(2026, 10, 10, 12, tzinfo=timezone.utc))
+    sesion.add(antigua)
+    await sesion.flush()
+    sesion.add_all([Orden(cliente_id=cliente.id, creado_por=admin.id, descripcion='Otros',
+                          fecha_entrega=date(2026, 10, 22),
+                          creado_en=datetime(2026, 10, 21, 12, tzinfo=timezone.utc)) for _ in range(105)])
+    await sesion.flush()
+    filtros = dict(busqueda='MAYOGA', desde=date(2026, 10, 10), hasta=date(2026, 10, 10))
+    assert await ordenes_service.contar(sesion, admin, **filtros) == 1
+    assert [o.id for o in await ordenes_service.listar(sesion, admin, limite=1, **filtros)] == [antigua.id]
+    assert [o.id for o in await ordenes_service.listar(sesion, admin, busqueda='924943790')] == [antigua.id]
+    assert [o.id for o in await ordenes_service.listar(sesion, admin, busqueda=antigua.codigo)] == [antigua.id]
+
+
 # ══ Creación y reserva de stock (RN-03) ════════════════════════════════════
+
+@pytest.mark.parametrize(('descuento', 'igv', 'total'), [(0, 15.25, 100), (20, 12.20, 80)])
+async def test_orden_nueva_desglosa_igv_incluido(sesion, admin, material, descuento, igv, total):
+    datos = datos_orden(material.id, precio_total=100, incluye_igv=True, descuento=descuento)
+    orden = await ordenes_service.crear_orden(sesion, datos, admin)
+    assert orden.precio_incluye_igv is True
+    assert float(orden.igv) == igv
+    assert float(orden.total) == total
+
+
+async def test_editar_orden_historica_conserva_igv_adicional(sesion, admin, material):
+    datos = datos_orden(material.id, precio_total=100, incluye_igv=True)
+    orden = await ordenes_service.crear_orden(sesion, datos, admin)
+    orden.precio_incluye_igv = False
+    orden.igv = 18
+    orden.total = 118
+    orden.saldo_pendiente = 68
+    await sesion.flush()
+    actualizada = await ordenes_service.actualizar(sesion, orden.id, datos, admin)
+    assert actualizada.precio_incluye_igv is False
+    assert float(actualizada.igv) == 18
+    assert float(actualizada.total) == 118
 
 async def test_crear_orden_reserva_el_stock(sesion, admin, material):
     orden = await ordenes_service.crear_orden(sesion, datos_orden(material.id), admin)
@@ -300,6 +377,22 @@ async def test_trabajador_si_gestiona_su_orden(sesion, admin, operario, material
         sesion, orden.id, EstadoOrden.EN_DISENO, operario
     )
     assert orden.estado == EstadoOrden.EN_DISENO
+
+
+async def test_venta_rapida_mixta_y_abonos_parciales(sesion, admin):
+    from app.schemas.orden import VentaRapidaData
+
+    data = VentaRapidaData(descripcion="Copias", monto_total=100, pagos=[
+        {"metodo": "efectivo", "monto": 30}, {"metodo": "yape_marcell", "monto": 20},
+    ])
+    orden = await ordenes_service.crear_venta_rapida(sesion, data, admin)
+    assert [(p.metodo.value, float(p.monto)) for p in orden.pagos] == [("efectivo", 30), ("yape_marcell", 20)]
+    assert float(orden.saldo_pendiente) == 50
+    assert not orden.pagado_totalmente
+    await ordenes_service.confirmar_pago(sesion, orden.id, None, "", admin, monto=20)
+    assert float(orden.saldo_pendiente) == 30
+    await ordenes_service.confirmar_pago(sesion, orden.id, None, "", admin, monto=30)
+    assert orden.pagado_totalmente
 
 
 async def test_crear_venta_rapida_mostrador(sesion, admin):

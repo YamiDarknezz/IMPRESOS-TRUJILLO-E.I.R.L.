@@ -83,6 +83,7 @@ class Orden(Base, TemporalMixin):
 
     # ── Contrato: montos ────────────────────────────────────────────────────
     incluye_igv: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    precio_incluye_igv: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", nullable=False)
     subtotal: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, nullable=False)
     igv: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, nullable=False)
     descuento: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, nullable=False)
@@ -161,6 +162,7 @@ class OrdenItem(Base, TemporalMixin):
     cantidad: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=1, nullable=False)
     precio_unitario: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, nullable=False)
     importe: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=0, nullable=False)
+    estado_produccion: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, default="pendiente")
 
     orden = relationship("Orden", back_populates="items")
     producto = relationship("Producto", lazy="joined")

@@ -759,7 +759,7 @@ async def test_una_unidad_inexistente_se_rechaza(cliente_api, admin):
 
 async def test_el_filtro_de_unidad_vale_con_mas_ordenes_que_un_bloque(cliente_api, admin, material):
     """El filtro se resuelve en el servidor: con la lista paginada, uno en el navegador se perdería lo no cargado."""
-    for unidad in ("imprenta", "imprenta", "imprenta", "gigantografias"):
+    for unidad in ("gigantografias", "imprenta", "imprenta", "imprenta"):
         await _crear(cliente_api, admin, material, unidad_negocio=unidad)
 
     # Bloque de 2: la única de Gigantografías es la más antigua y no cabe en el primer bloque sin filtro.

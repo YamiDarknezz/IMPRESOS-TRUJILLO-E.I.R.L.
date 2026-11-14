@@ -1,0 +1,19 @@
+.cliente-combo { position: relative; }
+.cliente-combo input { width: 100%; }
+.cliente-resultados {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgb(0 0 0 / 15%);
+}
+.cliente-opcion { display: flex; flex-direction: column; gap: 2px; padding: 9px 12px; cursor: pointer; color: var(--text); }
+.cliente-opcion.activa { background: var(--surface-3); }
+.cliente-opcion small, .cliente-vacio { color: var(--text-muted); }
+.cliente-vacio { padding: 12px; }

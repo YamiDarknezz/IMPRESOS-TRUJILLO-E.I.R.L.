@@ -11,11 +11,11 @@ Concentra las decisiones que definen el sistema (SRS, Reglas de Negocio):
 5. RN-07: lo entregado/cancelado es inmutable; a "finalizada" solo se llega
    reportando el consumo real.
 """
-from datetime import date
+from datetime import date, timezone
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any, Optional
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auditoria import registrar
@@ -43,8 +43,9 @@ from app.models import (
     UnidadNegocio,
     Usuario,
 )
-from app.schemas.orden import MaterialEstimado, OrdenCreateData, VentaRapidaData
+from app.schemas.orden import AdelantoParteData, MaterialEstimado, OrdenCreateData, VentaRapidaData
 from app.services import inventario_service
+from app.services.contactos import coincidencias_contacto, normalizar_contacto, telefono_en_nombre
 from app.services.inventario_service import AjusteStock
 
 # Etapas con el trabajo aún en curso: el stock sigue reservado con las
@@ -83,14 +84,19 @@ def calcular_totales(
     incluye_igv: bool,
     descuento: float | Decimal = 0,
     igv_porcentaje: float | None = None,
+    precio_incluye_igv: bool = True,
 ) -> tuple[Decimal, Decimal]:
-    """Devuelve (igv, total). El total es subtotal + IGV - descuento."""
+    """Desglosa el IGV incluido; conserva la fórmula histórica cuando se solicita."""
     subtotal_d = _decimal(subtotal)
     descuento_d = _decimal(descuento)
     if descuento_d > subtotal_d:
         raise ErrorDeNegocio("El descuento no puede superar el subtotal.")
 
     porcentaje = _decimal(igv_porcentaje if igv_porcentaje is not None else settings.igv_porcentaje)
+    if incluye_igv and precio_incluye_igv:
+        total = _redondear(subtotal_d - descuento_d)
+        igv = _redondear(total * porcentaje / (Decimal("100") + porcentaje))
+        return igv, total
     igv = _redondear(subtotal_d * porcentaje / Decimal("100")) if incluye_igv else Decimal("0.00")
     return igv, _redondear(subtotal_d + igv - descuento_d)
 
@@ -150,7 +156,7 @@ def puede_gestionar(orden: Orden, usuario: Usuario) -> bool:
 
 def puede_avanzar_etapa(orden: Orden, usuario: Usuario) -> bool:
     """Avanzar el pipeline es del admin/subgerente o del responsable asignado."""
-    if usuario.rol in (Rol.ADMIN, Rol.SUBGERENTE):
+    if usuario.rol in (Rol.ADMIN, Rol.SUBGERENTE, Rol.SECRETARIA):
         return True
     return orden.asignado_a == usuario.id
 
@@ -269,6 +275,7 @@ def _aplicar_filtros(
     pendientes_hoy: bool = False,
     desde: Optional[date] = None,
     hasta: Optional[date] = None,
+    busqueda: Optional[str] = None,
 ):
     """
     Filtros del listado, iguales para la lista y para su total.
@@ -286,6 +293,24 @@ def _aplicar_filtros(
         consulta = consulta.where(Orden.canal_ingreso == canal_ingreso)
     if unidad_negocio is not None:
         consulta = consulta.where(Orden.unidad_negocio == unidad_negocio)
+    if busqueda and busqueda.strip():
+        texto = busqueda.strip()
+        condiciones = [
+            Orden.cliente.has(Cliente.nombre.icontains(texto, autoescape=True)),
+            Orden.descripcion.icontains(texto, autoescape=True),
+            Orden.telefono.icontains(texto, autoescape=True),
+            cast(Orden.unidad_negocio, String).icontains(texto, autoescape=True),
+        ]
+        digitos = ''.join(c for c in texto if c.isdigit())
+        if len(digitos) >= 3 and all(c.isdigit() or c in ' +-()' for c in texto):
+            telefono = Orden.telefono
+            for caracter in (' ', '-', '+', '(', ')'):
+                telefono = func.replace(telefono, caracter, '')
+            condiciones.append(telefono.contains(digitos, autoescape=True))
+        codigo = texto.upper().removeprefix('ORD-')
+        if codigo.isdigit() and len(codigo) <= 9:
+            condiciones.append(Orden.id == int(codigo))
+        consulta = consulta.where(or_(*condiciones))
     if desde is not None:
         inicio, _ = rango_dia_peru_a_utc(desde)
         consulta = consulta.where(Orden.creado_en >= inicio)
@@ -311,10 +336,11 @@ async def listar(
     pendientes_hoy: bool = False,
     desde: Optional[date] = None,
     hasta: Optional[date] = None,
+    busqueda: Optional[str] = None,
 ) -> list[Orden]:
     consulta = _aplicar_filtros(
-        select(Orden).order_by(Orden.creado_en.desc()),
-        usuario, estado, canal_ingreso, unidad_negocio, pendientes_hoy, desde, hasta,
+        select(Orden).order_by(Orden.creado_en.desc(), Orden.id.desc()),
+        usuario, estado, canal_ingreso, unidad_negocio, pendientes_hoy, desde, hasta, busqueda,
     ).limit(limite).offset(desplazamiento)
 
     return list((await sesion.execute(consulta)).scalars())
@@ -329,11 +355,12 @@ async def contar(
     pendientes_hoy: bool = False,
     desde: Optional[date] = None,
     hasta: Optional[date] = None,
+    busqueda: Optional[str] = None,
 ) -> int:
     """Cuántas órdenes cumplen el filtro (para 'mostrando N de M' y el panel)."""
     consulta = _aplicar_filtros(
         select(func.count()).select_from(Orden),
-        usuario, estado, canal_ingreso, unidad_negocio, pendientes_hoy, desde, hasta,
+        usuario, estado, canal_ingreso, unidad_negocio, pendientes_hoy, desde, hasta, busqueda,
     )
     return int((await sesion.execute(consulta)).scalar_one())
 
@@ -394,6 +421,20 @@ async def _resolver_cliente(sesion: AsyncSession, data: OrdenCreateData) -> Clie
     if not nombre:
         raise ErrorDeNegocio("Indica el cliente de la orden.")
 
+    contacto_nombre = telefono_en_nombre(nombre)
+    contacto = normalizar_contacto(data.telefono or contacto_nombre or "")
+    if contacto_nombre and contacto and contacto_nombre != contacto:
+        raise Conflicto("El número del nombre no coincide con el teléfono indicado.")
+    coincidencias = await coincidencias_contacto(sesion, contacto)
+    if len(coincidencias) > 1:
+        raise Conflicto("Hay varios clientes con ese contacto. Selecciona el cliente correcto.")
+    if coincidencias:
+        if not coincidencias[0].activo:
+            raise Conflicto("El cliente con ese contacto está inactivo. Consulta con administración.")
+        return coincidencias[0]
+    if contacto_nombre:
+        nombre = contacto_nombre
+
     existente = (
         await sesion.execute(select(Cliente).where(Cliente.nombre.ilike(nombre)))
     ).scalars().first()
@@ -401,7 +442,7 @@ async def _resolver_cliente(sesion: AsyncSession, data: OrdenCreateData) -> Clie
         return existente
 
     # Alta rápida desde el mostrador: se crea el cliente con los datos mínimos.
-    cliente = Cliente(nombre=nombre, telefono=data.telefono, direccion=data.direccion)
+    cliente = Cliente(nombre=nombre, telefono=contacto, direccion=data.direccion)
     sesion.add(cliente)
     await sesion.flush()
     return cliente
@@ -439,20 +480,47 @@ def _calcular_subtotal(data: OrdenCreateData) -> Decimal:
 
 
 def _reemplazar_items(orden: Orden, data: OrdenCreateData) -> None:
-    orden.items.clear()
+    existentes = {linea.id: linea for linea in orden.items if linea.id is not None}
+    if data.items and all(item.id is None for item in data.items) and any(
+        linea.estado_produccion not in (None, "pendiente") for linea in existentes.values()
+    ):
+        raise Conflicto("Actualiza la página antes de editar: hay estados de servicios que deben conservarse.")
+    usados = set()
+    nuevos = []
     for item in data.items:
+        if item.id is not None:
+            if item.id not in existentes or item.id in usados:
+                raise ErrorDeNegocio("La línea indicada no pertenece a esta orden o está repetida.")
+            linea = existentes[item.id]
+            usados.add(item.id)
+        else:
+            linea = OrdenItem(estado_produccion="pendiente")
         importe = _redondear(_decimal(item.cantidad) * _decimal(item.precio_unitario))
-        orden.items.append(
-            OrdenItem(
-                producto_id=item.producto_id,
-                descripcion=item.descripcion,
-                ancho_m=_decimal(item.ancho_m) if item.ancho_m is not None else None,
-                alto_m=_decimal(item.alto_m) if item.alto_m is not None else None,
-                cantidad=_redondear(_decimal(item.cantidad)),
-                precio_unitario=_redondear(_decimal(item.precio_unitario)),
-                importe=importe,
-            )
-        )
+        linea.producto_id = item.producto_id
+        linea.descripcion = item.descripcion
+        linea.ancho_m = _decimal(item.ancho_m) if item.ancho_m is not None else None
+        linea.alto_m = _decimal(item.alto_m) if item.alto_m is not None else None
+        linea.cantidad = _redondear(_decimal(item.cantidad))
+        linea.precio_unitario = _redondear(_decimal(item.precio_unitario))
+        linea.importe = importe
+        nuevos.append(linea)
+    orden.items[:] = nuevos
+
+
+async def cambiar_estado_linea(sesion: AsyncSession, id_orden: int, id_linea: int, estado: str, usuario: Usuario) -> Orden:
+    orden = await _obtener_para_escritura(sesion, id_orden)
+    exigir_gestion(orden, usuario)
+    if orden.estado in (EstadoOrden.CANCELADA, EstadoOrden.ENTREGADA):
+        raise ErrorDeNegocio("No se pueden modificar líneas de una orden cancelada o entregada.")
+    linea = next((item for item in orden.items if item.id == id_linea), None)
+    if linea is None:
+        raise NoEncontrado("La línea no pertenece a esta orden.")
+    anterior = linea.estado_produccion
+    linea.estado_produccion = estado
+    _auditar_orden(sesion, usuario, "editar", orden, f"Estado de línea {id_linea}: {estado}",
+                   anteriores={"estado_linea": anterior}, nuevos={"estado_linea": estado})
+    await sesion.flush()
+    return orden
 
 
 def _reemplazar_materiales(
@@ -708,13 +776,14 @@ async def crear_orden(sesion: AsyncSession, data: OrdenCreateData, usuario: Usua
         # serializar el nombre sin provocar una carga perezosa en async.
         cliente=cliente,
         direccion=data.direccion or cliente.direccion,
-        telefono=data.telefono or cliente.telefono,
+        telefono=normalizar_contacto(data.telefono or cliente.telefono),
         asignado=asignado,
         creado_por=usuario.id,
         descripcion=data.descripcion,
         unidad_negocio=data.unidad_negocio,
         fecha_entrega=data.fecha_entrega,
         incluye_igv=data.incluye_igv,
+        precio_incluye_igv=True,
         subtotal=subtotal,
         igv=igv,
         descuento=descuento,
@@ -787,11 +856,17 @@ async def crear_venta_rapida(
     Se crea la orden con pago al 100% y queda inmediatamente entregada.
     """
     nombre_cliente = (data.cliente_nombre or "Cliente Mostrador").strip()
-    cliente = (
+    contacto_nombre = telefono_en_nombre(nombre_cliente)
+    coincidencias = await coincidencias_contacto(sesion, contacto_nombre or "")
+    if len(coincidencias) > 1:
+        raise Conflicto("Hay varios clientes con ese contacto. Selecciona el cliente correcto.")
+    cliente = coincidencias[0] if coincidencias else (
         await sesion.execute(select(Cliente).where(Cliente.nombre.ilike(nombre_cliente)))
     ).scalars().first()
+    if cliente is not None and not cliente.activo:
+        raise Conflicto("El cliente está inactivo. Consulta con administración.")
     if cliente is None:
-        cliente = Cliente(nombre=nombre_cliente)
+        cliente = Cliente(nombre=contacto_nombre or nombre_cliente, telefono=contacto_nombre or "")
         sesion.add(cliente)
         await sesion.flush()
 
@@ -835,26 +910,28 @@ async def crear_venta_rapida(
     item = OrdenItem(
         orden_id=orden.id,
         descripcion=data.descripcion,
+        estado_produccion="finalizado",
         cantidad=Decimal("1.00"),
         precio_unitario=monto,
         importe=monto,
     )
     orden.items.append(item)
 
-    pago = PagoOrden(
-        orden_id=orden.id,
-        # Nace con la colección vacía: leerla después sería un SELECT implícito.
-        comprobantes=[],
-        monto=monto,
-        metodo=data.metodo_pago,
-        tipo=TipoPago.ADELANTO,
-        registrado_por=usuario.id,
-        usuario=usuario,
-        referencia=data.referencia,
-        estado_pago=EstadoPago.CONFORME,
-    )
-    orden.pagos.append(pago)
+    partes = data.pagos or [AdelantoParteData(metodo=data.metodo_pago, monto=float(monto))]
+    for parte in partes:
+        orden.pagos.append(PagoOrden(
+            orden_id=orden.id,
+            comprobantes=[],
+            monto=_redondear(_decimal(parte.monto)),
+            metodo=parte.metodo,
+            tipo=TipoPago.ADELANTO,
+            registrado_por=usuario.id,
+            usuario=usuario,
+            referencia=data.referencia,
+            estado_pago=EstadoPago.CONFORME,
+        ))
     await sesion.flush()
+    _recalcular_finanzas(orden)
 
     _auditar_orden(
         sesion,
@@ -881,7 +958,7 @@ async def actualizar(sesion: AsyncSession, id_orden: int, data: OrdenCreateData,
 
     subtotal = _calcular_subtotal(data)
     descuento = _redondear(_decimal(data.descuento))
-    igv, total = calcular_totales(subtotal, data.incluye_igv, descuento)
+    igv, total = calcular_totales(subtotal, data.incluye_igv, descuento, precio_incluye_igv=orden.precio_incluye_igv)
     # La exención de RN-01 solo aplica cuando el cliente fue seleccionado
     # explícitamente por id, no cuando se resolvió por coincidencia de nombre.
     validar_adelanto(
@@ -905,7 +982,7 @@ async def actualizar(sesion: AsyncSession, id_orden: int, data: OrdenCreateData,
 
     orden.cliente = cliente
     orden.direccion = data.direccion or cliente.direccion
-    orden.telefono = data.telefono or cliente.telefono
+    orden.telefono = normalizar_contacto(data.telefono or cliente.telefono)
     # El asignado NO se toca aquí a propósito: el formulario de edición ni
     # siquiera muestra ese campo salvo a supervisión, y por rol no puede
     # mandar "no cambiar" — solo puede mandar `asignado_a` o nada. Cambiar a
@@ -1316,7 +1393,10 @@ def historial_de_pagos(ordenes: list[Orden]) -> list[dict]:
     filas: list[dict] = []
     for orden in ordenes:
         acumulado = Decimal("0")
-        for pago in sorted(orden.pagos, key=lambda p: (p.fecha, p.id or 0)):
+        for pago in sorted(
+            orden.pagos,
+            key=lambda p: (p.fecha.replace(tzinfo=timezone.utc) if p.fecha.tzinfo is None else p.fecha.astimezone(timezone.utc), p.id or 0),
+        ):
             saldo_despues: Optional[float] = None
             if pago.es_conforme:
                 acumulado += _decimal(pago.monto)

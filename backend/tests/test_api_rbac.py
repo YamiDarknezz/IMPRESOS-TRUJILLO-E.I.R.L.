@@ -43,6 +43,40 @@ async def test_listado_de_usuarios_por_rol(cliente_api, sesion, admin, operario)
     assert (await cliente_api.get("/api/usuarios", headers=cabecera_token(operario))).status_code == 403
 
 
+async def test_secretaria_puede_asignar_sin_acceso_a_gestion_de_usuarios(cliente_api, sesion, admin, operario, material):
+    secretaria = await _usuario(sesion, Rol.SECRETARIA, "secretaria-asignar@impresos.test")
+    orden = await ordenes_service.crear_orden(sesion, datos_orden(material.id), admin)
+    cabecera = cabecera_token(secretaria)
+    lista = await cliente_api.get('/api/usuarios/asignables', headers=cabecera)
+    assert lista.status_code == 200
+    assert {"id": operario.id, "nombre": operario.nombre} in lista.json()["data"]
+    assert all(set(u) == {"id", "nombre"} for u in lista.json()["data"])
+    assert (await cliente_api.get('/api/usuarios', headers=cabecera)).status_code == 403
+    respuesta = await cliente_api.post(f'/api/ordenes/{orden.id}/asignar', json={"asignado_a": operario.id}, headers=cabecera)
+    assert respuesta.status_code == 200
+    assert respuesta.json()["data"]["asignado_a"] == operario.id
+    assert (await cliente_api.post(f'/api/ordenes/{orden.id}/asignar', json={"asignado_a": admin.id}, headers=cabecera_token(operario))).status_code == 403
+
+
+async def test_secretaria_puede_avanzar_orden_ajena(cliente_api, sesion, admin, operario, material):
+    secretaria = await _usuario(sesion, Rol.SECRETARIA, 'secretaria-etapa@impresos.test')
+    orden = await ordenes_service.crear_orden(sesion, datos_orden(material.id, asignado_a=operario.id), admin)
+    respuesta = await cliente_api.post(f'/api/ordenes/{orden.id}/estado', json={'estado': 'en_diseno'}, headers=cabecera_token(secretaria))
+    assert respuesta.status_code == 200
+    assert respuesta.json()['data']['estado'] == 'en_diseno'
+
+
+async def test_estado_de_linea_exige_permiso_y_estado_valido(cliente_api, sesion, admin, operario, material):
+    datos = datos_orden(material.id, asignado_a=admin.id, items=[{"descripcion": "Servicio", "cantidad": 1, "precio_unitario": 100}])
+    orden = await ordenes_service.crear_orden(sesion, datos, admin)
+    url = f"/api/ordenes/{orden.id}/items/{orden.items[0].id}/estado"
+    assert (await cliente_api.patch(url, json={"estado": "finalizado"}, headers=cabecera_token(operario))).status_code == 403
+    assert (await cliente_api.patch(url, json={"estado": "inventado"}, headers=cabecera_token(admin))).status_code == 422
+    respuesta = await cliente_api.patch(url, json={"estado": "finalizado"}, headers=cabecera_token(admin))
+    assert respuesta.status_code == 200
+    assert respuesta.json()['data']['items'][0]['estado_produccion'] == 'finalizado'
+
+
 async def test_operario_no_gestiona_catalogos(cliente_api, operario):
     respuesta = await cliente_api.post(
         "/api/clientes", json={"nombre": "Cliente No Permitido"}, headers=cabecera_token(operario)

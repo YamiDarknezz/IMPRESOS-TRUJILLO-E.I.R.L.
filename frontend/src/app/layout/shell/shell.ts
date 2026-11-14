@@ -45,7 +45,7 @@ export class ShellComponent {
   theme = inject(ThemeService);
 
   /** Menú reducido a iconos, para ganar ancho de pantalla. */
-  readonly colapsado = signal(leerPreferencia(CLAVE_COLAPSADO) === '1');
+  readonly colapsado = signal(leerPreferencia(CLAVE_COLAPSADO) !== '0');
   /** En móvil el menú es un cajón que se superpone. */
   readonly cajonAbierto = signal(false);
 
@@ -62,7 +62,7 @@ export class ShellComponent {
     if (this.sesion.puedeGestionarOrdenes()) {
       opciones.push({ ruta: '/clientes', icono: 'users', etiqueta: 'Clientes' });
     }
-    if (this.sesion.esAdmin()) {
+    if (this.sesion.puedeGestionarOrdenes()) {
       opciones.push({ ruta: '/productos', icono: 'tag', etiqueta: 'Productos' });
     }
     return opciones;
@@ -73,17 +73,19 @@ export class ShellComponent {
     const opciones: OpcionMenu[] = [
       { ruta: '/finanzas', icono: 'landmark', etiqueta: 'Finanzas' },
     ];
-    if (this.sesion.esSupervisor()) {
+    if (this.sesion.puedeGestionarOrdenes()) {
       opciones.push({ ruta: '/cuentas-por-cobrar', icono: 'coins', etiqueta: 'Cuentas por cobrar' });
     }
     return opciones;
   });
 
   /** Inteligencia de negocio se presenta como una sección propia. */
-  readonly menuAnalitica = computed(() => this.sesion.esSupervisor()
-    ? [{ ruta: '/bi', icono: 'bar-chart' as const, etiqueta: 'Inteligencia de negocio' }]
-    : []
-  );
+  readonly menuAnalitica = computed(() => [
+    ...(this.sesion.puedeGestionarOrdenes()
+      ? [{ ruta: '/bi', icono: 'bar-chart' as const, etiqueta: 'Inteligencia de negocio' }] : []),
+    ...(this.sesion.esSupervisor()
+      ? [{ ruta: '/ia', icono: 'clock' as const, etiqueta: 'Pronóstico de pedidos' }] : []),
+  ]);
 
   /** Configuración y control administrativo, solo para administración. */
   readonly menuAdministracion = computed(() => this.sesion.esAdmin()
@@ -118,6 +120,11 @@ export class ShellComponent {
   /** Al elegir una opción en móvil, el cajón debe cerrarse solo. */
   cerrarCajon(): void {
     this.cajonAbierto.set(false);
+  }
+
+  cerrarNavegacionAlTrabajar(): void {
+    this.cajonAbierto.set(false);
+    this.colapsado.set(true);
   }
 
   cerrarSesion(): void {

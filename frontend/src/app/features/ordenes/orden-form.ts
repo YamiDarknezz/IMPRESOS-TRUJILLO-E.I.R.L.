@@ -1,9 +1,10 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { celularPeruano } from '../../shared/utilidades/contactos';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { ClientesService } from '../../core/services/clientes.service';
+import { ClientesService, filtrarClientes } from '../../core/services/clientes.service';
 import { ComprobantesService } from '../../core/services/comprobantes.service';
 import { InventarioService } from '../../core/services/inventario.service';
 import { DatosOrden, OrdenesService, ParteAdelantoData } from '../../core/services/ordenes.service';
@@ -41,6 +42,7 @@ import {
 
 /** Línea del contrato en el formulario. */
 interface LineaFormulario {
+  id?: number;
   descripcion: string;
   anchoM: number | null;
   altoM: number | null;
@@ -105,6 +107,7 @@ import { IconComponent } from '../../shared/componentes/icon/icon.component';
   standalone: true,
   imports: [CommonModule, FormsModule, IconComponent],
   templateUrl: './orden-form.html',
+  styleUrl: './orden-form.css',
 })
 export class OrdenFormComponent {
   private ordenesService = inject(OrdenesService);
@@ -154,6 +157,45 @@ export class OrdenFormComponent {
   readonly clienteSeleccionado = computed(() =>
     this.clientes().find(c => c.id === this.form().clienteId) ?? null
   );
+  readonly busquedaCliente = signal('');
+  readonly clientesFiltrados = computed(() => filtrarClientes(this.clientes(), this.busquedaCliente()));
+  readonly selectorClienteAbierto = signal(false);
+  readonly indiceCliente = signal(0);
+
+  abrirClientes(): void {
+    if (!this.selectorClienteAbierto()) {
+      this.busquedaCliente.set('');
+      this.indiceCliente.set(0);
+      this.selectorClienteAbierto.set(true);
+    }
+  }
+
+  buscarCliente(texto: string): void {
+    this.busquedaCliente.set(texto);
+    this.indiceCliente.set(0);
+  }
+
+  seleccionarCliente(id: number): void {
+    this.actualizar('clienteId', id);
+    this.errores.update(errores => ({ ...errores, cliente: '' }));
+    this.selectorClienteAbierto.set(false);
+    this.busquedaCliente.set('');
+  }
+
+  teclaCliente(evento: KeyboardEvent): void {
+    if (evento.key === 'Escape') {
+      this.selectorClienteAbierto.set(false);
+    } else if (evento.key === 'ArrowDown' || evento.key === 'ArrowUp') {
+      evento.preventDefault();
+      if (!this.selectorClienteAbierto()) { this.abrirClientes(); return; }
+      const maximo = this.clientesFiltrados().length - 1;
+      this.indiceCliente.update(i => Math.max(0, Math.min(maximo, i + (evento.key === 'ArrowDown' ? 1 : -1))));
+    } else if (evento.key === 'Enter' && this.selectorClienteAbierto()) {
+      evento.preventDefault();
+      const cliente = this.clientesFiltrados()[this.indiceCliente()];
+      if (cliente) this.seleccionarCliente(cliente.id);
+    }
+  }
 
   /**
    * Subtotal: sale de las líneas si las hay; si no, del total directo.
@@ -176,12 +218,18 @@ export class OrdenFormComponent {
     return redondear(f.precioTotal);
   });
 
-  readonly igv = computed(() =>
-    this.form().incluyeIgv ? redondear(this.subtotal() * igvPorcentaje() / 100) : 0
-  );
+  readonly precioIncluyeIgv = computed(() => this.editando()?.precio_incluye_igv !== false);
+
+  readonly igv = computed(() => {
+    if (!this.form().incluyeIgv) return 0;
+    const tasa = igvPorcentaje();
+    return this.precioIncluyeIgv()
+      ? redondear(Math.max(0, this.subtotal() - this.form().descuento) * tasa / (100 + tasa))
+      : redondear(this.subtotal() * tasa / 100);
+  });
 
   readonly total = computed(() =>
-    redondear(this.subtotal() + this.igv() - this.form().descuento)
+    redondear(this.subtotal() + (this.precioIncluyeIgv() ? 0 : this.igv()) - this.form().descuento)
   );
 
   /** Todo lo que se deja de adelanto: la primera parte más las otras (#124). */
@@ -290,6 +338,7 @@ export class OrdenFormComponent {
       motivoDescuento: orden.finanzas?.motivo_descuento ?? '',
       materiales: (orden.materiales?.estimados ?? []).map(m => ({ ...m })),
       lineas: (orden.items ?? []).map(item => ({
+        id: item.id,
         descripcion: item.descripcion,
         anchoM: item.ancho_m ?? null,
         altoM: item.alto_m ?? null,
@@ -441,6 +490,12 @@ export class OrdenFormComponent {
   }
 
   // ── Alta rápida de cliente ───────────────────────────────────────────────
+
+  detectarTelefonoClienteRapido(): void {
+    const actual = this.nuevoCliente();
+    const telefono = celularPeruano(actual.nombre);
+    if (telefono && !actual.telefono.trim()) this.nuevoCliente.set({ ...actual, telefono });
+  }
 
   async crearClienteRapido(): Promise<void> {
     const datos = this.nuevoCliente();
@@ -620,6 +675,7 @@ export class OrdenFormComponent {
         alto_m: l.altoM,
         cantidad: l.cantidad,
         precio_unitario: l.precioUnitario,
+        ...(l.id ? { id: l.id } : {}),
       })),
       materiales_estimados: form.materiales.map(m => ({
         material_id: m.id_material,
@@ -640,19 +696,23 @@ export class OrdenFormComponent {
     this.guardando.set(true);
     try {
       let idOrden: number;
+      let pagoYapeId: number | null = null;
       if (editando) {
         await this.ordenesService.actualizar(editando.id, datos);
         idOrden = editando.id;
       } else {
         // La orden se crea primero: la captura necesita a quién pertenecer.
-        idOrden = (await this.ordenesService.crear(datos)).id;
+        const creada = await this.ordenesService.crear(datos);
+        idOrden = creada.id;
+        pagoYapeId = creada.finanzas?.pagos?.find(p => p.metodo.startsWith('yape') && p.tipo === 'adelanto')?.id ?? null;
       }
 
       const pendientes = this.adjuntos();
       if (pendientes.length > 0) {
         const { subidos, fallidos } = await this.comprobantes.subirVarias(
           idOrden,
-          pendientes.map(adjunto => adjunto.archivo)
+          pendientes.map(adjunto => adjunto.archivo),
+          pagoYapeId
         );
         pendientes.filter(adjunto => subidos.length > 0).forEach(liberarCaptura);
         this.adjuntos.set(subidos.length > 0 ? [] : pendientes);

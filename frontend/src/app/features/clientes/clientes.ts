@@ -10,6 +10,7 @@ import { formatearFecha } from '../../shared/utilidades/fechas';
 import { mensajeDeError } from '../../shared/utilidades/errores';
 import { IconComponent } from '../../shared/componentes/icon/icon.component';
 import { ModalComponent } from '../../shared/componentes/modal/modal.component';
+import { celularPeruano } from '../../shared/utilidades/contactos';
 
 function formularioVacio(): DatosCliente {
   return {
@@ -65,6 +66,11 @@ export class ClientesComponent {
   actualizar<K extends keyof DatosCliente>(campo: K, valor: DatosCliente[K]): void {
     this.form.update(f => ({ ...f, [campo]: valor }));
     if (this.errores()[campo]) this.errores.update(e => ({ ...e, [campo]: '' }));
+  }
+
+  detectarTelefonoEnNombre(): void {
+    const telefono = celularPeruano(this.form().nombre);
+    if (telefono && !this.form().telefono.trim()) this.actualizar('telefono', telefono);
   }
 
   abrirEdicion(cliente: Cliente): void {

@@ -77,11 +77,11 @@ Siguiendo las directrices del docente en `plantilla_cronograma.xlsx` y `docs/con
 | 3.1.1.1 | Módulo de Clientes Operativo | 1 d | 3.1.1 | 01/10/2026 | 01/10/2026 | S/ 50.00 | EAD |
 | 3.1.2 | Desarrollo del Catálogo de Productos Gráficos | 3 d | 3.1.1 | 30/09/2026 | 02/10/2026 | S/ 150.00 | JRV |
 | 3.1.2.1 | Catálogo de Productos y Fórmulas | 1 d | 3.1.2 | 02/10/2026 | 02/10/2026 | S/ 50.00 | JRV |
-| 3.2 | Módulo de Órdenes de Trabajo | 6 d | 3.1.2.1 | 05/10/2026 | 10/10/2026 | S/ 400.00 | EPT / EAD |
+| 3.2 | Módulo de Órdenes de Trabajo | 5 d | 3.1.2.1 | 05/10/2026 | 09/10/2026 | S/ 400.00 | EPT / EAD |
 | 3.2.1 | Implementación de Emisión Correlativa | 4 d | 3.1.2.1 | 05/10/2026 | 08/10/2026 | S/ 200.00 | EPT |
 | 3.2.1.1 | Servicio de Emisión de Órdenes | 1 d | 3.2.1 | 08/10/2026 | 08/10/2026 | S/ 50.00 | EPT |
-| 3.2.2 | Formato de Comprobante Interno de Imprenta | 3 d | 3.2.1 | 08/10/2026 | 10/10/2026 | S/ 150.00 | EAD |
-| 3.2.2.1 | Plantilla de Impresión de Pedidos | 1 d | 3.2.2 | 10/10/2026 | 10/10/2026 | S/ 50.00 | EAD |
+| 3.2.2 | Formato de Comprobante Interno de Imprenta | 2 d | 3.2.1 | 08/10/2026 | 09/10/2026 | S/ 150.00 | EAD |
+| 3.2.2.1 | Plantilla de Impresión de Pedidos | 1 d | 3.2.2 | 09/10/2026 | 09/10/2026 | S/ 50.00 | EAD |
 | 3.3 | Módulo de Caja y Finanzas | 5 d | 3.2.2.1 | 05/10/2026 | 09/10/2026 | S/ 400.00 | EPT / JRV |
 | 3.3.1 | Construcción del Candado Digital de Cobro | 3 d | 3.2.2.1 | 05/10/2026 | 07/10/2026 | S/ 200.00 | EPT |
 | 3.3.1.1 | Mecanismo de Bloqueo de Entrega | 1 d | 3.3.1 | 08/10/2026 | 08/10/2026 | S/ 50.00 | EPT |

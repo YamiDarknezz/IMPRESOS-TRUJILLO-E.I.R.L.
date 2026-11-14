@@ -11,6 +11,7 @@ from app.core.errores import Conflicto, ErrorDeNegocio, NoEncontrado
 from app.core.security import (
     generar_password_temporal,
     hash_password,
+    gestion_ordenes,
     solo_admin,
     supervision,
     usuario_actual,
@@ -38,6 +39,17 @@ async def listar_usuarios(
         await sesion.execute(select(Usuario).order_by(func.lower(Usuario.nombre)))
     ).scalars()
     return {"status": "success", "data": [serializar_usuario(u) for u in usuarios]}
+
+
+@router.get("/asignables")
+async def listar_asignables(
+    usuario: Annotated[Usuario, Depends(gestion_ordenes)],
+    sesion: Annotated[AsyncSession, Depends(obtener_sesion)],
+):
+    usuarios = (await sesion.execute(
+        select(Usuario).where(Usuario.activo.is_(True)).order_by(func.lower(Usuario.nombre))
+    )).scalars()
+    return {"status": "success", "data": [{"id": u.id, "nombre": u.nombre} for u in usuarios]}
 
 
 @router.post("")
