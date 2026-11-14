@@ -1,17 +1,21 @@
 # INFORME DE ESTADO DEL PROYECTO (v4.0)
 ## Implementación de un sistema web transaccional con módulos de inteligencia de negocios e inteligencia artificial para la optimización de los procesos operativos y financieros en Impresos Trujillo E.I.R.L.
 
+> **BORRADOR PARA REVISIÓN INTERNA SEM07.** Se contrastó el código del corte y el workflow de GitHub del 10/10. Las cifras EVM, horas/costos, resultados de instrumentos y aceptación AAE-03 quedan pendientes de cotejo con sus fuentes originales; no presentar como final.
+
 ---
 
 ### Registro de Revisión
 
+> Las entradas 1.0–3.0 se heredaron de versiones previas y no fueron revalidadas durante esta revisión; usarlas como historial solo después de cotejar los archivos y actas fuente.
+
 | Versión | Fecha | Modificaciones / Descripción | Responsables / Cargos Formales |
 |:---:|:---:|:---|:---|
 | **1.0** | 26/09/2026 | Emisión formal del Informe de Estado del Proyecto al cierre de la Semana 5 (Sprint 2): consolidación del primer incremento de software funcional (catálogo de insumos, tracking de bobinas UV DTF y planchas MDF, ventas express, arqueo de caja con candado digital y pipeline CI/CD automatizado), sinceramiento de indicadores EVM, y articulación con el Acta de Aceptación de Entregables formal suscrita con la gerencia. | Gerardo Plasencia Torres (Líder / DevOps)<br>Jose Estibb Anhuaman Delgado (Frontend Lead)<br>Jose Diego Rodríguez Vásquez (Backend Lead) |
-| **1.1** | 26/09/2026 | Revisión y validación técnica en taller gráfico con el cliente y suscripción del Acta de Aceptación de Entregables AAE-01. | Ángel Almilcar Rodríguez Vásquez (Jefe de Taller / Gerente Operativo)<br>Marcell Magaly Vásquez Loje (Gerente de Administración / Product Owner) |
+| **1.1** | 26/09/2026 | Registro de revisión/AAE-01 heredado del borrador. Verificar acta y firmas originales antes de citar aceptación o cargos. | Representantes de empresa y equipo — validar en acta |
 | **2.0** | 02/10/2026 | Subsanación de observaciones docentes de Clase 6: reingeniería del presupuesto en 31 paquetes EDT (S/ 5,100.00), antecedentes APA 7ma con 6 tesis reales y formalización de cargos institucionales de stakeholders. | Ing. José Alberto Gómez Ávila (Docente Asesor / Cátedra Capstone UPN) |
 | **3.0** | 03/10/2026 | Subsanación integral de observaciones de cátedra (Corte al 03/10/2026): justificación matemática explícita de semáforos semanales (95%, 96.5%, 96%), memoria de cálculo de amortización, columna de Fecha Real de Entrega al Cliente, digitalización y depuración de dataset histórico a partir de boletas físicas de la empresa para módulos BI e IA, ejecución de 375 pruebas unitarias y suscripción de Acta AAE-02. | Gerardo Erick Plasencia Torres (Líder / Full Stack)<br>Jose Diego Rodríguez Vásquez (Backend / IA)<br>Jose Estibb Anhuaman Delgado (Frontend / UX)<br>Docente Asesor (Cátedra Capstone UPN) |
-| **4.0** | 10/10/2026 | Cuarto Informe de Estado del Proyecto (Monitoreo de Avance 1, corte al 10/10/2026): Segundo gran incremento funcional de software (Dashboard BI HU-09 con gráficos interactivos de ventas, cobranzas y mermas en Angular 21, endpoints REST analíticos en FastAPI `/api/bi/*`, feature engineering y pipeline preliminar de IA HU-10 con $R^2 = 0.84$ sobre 125 boletas físicas normalizadas, formalización y validación de 4 Instrumentos de Recolección de Datos de Práctica de Campo con V de Aiken = 0.96 y suite CI/CD de 387 pruebas automatizadas con 0 fallos). Validación ejecutiva en taller y suscripción del Acta de Aceptación AAE-03. | Gerardo Erick Plasencia Torres (Líder / Full Stack)<br>Jose Estibb Anhuaman Delgado (Frontend / UX)<br>Jose Diego Rodríguez Vásquez (Backend / IA)<br>Marcell Magaly Vásquez Loje (Product Owner)<br>Juan Carlos Plasencia Torres (Gerente General) |
+| **4.0 — borrador revisado** | 10/10/2026 | Monitoreo de Avance 1, SEM07 (semana académica 08). El historial acredita mejoras de órdenes, pagos e inventario; CI verificable: 293 pruebas backend y 469 frontend. No se atribuyen a este corte los módulos BI/IA posteriores. Falta cotejar EVM, trabajo de campo y aceptación AAE-03. | Gerardo Erick Plasencia Torres, Jose Estibb Anhuaman Delgado, Jose Diego Rodríguez Vásquez |
 
 ---
 
@@ -29,58 +33,47 @@
 ---
 
 ### 1. DESCRIPCIÓN DEL PROYECTO:
-El presente proyecto comprende el diseño, desarrollo e implementación de un sistema web transaccional con módulos de inteligencia de negocios e inteligencia artificial para la empresa Impresos Trujillo E.I.R.L., ubicada en Jr. Simón Bolívar 945 Int. 1, Centro Histórico de Trujillo. La solución implementa un frontend reactivo desarrollado en Angular 21 con componentes independientes (Standalone Components), un backend de microservicios RESTful en FastAPI (Python 3.11) con validación estricta Pydantic y ORM SQLAlchemy, una base de datos relacional PostgreSQL 17 nativa contenerizada mediante Docker Compose y un servidor VPS particular propio bajo Ubuntu Server con proxy inverso Nginx y cifrado SSL TLS 1.3 (https://imprenta.darknezz.dev). El sistema optimiza integralmente los procesos operativos y financieros de la imprenta mediante la emisión de órdenes de trabajo con numeración correlativa única, cotización algorítmica por consumo de sustratos, candado digital de cobro previo a la entrega física (exigiendo al menos un 50% de anticipo para enviar trabajos a taller e impidiendo el despacho si existe saldo pendiente), arqueo de caja diario con segregación de ingresos y tableros analíticos gerenciales de Business Intelligence.
+El proyecto tiene como objetivo implementar un sistema web transaccional para Impresos Trujillo E.I.R.L., con alcance planificado de inteligencia de negocios e inteligencia artificial según la EDT. El diseño contempla una interfaz Angular, servicios REST con FastAPI y una base PostgreSQL contenerizada; los componentes y entregables por fase deben verificarse contra el corte correspondiente. Al 10/10/2026, la evidencia de repositorio revisada para este informe acredita cambios de órdenes, pagos e inventario y CI; no acredita que el Dashboard BI, las funciones analíticas/IA ni el despliegue VPS estuvieran terminados. La descripción del alcance objetivo no constituye evidencia de implementación o aceptación.
 
 ---
 
 ### 2. RESUMEN DEL ESTADO DEL PROYECTO
-**Estado Global del Proyecto (Período: 05/10/2026 al 10/10/2026 — Monitoreo de Avance 1)**
+**Período evaluado: 05/10/2026–10/10/2026 (SEM07 / Semana académica 08).** El sábado 10 es jornada de clase; no se contabiliza como trabajo, horas-hombre ni costo.
 
 | Alcance Semanal | Tiempo Semanal | Costo Semanal |
 |:---:|:---:|:---:|
-| **VERDE (80.0% Cumplimiento)** | **VERDE (83.3% En Plazo)** | **VERDE (92.9% Presupuestado / CPI 1.08)** |
+| **Pendiente: validar alcance/EDT** | **Pendiente: horas L–V** | **Pendiente: sustento AC/PV** |
 
 #### Explicaciones de los Semáforos Semanales:
 
-* **Respecto al Alcance (VERDE - 80.0%):** El indicador se calculó mediante la media ponderada del cumplimiento binario (regla estricta de cátedra: 100% o 0%, donde una actividad no culminada formalmente no genera avance parcial) de las 5 actividades técnicas y analíticas evaluadas durante la semana del 05/10/2026 al 10/10/2026 (ver Anexo 1, Tabla 3):
-  $$\text{Alcance Promedio} = \frac{100\% + 100\% + 100\% + 100\% + 0\%}{5} = 80.0\%$$
-  Cuatro de las cinco actividades planificadas para el hito de Monitoreo de Avance 1 fueron concluidas al 100% con entregables técnicos operativos (EDT 4.1.1 Endpoints analíticos de ventas agregadas y saldos en FastAPI, EDT 4.1.2 Dashboard interactivo de Business Intelligence en Angular 21, EDT 4.2.2 Pipeline de Machine Learning y feature engineering sobre el dataset de boletas para predicción de insumos, y EDT 5.1.2 Formalización de los 4 Instrumentos de Recolección de Datos de Práctica de Campo). La actividad EDT 4.1.3 (Exportación tabular nativa a Microsoft Excel 2021 LTSC) se computa formalmente al 0% por regla binaria al encontrarse en desarrollo activo para entrega en el siguiente ciclo. Al situarse en 80.0%, supera el umbral mínimo del 75.0% (Anexo 2, Tabla 6), asignándole semáforo **VERDE**.
+* **Respecto al Alcance:** Pendiente de recalcular con la línea base semanal y las actividades realmente aceptadas. El 80.0% del borrador contaba BI/IA como terminado, pero esos componentes no aparecen en el código verificable del corte. No conservar el semáforo sin reconciliar las actividades con la EDT y aplicar la regla binaria indicada por cátedra.
 
-* **Respecto al Tiempo (VERDE - 83.3%):** El indicador se determinó evaluando la relación entre los días laborables hombre culminados estrictamente dentro del cronograma previsto frente al total de días planificados para las actividades evaluadas durante el ciclo semanal (ver Anexo 1, Tabla 4):
-  $$\text{Eficiencia de Tiempo} = \frac{10\text{ días en plazo}}{12\text{ días planificados}} \times 100\% = 83.33\%$$
-  Cuatro actividades se completaron puntualmente en sus duraciones de 2 y 3 días. Se registró un desfase operativo menor de 1 día durante el preprocesamiento de series temporales en Python para la extracción de rezagos de consumo de lona y vinil, el cual fue absorbido dentro de la holgura de la semana sin comprometer la entrega de la sesión académica del 10/10/2026. Al ubicarse en 83.3% ($\ge 75.0\%$), el semáforo clasifica en **VERDE**, respaldado por un $SPI = 0.98$.
+* **Respecto al Tiempo:** Pendiente de recalcular desde las duraciones y horas verificadas de lunes 05/10 a viernes 09/10. La tabla del borrador mezcla una actividad al 50%, 13 días reales frente a 12 planificados y una regla binaria 100%/0%; no conservar el 83.3% ni el SPI hasta corregir la base. Sábado es clase, no trabajo.
 
-* **Respecto al Costo (VERDE - 92.9%):** El indicador se calculó mediante el cociente directo entre el Costo Real Incurrido (AC) y el Valor Planificado presupuestado (PV) para las actividades del período (ver Anexo 1, Tabla 5):
-  $$\text{Rendimiento de Costo} = \frac{\text{Costo Real (AC)}}{\text{Valor Planificado (PV)}} = \frac{\text{S/ } 1,300.00}{\text{S/ } 1,400.00} = 92.86\%$$
-  El costo real ejecutado por el equipo asciende a S/ 1,300.00 frente a un presupuesto planificado de S/ 1,400.00, logrando un ahorro favorable de S/ 100.00 (7.14% de economía). Conforme a la escala oficial (Anexo 2, Tabla 8), al ser el costo real menor al 100% de lo presupuestado, el semáforo corresponde a **VERDE**, respaldado por un $CPI = 1.08$.
+* **Respecto al Costo:** Pendiente de sustento con hoja de horas, línea base de costos y comprobantes/criterio de amortización. Los importes S/ 1,300 y S/ 1,400 del borrador no se presentan como costo real auditado en esta revisión.
 
 ---
 
 ### 3. SUSTENTO DEL ESTADO DEL PROYECTO
 
-* **• Sustento del Alcance:** Durante la semana evaluada (Semana 07: período del 05/10/2026 al 10/10/2026 — Monitoreo de Avance 1), el equipo desplegó el segundo gran incremento funcional del software: el módulo de Business Intelligence (HU-09) con gráficos interactivos de ventas diarias, ratio de cobranza y mermas por sustrato en Angular 21, y los endpoints analíticos correspondientes en FastAPI (`/api/bi/resumen-ventas`, `/api/bi/saldos-cobranza`, `/api/bi/consumo-mermas`). Asimismo, se ejecutó el feature engineering y entrenamiento preliminar del modelo de IA (HU-10) sobre el dataset estructurado de 125 boletas físicas normalizadas del taller (obteniendo $R^2 = 0.84$), y se formalizaron los 4 instrumentos de recolección de datos de práctica de campo con validación de expertos (V de Aiken = 0.96). Conforme a la Observación 5 de cátedra, todos los entregables completados al 100% cuentan con respaldo formal suscrito en el Acta de Aceptación de Entregables AAE-03 de fecha 10/10/2026.
+* **• Sustento del Alcance:** El historial de Git del corte registra las mejoras de órdenes, pagos e inventario de los PR #122–#127: teléfono/búsqueda de pedidos, filtro por local y pendientes del día, adelanto repartido en varios métodos, Yape por destinatario y consumo automático del rollo ligado a una orden. El código consultado no acredita en SEM07 un dashboard BI/IA ni endpoints de análisis de mermas; no se atribuyen al período. El run CI #38028670036 aporta evidencia técnica de 293 pruebas backend y 469 frontend aprobadas; no acredita despliegue (el job fue omitido). La copia AAE-03 archivada tiene campos de firma vacíos; la aceptación formal se mantiene pendiente de cotejo con ejemplar firmado.
 
-* **• Sustento del Tiempo:** Las actividades de ingeniería se ejecutaron conforme a la asignación de 6 días calendario (lunes 05/10 al sábado 10/10/2026). Las tareas EDT 4.1.1, 4.1.2, 4.2.2 y 5.1.2 se completaron dentro de sus duraciones programadas de 2 y 3 días. El desfase de 1 día originado en la vectorización de datos temporales de consumo de lona y vinil fue absorbido durante las sesiones de prueba conjuntas de la suite CI/CD (387 tests exitosos), alcanzándose un $SPI$ semanal de 0.98 que garantiza el cumplimiento estricto del cronograma maestro.
+* **• Sustento del Tiempo:** El período académico incluye el sábado 10/10, pero el trabajo Scrum se corta el viernes 09/10. La ejecución automática de CI concluyó a las 00:47 del sábado y no representa dedicación humana. Los commits finales llevan sellos entre el viernes por la noche y poco después de medianoche; confirmar con Estibb el día efectivo del trabajo sin reportar tareas de desarrollo en sábado.
 
-* **• Sustento del Costo y Memoria de Amortización (Observación 4 de Cátedra):** El costo real ejecutado en la semana ($AC$) asciende a S/ 1,300.00 frente a un valor planificado ($PV$) de S/ 1,400.00, generando una variación favorable de $CV = +\text{S/ } 100.00$ y un índice de eficiencia $CPI = 1.08$. El costo se desglosa rigurosamente en dos rubros:
-  1. **Horas de Ingeniería y Desarrollo Directo:** S/ 1,220.00 (61 horas hombre acumuladas entre los 3 ingenieros del equipo: Gerardo Plasencia [22h], Jose Estibb Anhuaman [20h] y Jose Diego Rodríguez [19h] a razón de S/ 20.00/h).
-  2. **Recursos Indirectos, Infraestructura y Memoria de Amortización:** S/ 80.00 totales, sustentados de la siguiente manera:
-     - *a) Amortización de 3 Laptops de Desarrollo:* Inversión en hardware propio de S/ 7,500.00 depreciada contablemente bajo el método lineal a 3 años (144 semanas = S/ 52.08 semanales globales). Considerando un factor de dedicación efectiva al proyecto del 86.4% durante este ciclo de desarrollo analítico intensivo, la amortización imputada asciende a exactamente S/ 45.00 semanales (S/ 15.00 por laptop).
-     - *b) Servidor VPS Hostinger KVM Ubuntu Server:* Costo mensual de suscripción de $6.99 USD/mes $\approx$ S/ 26.00/mes; prorrateado a nivel semanal para el entorno productivo con proxy inverso Nginx y PostgreSQL 17 nativo = S/ 15.00 semanales.
-     - *c) Suministro Eléctrico y Conectividad Fibra Óptica en Taller:* Costo de operación del laboratorio de pruebas = S/ 20.00 semanales.
-  *Total de recursos indirectos amortizados:* $\text{S/ } 45.00 + \text{S/ } 15.00 + \text{S/ } 20.00 = \text{S/ } 80.00$ reales frente a S/ 100.00 planificados, demostrando máxima austeridad y solvencia técnica en la gestión financiera.
+* **• Sustento del Costo y Memoria de Amortización (Observación 4):** Pendiente de reconstrucción con las horas efectivamente trabajadas de lunes a viernes, el costo planificado de la línea base y comprobantes de VPS/recursos. No se conserva el desglose anterior como dato real hasta que el equipo proporcione sus fuentes.
 
 ---
 
 ### 4. CAMBIOS PRINCIPALES OCURRIDOS DESDE EL ÚLTIMO REPORTE EMITIDO:
 
-Durante el presente ciclo de trabajo (Semana 07: período del 05/10/2026 al 10/10/2026 / Monitoreo de Avance 1), se implementaron las siguientes modificaciones, mejoras técnicas y avances respecto al informe precedente emitido al 03/10/2026:
+Durante el corte SEM07, las entregas comprobables en el historial del repositorio fueron:
 
-1. **Despliegue del Módulo de Business Intelligence (HU-09):** Integración de endpoints REST analíticos en FastAPI (`/api/bi/resumen-ventas`, `/api/bi/saldos-cobranza`, `/api/bi/consumo-mermas`) y desarrollo de tarjetas KPI reactivas en Angular 21 con señales (Signals), permitiendo visualizar el volumen de facturación diaria, ratio de cobranza y porcentaje de desperdicio por material.
-2. **Feature Engineering y Pipeline Preliminar de IA (HU-10):** Preprocesamiento de series temporales sobre el dataset normalizado de 125 boletas físicas históricas, extrayendo rezagos de demanda ($t-1$, $t-2$, $t-7$) y entrenando un modelo Random Forest Regressor en Python que alcanzó un $R^2 = 0.84$ para la estimación de consumo de rollos de lona y vinil.
-3. **Formalización Psicométrica de 4 Instrumentos de Campo:** Estructuración y validación por juicio de 3 expertos independientes de las fichas INST-01 (Tiempos de Atención en Mostrador), INST-02 (Registro Métrico de Mermas), INST-03 (Auditoría de Arqueo de Caja) e INST-04 (Escala de Usabilidad SUS), obteniendo un coeficiente de validez V de Aiken = 0.96 y confiabilidad Alfa de Cronbach = 0.89.
-4. **Expansión de Suite de Pruebas Automatizadas a 387 Tests:** Incorporación de 12 nuevas pruebas unitarias en backend FastAPI para endpoints analíticos, alcanzando 105 pruebas con pytest y 282 pruebas con Karma/Vitest en Angular, ejecutadas automáticamente en GitHub Actions con 0% de fallos.
-5. **Control de Cambios y Solicitud de Mejora de Interfaz:** No se registraron desviaciones a la línea base de costo o alcance. La administración de la imprenta (Marcell Vásquez) solicitó la incorporación de un selector de rango de fechas personalizado en el Dashboard BI para evaluar períodos de alta demanda estacional, solicitud clasificada como refinamiento de experiencia de usuario para el siguiente ciclo.
+1. **Consulta de órdenes:** búsqueda por teléfono y filtros de local/pendientes del día (PR #122–#123).
+2. **Pagos:** reparto del adelanto entre métodos y selección de destinatario de Yape (PR #124–#125).
+3. **Inventario:** consumo del rollo asociado al crear/editar/cancelar una orden (PR #127).
+4. **CI:** ejecución de pruebas y build en run #38028670036 (293 backend, 469 frontend). Despliegue VPS omitido.
+
+El alcance BI/IA, los valores de merma/modelo, la validación psicométrica y la aceptación de cliente no se registran como concluidos en este borrador; requieren código/datos/firmas originales fechados dentro del período. Corroborar con Estibb y Diego si hubo prototipos locales no integrados y añadirlos solo con evidencia identificable.
 
 ---
 
@@ -89,122 +82,118 @@ Durante el presente ciclo de trabajo (Semana 07: período del 05/10/2026 al 10/1
 En estricto cumplimiento de la estructura de la plantilla oficial, a continuación se detallan los hitos y entregables correspondientes exclusivamente a la semana en curso (período evaluado) y a la semana siguiente proyectada:
 
 * **• Hitos y Entregables del Período Actual Evaluado (Semana 07: 05/10/2026 al 10/10/2026):**
-  - **06/10/2026:** Endpoints REST analíticos de ventas y cobranzas desplegados en FastAPI (`/api/bi/*`) (EDT 4.1.1).
-  - **07/10/2026:** Dashboard interactivo de Business Intelligence en Angular 21 operativo con gráficos de mermas (HU-09) (EDT 4.1.2).
-  - **08/10/2026:** Pipeline de Machine Learning para predicción de consumo de insumos entrenado con datos históricos (HU-10) (EDT 4.2.2).
-  - **09/10/2026:** Demostración técnica de software en vivo y formalización psicométrica de 4 instrumentos de campo (EDT 5.1.2).
-  - **10/10/2026:** Emisión formal del Informe de Estado del Proyecto v4.0 y presentación de Monitoreo de Avance 1 (EDT 1.3.1).
+  - **09–10/10/2026:** Integración de cambios de órdenes/filtros, pagos/Yape y consumo de rollo (PR #122–#127). El día exacto de trabajo humano queda por confirmar con las personas autoras; los merges automáticos con fecha posterior a medianoche no se contabilizan como jornada sabatina.
+  - **10/10/2026:** Run CI #38028670036 completado automáticamente: 293 backend y 469 frontend aprobadas; job de despliegue omitido.
+  - **10/10/2026:** Monitoreo de Avance 1 y clase universitaria. Se registra como hito académico, no como horas/tareas de desarrollo.
 
 * **• Hitos y Entregables del Período Siguiente Proyectado (Semana 08: 12/10/2026 al 17/10/2026):**
-  - **13/10/2026:** Aplicación experimental de instrumentos de cronometraje en mostrador (INST-01) y mermas en taller (INST-02) (EDT 5.1.3).
-  - **15/10/2026:** Despliegue del servicio de exportación tabular nativa a Microsoft Excel 2021 LTSC (EDT 4.1.3).
-  - **16/10/2026:** Maquetación de la pantalla de producción Kanban para operarios de taller (HU-06) (EDT 4.2.1).
-  - **17/10/2026:** Cierre del Sprint 4 y consolidación del Informe de Estado del Proyecto v5.0 (EDT 1.3.2).
+  - **12–16/10/2026 (lunes–viernes):** según el cronograma, continuar deducción automática de insumos y registro de mermas (EDT 3.4), y completar el tablero de estados de taller (EDT 3.5). Cotejar tareas del Sprint 5 con backlog aprobado.
+  - **17/10/2026 (sábado):** jornada académica; no registrar trabajo, horas ni costos sin actividad laboral confirmada. El inicio de Fase 4 BI/IA está planificado para el 19/10/2026.
 
 #### Tabla 2: Hitos y Entregables Evaluados (Semana Actual y Siguiente):
 
-| CÓDIGO EDT | ACTIVIDAD DE LA EDT | ENTREGABLE ASOCIADO | FECHA PLANIF. | FECHA REAL ENTREGA | ESTADO REAL (% CUMP.) |
-|:---:|:---|:---|:---:|:---:|:---:|
-| **EDT 4.1.1** | Endpoints analíticos de ventas agregadas en FastAPI | API REST Analítica `/api/bi/*` | 10/10/2026 | 10/10/2026 | TERMINADO (100%) |
-| **EDT 4.1.2** | Dashboard reactivo de Business Intelligence en Angular | Dashboard BI Operativo (HU-09) | 10/10/2026 | 10/10/2026 | TERMINADO (100%) |
-| **EDT 4.2.2** | Feature engineering y pipeline preliminar de IA | Modelo Predictivo IA (HU-10) | 10/10/2026 | 10/10/2026 | TERMINADO (100%) |
-| **EDT 5.1.2** | Formalización de 4 Instrumentos de Recolección de Datos | Fichas Técnicas Validadas (V=0.96) | 10/10/2026 | 10/10/2026 | TERMINADO (100%) |
-| **EDT 1.3.1** | Elaboración de Informes de Estado Semanales | Informe de Estado del Proyecto v4.0 | 10/10/2026 | 10/10/2026 | TERMINADO (100%) |
-| **EDT 4.1.3** | Exportación tabular nativa a Microsoft Excel 2021 LTSC | Servicio de Exportación Excel `.xlsx` | 15/10/2026 | Pendiente | EN PROCESO (0%) |
-| **EDT 4.2.1** | Maquetación de Tablero Kanban de Taller (HU-06) | Tablero Kanban para Operarios | 16/10/2026 | Pendiente | PLANIFICADO (0%) |
-| **EDT 5.1.3** | Aplicación experimental in situ en taller gráfico | Registros de Campo INST-01/02 | 17/10/2026 | Pendiente | PLANIFICADO (0%) |
-| **EDT 1.3.2** | Elaboración del Quinto Informe de Estado del Proyecto | Informe de Estado del Proyecto v5.0 | 17/10/2026 | Pendiente | PLANIFICADO (0%) |
-| **TOTAL** | **Actividades del ciclo (Semana actual y siguiente): 9** | **Semana actual: 5 terminadas \| Semana siguiente: 4 en curso/planificadas** | **17/10/2026** | **10/10/2026** | **Avance Período: 55.6%** |
+| Código EDT | Actividad | Entregable | Fecha Planeada de Culminación | Fecha Real de Entrega | Estado |
+|:---|:---|:---|:---:|:---:|:---|
+| Pendiente de mapeo | Mejoras de búsqueda/listado y filtro de órdenes (PR #122–#123) | Cambios integrados en repositorio | Por cotejar con cronograma | No acreditada al cliente | Código integrado; EDT/aceptación por validar |
+| Pendiente de mapeo | Adelanto repartido y destinatarios Yape (PR #124–#125) | Cambios integrados en repositorio | Por cotejar con cronograma | No acreditada al cliente | Código integrado; EDT/aceptación por validar |
+| Pendiente de mapeo | Descuento automático de rollo asociado a orden (PR #127) | Cambios integrados en repositorio | Por cotejar con cronograma | No acreditada al cliente | Merge registrado 10/10 00:01; confirmar día de trabajo humano |
+| **TOTAL** | Tres grupos de cambios versionados | Integraciones PR #122–#127 | EDT/plan por validar | Recepción del cliente no acreditada | Mapeo y porcentaje pendientes |
 
 ---
 
 ### 6. INDICADORES CLAVE DE DESEMPEÑO (KPI'S)
 
-#### Tiempo – El Proyecto está en cronograma (eficiencia controlada):
-* **• Schedule Variance (SV):** $-\text{S/ } 30.00$ (Variación marginal controlada y absorbida dentro del Sprint 4).
-* **• Schedule Performance Index (SPI):** $0.98$ (Eficiencia de cronograma del 98.0%, dentro del rango admisible verde $\ge 0.95$).
+#### Estado de los KPI EVM
 
-#### Costo – El Proyecto está por debajo de lo presupuestado (ahorro operativo):
-* **• Cost Variance (CV):** $+\text{S/ } 100.00$ (Ahorro presupuestal a favor del proyecto al cierre de semana).
-* **• Cost Performance Index (CPI):** $1.08$ (Rendimiento del costo superior a la unidad, indicando alta eficiencia en la inversión).
+* **Schedule Variance (SV) / SPI:** pendiente de recalcular con línea base y jornada laboral L–V validadas.
+* **Cost Variance (CV) / CPI:** pendiente de recalcular con hoja de horas, presupuesto de semana y fuentes de gastos/amortización.
+* No conservar SV -S/30, SPI .98, CV +S/100 o CPI 1.08 como cifras finales sin reconciliar sus entradas y aritmética con el equipo.
 
 ---
 
 ### ANEXO 1: Tablas de Validación de Alcance, Tiempo y Costos
 
-#### Tabla 3: Detalle de Validación del Alcance (Regla Binaria Estricta de Cátedra: 100% o 0%)
+#### Tabla 3: Detalle de Validación del Alcance (Regla Binaria: 100% o 0%)
 
 | ACTIVIDAD | ENTREGABLE | % CUMPLIMIENTO |
 |:---|:---|:---:|
-| **EDT 4.1.1 Endpoints analíticos de ventas agregadas en FastAPI** | Endpoints REST `/api/bi/*` operativos con pruebas en Swagger | 100% |
-| **EDT 4.1.2 Dashboard reactivo de Business Intelligence en Angular** | Componente DashboardBiComponent con tarjetas KPI y gráficos de mermas | 100% |
-| **EDT 4.2.2 Feature engineering y pipeline preliminar de IA** | Pipeline de Machine Learning para predicción de consumo de insumos | 100% |
-| **EDT 5.1.2 Formalización de 4 Instrumentos de Recolección de Datos** | Fichas técnicas de tiempos, mermas, auditoría de caja y test SUS | 100% |
-| **EDT 4.1.3 Exportación tabular nativa a Microsoft Excel 2021 LTSC** | Servicio de exportación tabular con formato y fórmulas Excel | 0% |
-| **Cumplimiento Promedio Global del Período** | **5 actividades evaluadas bajo regla binaria estricta (>= 75%)** | **80.0%** |
+| Cambios de órdenes/pagos/inventario (PR #122–#127) | Código integrado; paquetes EDT y aceptación por cotejar | Pendiente |
+| Dashboard/endpoints BI (HU-09) | No presentes en el código versionado del corte | No computar como terminado |
+| Pipeline predictivo IA (HU-10) | No presente en el código versionado del corte | No computar como terminado |
+| Instrumentos de campo | Diseño de fichas presente; validación/aplicación sin fuente primaria adjunta | Pendiente |
+| **Cumplimiento Promedio Global del Período** | Denominador EDT semanal por validar con línea base | **Pendiente de calcular** |
 
 #### Tabla 4: Detalle de Validación del Tiempo
 
 | ACTIVIDAD | DURACIÓN ESTIMADA | DURACIÓN REAL | % CUMPLIMIENTO |
 |:---|:---:|:---:|:---:|
-| **EDT 4.1.1 Endpoints analíticos de ventas en FastAPI** | 2 días | 2 días | 100.0% |
-| **EDT 4.1.2 Dashboard interactivo de BI en Angular 21** | 3 días | 3 días | 100.0% |
-| **EDT 4.2.2 Feature engineering y pipeline de IA en Python** | 3 días | 3 días | 100.0% |
-| **EDT 5.1.2 Formalización de 4 Instrumentos de Datos** | 2 días | 2 días | 100.0% |
-| **EDT 4.1.3 Exportación tabular nativa a Excel 2021** | 2 días | 3 días (en curso) | 50.0% |
-| **Cumplimiento promedio del Período** | **12 días planificados** | **13 días insumidos (SPI = 0.98)** | **83.3%** |
+| Cambios de órdenes/pagos/inventario (PR #122–#127) | Por reconstruir | Merge registrado el 09–10/10 | Pendiente de horas/trabajo real |
+| CI automático (run #38028670036) | No aplica | Finalizó 10/10 a las 00:47 | Automatización; no es hora-hombre |
+| Sábado 10/10 | Clase a las 07:00 | Sin tareas ni horas de desarrollo | Excluido del cómputo laboral |
+| **Cumplimiento promedio del Período** | Línea base por confirmar | Registro horario por confirmar | **Pendiente de calcular** |
 
 #### Tabla 5: Detalle de Validación de Costos y Memoria de Amortización
 
 | RUBRO DE COSTO DEL PERÍODO EVALUADO | VALOR PLANIFICADO (PV) | COSTO REAL (AC) |
 |:---|:---:|:---:|
-| **EDT 4.1.1 Endpoints analíticos de ventas agregadas en FastAPI** | S/ 280.00 | S/ 260.00 |
-| **EDT 4.1.2 Dashboard reactivo de BI en Angular 21** | S/ 330.00 | S/ 310.00 |
-| **EDT 4.2.2 Feature engineering y pipeline de IA en Python** | S/ 330.00 | S/ 300.00 |
-| **EDT 5.1.2 Formalización de 4 Instrumentos de Recolección de Datos** | S/ 180.00 | S/ 170.00 |
-| **EDT 4.1.3 Exportación tabular nativa a Excel 2021 LTSC** | S/ 180.00 | S/ 180.00 |
-| **Amortización de 3 Laptops de Desarrollo (S/ 7,500 en 144 semanas al 86.4%)** | S/ 50.00 | S/ 45.00 |
-| **Hosting Servidor VPS Hostinger KVM Ubuntu Server ($6.99 USD/mes prorrateado)** | S/ 20.00 | S/ 15.00 |
-| **Servicios Básicos e Infraestructura (Energía y Fibra Óptica en Taller)** | S/ 30.00 | S/ 20.00 |
-| **TOTAL (Semáforo VERDE: CV = +S/ 100.00 \| CPI = 1.08)** | **S/ 1,400.00** | **S/ 1,300.00** |
+| Horas de ingeniería (lunes–viernes) | Pendiente | Pendiente |
+| Infraestructura/hosting y comprobantes asignados al corte | Pendiente | Pendiente |
+| Depreciación/amortización (base, vida útil, porcentaje de uso) | Pendiente | Pendiente |
+| **TOTAL (PV/AC)** | **Pendiente de cotejar con presupuesto** | **Pendiente de cotejar con registros reales** |
 
-#### Tabla 5-B: Trazabilidad Integral de la EDT Canónica (Actividades de Principio a Fin - 31 Paquetes)
+> No calcular CPI con el costo base transcrito hasta que el equipo identifique la línea base aprobada: el Markdown de costeo SEM05 presenta diferencias entre sus totales y el total general declarado; el XLSX SEM05 tiene una estructura de ocho fases/códigos que no coincide con la EDT vigente.
+
+#### Tabla 5-B: Trazabilidad Integral de Actividades de la EDT Canónica
 *(Cumplimiento de la observación docente de Clase 6: registrar todas las actividades de la EDT desde el inicio del proyecto hasta el cierre)*
+
+> Reconstruida desde `docs/trabajo/SEM02/03_EDT.md` y `04_CRONOGRAMA.md`: incluye las 43 actividades de nivel 3 que aparecen en la EDT. La fecha planeada es la culminación programada del entregable asociado; la fecha real y el estado permanecen sin verificar hasta cotejarlos con evidencia primaria. El costeo SEM05 usa además la cifra de 31 paquetes de trabajo de nivel 4; esa unidad no equivale a estas 43 actividades y sus códigos/versiones deben conciliarse antes de reportar un total único.
 
 | CÓDIGO EDT | ACTIVIDAD DE LA EDT | ENTREGABLE ASOCIADO | FECHA PLANIF. | FECHA REAL ENTREGA | ESTADO REAL (% CUMP.) |
 |:---:|:---|:---|:---:|:---:|:---:|
-| **EDT 1.1.1** | Elaboración del Acta de Constitución | Acta de Constitución Aprobada | 22/08/2026 | 22/08/2026 | TERMINADO (100%) |
-| **EDT 1.1.2** | Elaboración del Business Case | Caso de Negocio (Business Case) Validado | 28/08/2026 | 28/08/2026 | TERMINADO (100%) |
-| **EDT 1.2.1** | Elaboración del Cronograma Maestro | Cronograma Maestro del Proyecto (Gantt) | 09/09/2026 | 09/09/2026 | TERMINADO (100%) |
-| **EDT 1.2.2** | Elaboración del Presupuesto Valorizado | Presupuesto Valorizado del Proyecto | 09/09/2026 | 09/09/2026 | TERMINADO (100%) |
-| **EDT 1.2.3** | Elaboración del Plan de Desarrollo de Software | Plan de Desarrollo de Software Oficial | 10/09/2026 | 10/09/2026 | TERMINADO (100%) |
-| **EDT 1.2.4** | Asignación de Roles y Responsabilidades | Matriz RACI Oficial | 10/09/2026 | 10/09/2026 | TERMINADO (100%) |
-| **EDT 1.3.1** | Elaboración de Informes de Estado Semanales | Informe de Estado del Proyecto v4.0 | 10/10/2026 | 10/10/2026 | TERMINADO (100%) |
-| **EDT 1.3.2** | Registro de Daily Scrums del Proyecto | Registro de Daily Scrums Sprint 4 | 10/10/2026 | 10/10/2026 | TERMINADO (100%) |
-| **EDT 1.3.3** | Gestión de Impedimentos y Desviaciones | Registro de Impedimentos y Desviaciones | 10/10/2026 | 10/10/2026 | TERMINADO (100%) |
-| **EDT 1.4.1** | Gestión de Solicitudes de Control de Cambios | Solicitudes de Control de Cambios | 10/10/2026 | 10/10/2026 | TERMINADO (100%) |
-| **EDT 1.4.2** | Auditoría de Calidad de Entregables | Auditorías de Calidad de Entregables | 10/10/2026 | 10/10/2026 | TERMINADO (100%) |
-| **EDT 2.1.1** | Recolección de Datos de Boletas Físicas | Dataset de Boletas Históricas | 28/08/2026 | 28/08/2026 | TERMINADO (100%) |
-| **EDT 2.1.2** | Entrevistas Operativas de Mostrador y Taller | Registro de Entrevistas Operativas | 28/08/2026 | 28/08/2026 | TERMINADO (100%) |
-| **EDT 2.2.1** | Especificación de Requerimientos SRS IEEE 830 | Especificación SRS IEEE 830 Validada | 28/08/2026 | 28/08/2026 | TERMINADO (100%) |
-| **EDT 2.2.2** | Formulación de la Matriz de Consistencia | Matriz de Consistencia Metodológica | 02/09/2026 | 02/09/2026 | TERMINADO (100%) |
-| **EDT 2.3.1** | Modelado de Procesos de Negocio Actuales | Diagramas de Casos de Uso del Negocio | 04/09/2026 | 04/09/2026 | TERMINADO (100%) |
-| **EDT 2.3.2** | Elaboración de la Matriz de Trazabilidad | Matriz de Trazabilidad de Requisitos | 05/09/2026 | 05/09/2026 | TERMINADO (100%) |
-| **EDT 3.1.1** | Especificación de Arquitectura de Software | Documento de Arquitectura y Docker Compose | 17/09/2026 | 17/09/2026 | TERMINADO (100%) |
-| **EDT 3.1.2** | Especificación OpenAPI Swagger de Servicios | Documentación OpenAPI Swagger de Endpoints | 24/09/2026 | 24/09/2026 | TERMINADO (100%) |
-| **EDT 3.2.1** | Modelado Entidad Relación de Base de Datos | Diagrama Entidad Relación de Base de Datos | 17/09/2026 | 17/09/2026 | TERMINADO (100%) |
-| **EDT 3.2.2** | Creación de Tablas y Restricciones DDL | Script DDL PostgreSQL Ejecutado | 18/09/2026 | 18/09/2026 | TERMINADO (100%) |
-| **EDT 3.3.1** | Elaboración de Prototipos UI en Angular 21 | Prototipos de Pantalla en Angular 21 | 18/09/2026 | 18/09/2026 | TERMINADO (100%) |
-| **EDT 3.3.2** | Definición de Guía de Estilos y Componentes | Guía de Estilos y Componentes UI | 25/09/2026 | 25/09/2026 | TERMINADO (100%) |
-| **EDT 4.1.1** | Desarrollo de API de Órdenes y Clientes | API Transaccional de Órdenes y Clientes | 19/09/2026 | 19/09/2026 | TERMINADO (100%) |
-| **EDT 4.1.2** | Desarrollo de API de Pagos y Arqueo de Caja | API de Arqueo Dual y Candado de Entrega | 03/10/2026 | 03/10/2026 | TERMINADO (100%) |
-| **EDT 4.1.3** | Desarrollo de API de Predicción de Insumos | API de Inferencia Predictiva de Insumos | 24/10/2026 | Pendiente | EN PROCESO (0%) |
-| **EDT 4.2.1** | Maquetación de Pantalla de Mostrador | Pantalla de Talonario Virtual de Mostrador | 25/09/2026 | 25/09/2026 | TERMINADO (100%) |
-| **EDT 4.2.2** | Maquetación de Tablero Kanban de Taller | Pantalla de Tablero Kanban de Taller | 16/10/2026 | Pendiente | EN PROCESO (0%) |
-| **EDT 4.2.3** | Maquetación de Dashboards de Negocio | Dashboards Gerenciales de BI | 10/10/2026 | 10/10/2026 | TERMINADO (100%) |
-| **EDT 4.3.1** | Integración del Módulo Transaccional | Módulo Integrado de Gestión de Producción | 24/10/2026 | Pendiente | EN PROCESO (0%) |
-| **EDT 4.3.2** | Integración del Módulo de Inteligencia y BI | Módulo de Inteligencia de Negocios e IA | 07/11/2026 | Pendiente | EN PROCESO (0%) |
-| **TOTAL** | **Total paquetes de trabajo EDT: 31** | **Completados: 27 \| En curso/Pendientes: 4** | **10/10/2026** | **10/10/2026** | **Avance: 87.1%** |
+| 1.1.1 | Elaboración del Acta de Constitución | Acta de Constitución Aprobada | 22/08/2026 | No verificada | Pendiente de cotejo |
+| 1.1.2 | Elaboración del Caso de Negocio | Business Case Validado | 28/08/2026 | No verificada | Pendiente de cotejo |
+| 1.2.1 | Levantamiento de Requerimientos de Software | Documento SRS IEEE 830 | 28/08/2026 | No verificada | Pendiente de cotejo |
+| 1.3.1 | Elaboración de la Matriz de Consistencia | Matriz de Consistencia Metodológica | 02/09/2026 | No verificada | Pendiente de cotejo |
+| 1.3.2 | Formulación de la Estructura de Análisis | Informe de Estructura de Análisis | 04/09/2026 | No verificada | Pendiente de cotejo |
+| 1.4.1 | Construcción de la Estructura de Desglose | Grafo y Matriz EDT | 08/09/2026 | No verificada | Pendiente de cotejo |
+| 1.4.2 | Programación del Cronograma Gantt | Cronograma Maestro del Proyecto | 09/09/2026 | No verificada | Pendiente de cotejo |
+| 1.4.3 | Elaboración del Plan de Desarrollo de Software | Documento Plan de Desarrollo de Software | 10/09/2026 | No verificada | Pendiente de cotejo |
+| 1.4.4 | Análisis y Gestión de Riesgos | Matriz de Riesgos del Proyecto | 10/09/2026 | No verificada | Pendiente de cotejo |
+| 1.4.5 | Definición de Responsabilidades del Equipo | Matriz RACI MultiRol | 10/09/2026 | No verificada | Pendiente de cotejo |
+| 1.4.6 | Establecimiento del Protocolo de Comunicaciones | Matriz de Comunicaciones Oficial | 11/09/2026 | No verificada | Pendiente de cotejo |
+| 2.1.1 | Modelado Entidad Relación Físico | Script DDL PostgreSQL | 17/09/2026 | No verificada | Pendiente de cotejo |
+| 2.1.2 | Configuración del Contenedor de Base de Datos | Contenedor Docker PostgreSQL | 18/09/2026 | No verificada | Pendiente de cotejo |
+| 2.2.1 | Estructuración del Proyecto FastAPI | Repositorio Backend FastAPI | 22/09/2026 | No verificada | Pendiente de cotejo |
+| 2.2.2 | Diseño de Contratos de Servicios RESTful | Especificación OpenAPI Swagger | 24/09/2026 | No verificada | Pendiente de cotejo |
+| 2.3.1 | Maquetación de Interfaces en Angular | Componentes UI Angular | 23/09/2026 | No verificada | Pendiente de cotejo |
+| 2.3.2 | Integración del Talonario Virtual | Vista de Emisión de Órdenes | 25/09/2026 | No verificada | Pendiente de cotejo |
+| 3.1.1 | Desarrollo del Directorio de Clientes | Módulo de Clientes Operativo | 01/10/2026 | No verificada | Pendiente de cotejo |
+| 3.1.2 | Desarrollo del Catálogo de Productos Gráficos | Catálogo de Productos y Fórmulas | 02/10/2026 | No verificada | Pendiente de cotejo |
+| 3.2.1 | Implementación de Emisión Correlativa | Servicio de Emisión de Órdenes | 08/10/2026 | No verificada | Pendiente de cotejo |
+| 3.2.2 | Formato de Comprobante Interno de Imprenta | Plantilla de Impresión de Pedidos | 09/10/2026 | No verificada | Pendiente de cotejo |
+| 3.3.1 | Construcción del Candado Digital de Cobro | Mecanismo de Bloqueo de Entrega | 08/10/2026 | No verificada | Pendiente de cotejo |
+| 3.3.2 | Implementación del Arqueo Diario Segregado | Reporte de Cierre de Caja Diario | 09/10/2026 | No verificada | Pendiente de cotejo |
+| 3.4.1 | Programación de Deducción Automática por Receta | Servicio de Reserva de Insumos | 12/10/2026 | No verificada | Pendiente de cotejo |
+| 3.4.2 | Registro de Mermas de Producción en Taller | Formulario de Ajuste de Taller | 14/10/2026 | No verificada | Pendiente de cotejo |
+| 3.5.1 | Implementación del Tablero de Estados de Trabajo | Tablero Visual de Producción | 16/10/2026 | No verificada | Pendiente de cotejo |
+| 4.1.1 | Construcción de Endpoints Agregados de Ventas | Endpoints Analíticos FastAPI | 23/10/2026 | No verificada | Pendiente de cotejo |
+| 4.1.2 | Desarrollo de Dashboards Gerenciales en Angular | Tableros Ejecutivos de BI | 27/10/2026 | No verificada | Pendiente de cotejo |
+| 4.1.3 | Generación de Exportación Tabular a Excel | Reportes Nativos en Excel 2021 | 28/10/2026 | No verificada | Pendiente de cotejo |
+| 4.2.1 | Estructuración del Dataset Histórico de Boletas | Dataset Estructurado de Producción | 29/10/2026 | No verificada | Pendiente de cotejo |
+| 4.2.2 | Entrenamiento del Modelo Predictivo de Demanda | Modelo Predictivo Entrenado | 03/11/2026 | No verificada | Pendiente de cotejo |
+| 4.2.3 | Despliegue de Inferencia de Demanda en API | Servicio Predictivo de Reabastecimiento | 06/11/2026 | No verificada | Pendiente de cotejo |
+| 5.1.1 | Ejecución de Pruebas de Integración y Sistema | Informe de Pruebas del Sistema | 13/11/2026 | No verificada | Pendiente de cotejo |
+| 5.1.2 | Evaluación de Métricas de Calidad ISO 25010 | Informe de Métricas de Calidad | 14/11/2026 | No verificada | Pendiente de cotejo |
+| 5.2.1 | Configuración del Servidor VPS Propio en Linux | Servidor VPS de Producción Activo | 18/11/2026 | No verificada | Pendiente de cotejo |
+| 5.2.2 | Automatización del Pipeline CI CD en GitHub Actions | Pipeline CI CD Desplegado | 19/11/2026 | No verificada | Pendiente de cotejo |
+| 5.3.1 | Elaboración de Manuales de Usuario y Despliegue | Manuales de Usuario del Sistema | 23/11/2026 | No verificada | Pendiente de cotejo |
+| 5.3.2 | Ejecución de Jornadas de Capacitación in Situ | Acta de Capacitación del Personal | 25/11/2026 | No verificada | Pendiente de cotejo |
+| 5.4.1 | Recolección de Datos Pretest sobre Papel | Base de Datos Pretest Documentada | 20/11/2026 | No verificada | Pendiente de cotejo |
+| 5.4.2 | Recolección de Datos Postest en Sistema Web | Base de Datos Postest Documentada | 26/11/2026 | No verificada | Pendiente de cotejo |
+| 5.4.3 | Análisis Estadístico Comparativo Pretest Postest | Informe Experimental de Resultados | 27/11/2026 | No verificada | Pendiente de cotejo |
+| 5.5.1 | Ejecución de Charla de Responsabilidad Social | Informe de Responsabilidad Social UPN | 01/12/2026 | No verificada | Pendiente de cotejo |
+| 5.5.2 | Redacción del Artículo Científico de Investigación | Paper Científico Final de Tesis | 04/12/2026 | No verificada | Pendiente de cotejo |
+| 5.5.3 | Consolidación del Portafolio y Entrega Final | Informe Final del Proyecto Capstone | 05/12/2026 | No verificada | Pendiente de cotejo |
 
 ---
 
@@ -236,26 +225,10 @@ En estricto cumplimiento de la estructura de la plantilla oficial, a continuaci�
 
 ---
 
-### ANEXO 3: Evidencias Técnicas del Software Desarrollado (Sprint 4)
+### ANEXO 3: Evidencia Técnica Verificable del Corte SEM07
 
-En cumplimiento de los requerimientos de verificación técnica y aseguramiento de calidad académica para el Monitoreo de Avance 1, a continuación se presentan las evidencias operativas y salidas reales del software correspondiente a la Semana 07 (05/10 al 10/10/2026):
-
-1. **ENDPOINTS ANALÍTICOS DE BUSINESS INTELLIGENCE EN FASTAPI (`/api/bi/*`):**
-   * `GET /api/bi/resumen-ventas`: Agregación de ventas brutas, ticket promedio (S/ 72.40) y volumen transaccional diario.
-   * `GET /api/bi/saldos-cobranza`: Monitoreo en tiempo real de saldos pendientes por cobrar y ratio de efectividad de cobranza (94.2%).
-   * `GET /api/bi/consumo-mermas`: Distribución porcentual y volumétrica de merma por sustrato (Vinil Adhesivo: 4.8%, Banner 13oz: 3.2%, UV DTF: 2.1%).
-
-2. **DASHBOARD REACTIVO EN ANGULAR 21 CON STANDALONE COMPONENTS (HU-09):**
-   * Vista gerencial integrada con Angular Signals para actualización en tiempo real sin recarga de página.
-   * Tarjetas KPI reactivas y gráficos interactivos de barras y sectores maquetados directamente en código (sin dependencias Figma).
-
-3. **PIPELINE PRELIMINAR DE MACHINE LEARNING Y FEATURE ENGINEERING (HU-10):**
-   * Preprocesamiento de series temporales y extracción de rezagos ($t-1$, $t-2$, $t-7$) sobre el dataset histórico de 125 boletas físicas normalizadas.
-   * Modelo Random Forest Regressor logrando un coeficiente de determinación $R^2 = 0.84$ y $MAPE = 11.8\%$ en predicción de consumo de insumos.
-
-4. **SUITE DE PRUEBAS AUTOMATIZADAS Y PIPELINE CI/CD:**
-   * Ejecución exitosa de 387 pruebas automatizadas (105 pruebas unitarias de backend con pytest + 282 pruebas de frontend con Karma/Vitest) en GitHub Actions con 0 fallos.
-   * Verificación de salud y estabilidad de contenedores Docker Compose (`impresos-web`, `impresos-api`, `impresos-db`) en estado Healthy en servidor VPS (https://imprenta.darknezz.dev).
-
-5. **FORMALIZACIÓN Y VALIDACIÓN DE 4 INSTRUMENTOS DE CAMPO:**
-   * INST-01 (Tiempos de Atención en Mostrador), INST-02 (Registro Métrico de Mermas), INST-03 (Auditoría de Arqueo de Caja) e INST-04 (Escala de Usabilidad SUS) validados por 3 jueces expertos independientes (V de Aiken = 0.96, Alfa de Cronbach = 0.89).
+1. **Cambios de código:** PR #122–#127: búsqueda/teléfono de órdenes, filtro por local y pendientes del día, adelantos repartidos, Yape por destinatario y consumo automático de rollos asociados a órdenes.
+2. **CI:** GitHub Actions run #38028670036, SHA `f812ece`, del 10/10/2026: 293 pruebas backend y 469 frontend aprobadas; build y validaciones CI correctas. El job de despliegue al VPS fue omitido.
+3. **Alcance fuera del corte:** no adjuntar como evidencia SEM07 capturas de Dashboard BI, rutas analíticas de mermas ni inferencias de IA; no se encontraron esas rutas/componentes en el código versionado de la fecha.
+4. **Aceptación:** la copia del AAE-03 en el repositorio conserva líneas de firma vacías. Se requiere el ejemplar firmado antes de afirmar conformidad formal del cliente.
+5. **Instrumentos/métricas:** conservar las fichas como diseños de captura. Para informar V de Aiken, Alfa de Cronbach, Pretest/Postest, tiempos o mermas, adjuntar matriz de jueces y datos fuente anonimizados.

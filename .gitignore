@@ -39,6 +39,11 @@ unpacked/
 # Carpeta de archivos temporales del agente (scripts, unpacked, etc.)
 .temp/
 
+# Archivos multimedia y evidencias pesadas (>100MB bloqueados por GitHub)
+*.mp4
+*Evidencias-RSU.zip
+*Capacitacion_Video.*
+
 # Configuración local de opencode
 opencode.json
 

@@ -159,8 +159,10 @@ El software opera en un entorno web cliente-servidor distribuido bajo las siguie
 ### 7.5 Proceso 5: Inteligencia de Negocios y Predicción con IA
 
 - **RF-14: Dashboard Gerencial de Ventas y Rendimiento:** El sistema mostrará cuadros de mando interactivos con ingresos diarios, semanales y mensuales, tasa de pedidos liquidados y volumen de producción por operario.
-- **RF-15: Exportación Tabular a Microsoft Excel 2021:** El sistema permitirá exportar todas las tablas analíticas y de auditoría de caja en formato nativo `.xlsx`, garantizando compatibilidad absoluta con Microsoft Office 2021 LTSC.
-- **RF-16: Predicción Mensual de Demanda de Insumos (IA):** El sistema proyectará la demanda mensual de rollos de lona banner y vinil adhesivo mediante un modelo de aprendizaje automático entrenado con datos históricos, recomendando la fecha y cantidad óptima de reabastecimiento.
+- **RF-15 (revisión de alcance 30/10/2026): Exportación de datos en CSV:** El sistema permite descargar información de BI, finanzas y cuentas por cobrar en archivos `.csv` para su apertura en aplicaciones de hojas de cálculo. No se incluye exportación nativa `.xlsx` ni se afirma exportación de auditoría de caja.
+- **RF-16 (revisión de alcance 30/10/2026): Pronóstico semanal de pedidos (IA):** El sistema estima para los próximos siete días el número de pedidos y su valor total en soles a partir de órdenes registradas. Utiliza un modelo solamente si supera la línea base en la evaluación; en caso contrario muestra la media móvil. No predice cobros, consumo mensual de insumos ni cantidades de reabastecimiento.
+
+> Control de cambios (30/10/2026): esta versión de trabajo modifica únicamente RF-15 y RF-16 por solicitud del responsable. El documento Word entregado en SEM01 utiliza otra numeración (RF-18 para exportación y RF-19 para predicción); la revisión correspondiente se conserva por separado en `docs/entregables/SEM11/REQUERIMIENTOS_SOFTWARE_REVISION_30_10_2026.docx`. El resto de requerimientos, incluidos los de alertas, no queda aceptado ni modificado por esta nota; se requiere conformidad del cliente para formalizar el cambio.
 
 ---
 
